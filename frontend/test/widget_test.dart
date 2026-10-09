@@ -8,12 +8,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:trustcue_mobile/main.dart';
+import 'package:trustcue_mobile/app/trustcue_app.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('TrustCueApp renders title and counter increments', (
+    WidgetTester tester,
+  ) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const TrustCueApp());
+
+    // Verify that the application renders with the TrustCue title.
+    expect(find.text('TrustCue'), findsOneWidget);
 
     // Verify that our counter starts at 0.
     expect(find.text('0'), findsOneWidget);

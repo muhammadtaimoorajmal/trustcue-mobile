@@ -14,6 +14,7 @@ Currently, the project contains only the Flutter foundation scaffold. Product fe
 ## Project Documentation
 - [Project State](docs/PROJECT_STATE.md)
 - [Module Log](docs/MODULE_LOG.md)
+- [Architecture](docs/ARCHITECTURE.md)
 
 ## Development & Phone Verification
 To verify the development baseline, navigate to the `frontend/` directory and run the following checks:
