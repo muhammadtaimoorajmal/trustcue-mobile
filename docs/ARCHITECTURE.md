@@ -11,8 +11,11 @@ TrustCue is structured to grow sustainably while maintaining a clean separation 
 
 ## State Management
 
-*   GetX is the planned state-management approach. No other state-management framework will be installed.
-*   The sample counter retains its standard local `setState` behavior until the dedicated state-management module. We avoid creating temporary scaffolding that will only be replaced later.
+*   GetX is the primary state-management and dependency registration approach. No other state-management framework will be installed.
+*   **Routing:** Handled via centralized `app_routes.dart` (route constants) and `app_pages.dart` (route definitions mapped to bindings).
+*   **Bindings:** Feature-specific dependencies (like `HomeController`) are lazily registered in their respective bindings (e.g., `HomeBinding`).
+*   **Controllers:** Reactive state is owned by `GetxController` subclasses. They are disposed automatically by GetX when their corresponding route is popped.
+*   **Presentation:** Screens extend `GetView<T>` to strictly separate UI from state logic, reacting to changes via scoped `Obx` widgets. Business logic remains out of widget build methods.
 
 ## Repository Separation
 
@@ -22,3 +25,4 @@ TrustCue is structured to grow sustainably while maintaining a clean separation 
 *   `docs/`: Shared project documentation.
 
 Dart database adapters and client models belong inside the `frontend/` Flutter package. We do not enforce moving Flutter-related code out of `frontend/` just to conceptually match a Git branch name.
+

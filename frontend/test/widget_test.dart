@@ -1,35 +1,82 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
 
+import 'package:trustcue_mobile/app/routes/app_pages.dart';
+import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/app/trustcue_app.dart';
+import 'package:trustcue_mobile/features/home/presentation/controllers/home_controller.dart';
 
 void main() {
+  tearDown(() {
+    Get.reset();
+  });
+
   testWidgets('TrustCueApp renders title and counter increments', (
     WidgetTester tester,
   ) async {
-    // Build our app and trigger a frame.
     await tester.pumpWidget(const TrustCueApp());
+    await tester.pumpAndSettle();
 
-    // Verify that the application renders with the TrustCue title.
     expect(find.text('TrustCue'), findsOneWidget);
 
-    // Verify that our counter starts at 0.
     expect(find.text('0'), findsOneWidget);
     expect(find.text('1'), findsNothing);
 
-    // Tap the '+' icon and trigger a frame.
     await tester.tap(find.byIcon(Icons.add));
     await tester.pump();
 
-    // Verify that our counter has incremented.
     expect(find.text('0'), findsNothing);
     expect(find.text('1'), findsOneWidget);
+
+    // Verify ordinary rebuild doesn't reset counter
+    await tester.pumpWidget(const TrustCueApp());
+    expect(find.text('1'), findsOneWidget);
+  });
+
+  testWidgets('Home route lifecycle and controller disposal', (
+    WidgetTester tester,
+  ) async {
+    // Add a test-only route to test navigation away and back
+    final testRoutes = [
+      ...AppPages.pages,
+      GetPage(
+        name: '/test',
+        page: () => const Scaffold(body: Text('Test Screen')),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      GetMaterialApp(initialRoute: AppRoutes.home, getPages: testRoutes),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('0'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+    expect(find.text('1'), findsOneWidget);
+
+    // Push another route, state should be preserved
+    Get.toNamed('/test');
+    await tester.pumpAndSettle();
+    expect(find.text('Test Screen'), findsOneWidget);
+
+    // Return to home, state should be preserved
+    Get.back();
+    await tester.pumpAndSettle();
+    expect(find.text('1'), findsOneWidget);
+
+    // Remove home route entirely
+    Get.offAllNamed('/test');
+    await tester.pumpAndSettle();
+    expect(find.text('Test Screen'), findsOneWidget);
+
+    // Verify controller was disposed
+    expect(Get.isRegistered<HomeController>(), isFalse);
+
+    // Re-enter home, state should be fresh
+    Get.offAllNamed(AppRoutes.home);
+    await tester.pumpAndSettle();
+    expect(find.text('0'), findsOneWidget);
   });
 }
