@@ -1,0 +1,16 @@
+# Editor and OS specific files
+.idea/
+.vscode/*
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Private environment variables
+.env
+*.env
+.env.*
+
+# Note: The flutter application in frontend/ has its own .gitignore.
+
+!/.vscode/launch.json
