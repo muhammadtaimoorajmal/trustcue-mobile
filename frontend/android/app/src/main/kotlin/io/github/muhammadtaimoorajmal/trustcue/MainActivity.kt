@@ -1,4 +1,4 @@
-package com.trustcue.trustcue_mobile
+package io.github.muhammadtaimoorajmal.trustcue
 
 import io.flutter.embedding.android.FlutterActivity
 
