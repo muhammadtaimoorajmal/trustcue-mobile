@@ -64,4 +64,11 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 - **Branch:** `frontend`
 - **Checks Performed:** `flutter pub get`, `dart format`, `flutter analyze`, `flutter test` (including accessibility and text-scaling checks), `flutter build apk --debug`. All passed.
 - **Manual Verification:** Component preview testing (button states, text entry, theme switching) is pending on the physical device.
-- **Status:** Complete (Commit pending). Integration into `main` paused until manual verification requirements are satisfied.
+- **Status:** Complete (Commit `6c66557`). Integration into `main` paused until manual verification requirements are satisfied.
+
+## Module 11: Responsive Layouts, Safe Areas, Spacing, and Keyboard Handling
+- **Scope:** Define shared spacing values (`AppSpacing`) and create a responsive page wrapper (`AppPageBody`) to ensure safe area compliance, maximum content width (720px), and scrollable behavior under keyboard insets. Applied this to `HomeScreen` and the development preview.
+- **Branch:** `frontend`
+- **Checks Performed:** `flutter pub get`, `dart format`, `flutter analyze`, `flutter test` (added responsive bounding, padding, safe area, and simulated keyboard scrolling checks in `app_page_body_test.dart`), and built normal and preview debug APKs.
+- **Manual Verification:** Human verification of portrait/landscape scaling, font sizing readability, and real keyboard interaction on a physical device is pending.
+- **Status:** Complete (Commit pending). Integration into `main` remains paused.

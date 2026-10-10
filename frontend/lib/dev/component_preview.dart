@@ -3,6 +3,7 @@ import 'package:trustcue_mobile/core/theme/app_theme.dart';
 import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/core/widgets/app_card.dart';
 import 'package:trustcue_mobile/core/widgets/app_text_field.dart';
+import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
 
 void main() {
   runApp(const ComponentPreviewApp());
@@ -68,8 +69,7 @@ class _ComponentPreviewScreenState extends State<ComponentPreviewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('TrustCue — Component Preview')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+      body: AppPageBody(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

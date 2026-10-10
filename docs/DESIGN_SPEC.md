@@ -44,9 +44,12 @@
   - *Supporting Text:* 14 logical pixels.
   - *Labels:* 14 logical pixels, medium weight.
 - **Spacing Scale:** 4px, 8px, 16px, 24px, 32px.
+  - Horizontal page padding: 16px below 600px width.
+  - Horizontal page padding: 24px at or above 600px width.
+  - Maximum content width (centered): 720px (including page padding).
 - **Corner Radii:** 12px for cards and dialogs, 8px for buttons.
 - **Layout & Readability:**
-  - Limit line lengths to ~60-70 characters for comfortable reading of explanations.
+  - Limit line lengths to ~60-70 characters for comfortable reading of explanations (using the 720px content boundary).
   - Support enlarged text (scaling up to 200%) by avoiding fixed-height containers that clip text.
   - Long quoted messages should be contained in scrollable or expandable cards with clear visual boundaries (e.g. left border accent).
 

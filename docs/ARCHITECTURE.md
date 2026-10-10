@@ -12,6 +12,12 @@ TrustCue is structured to grow sustainably while maintaining a clean separation 
 *   `features/<feature>/presentation/`: Contains the feature's UI screens, widgets, and state controllers.
 *   *Future Data/Domain:* Feature-specific data access, models, and business logic will be placed within the owning feature when implemented. Business rules, network calls, OCR, and persistence must remain completely separated from UI components. Domain layers or additional abstractions should be introduced *only* when actual complexity requires them.
 
+## Layout and Boundaries
+
+*   **Responsive Layouts:** Handled by `AppPageBody` (in `core/widgets/`). This wrapper establishes the maximum content width (720px), shared responsive padding based on screen width, and scrollability.
+*   **System Insets (Safe Area):** `AppPageBody` owns the primary `SafeArea` wrapping the page content. Screens should not manually pad system insets already consumed by `AppPageBody` or the `Scaffold` app bar.
+*   **Keyboard Handling:** The application relies on `Scaffold`'s default `resizeToAvoidBottomInset` behavior. `AppPageBody` uses a `SingleChildScrollView` which allows users to naturally scroll to lower inputs and controls when the keyboard appears. Do not use custom keyboard-padding logic inside screens.
+
 ## State Management
 
 *   GetX is the primary state-management and dependency registration approach. No other state-management framework will be installed.
