@@ -29,11 +29,12 @@
 | **Success** | `#388E3C` | `#66BB6A` | Successful operations (e.g., "Saved to history"). |
 
 ### Contrast Measurements (WCAG AA Method)
-- Light Theme Text (`#111111`) on Surface (`#F8F9FA`): **~17.5:1** (Passes >4.5:1)
-- Dark Theme Text (`#EEEEEE`) on Surface (`#121212`): **~14.5:1** (Passes >4.5:1)
-- Light Primary Action (`#00695C`) with Foreground (`#FFFFFF`): **~6.1:1** (Passes >4.5:1)
-- Dark Primary Action (`#4DB6AC`) with Foreground (`#00332C`): **~9.5:1** (Passes >4.5:1)
-- Caution (`#FFB300`) with Foreground (`#332200`): **~7.8:1** (Passes >4.5:1)
+- Light Theme Text (`#111111`) on Surface (`#F8F9FA`): **Passes >4.5:1**
+- Dark Theme Text (`#EEEEEE`) on Surface (`#121212`): **Passes >4.5:1**
+- Light Primary Action (`#00695C`) with Foreground (`#FFFFFF`): **~6.61:1** (Passes >4.5:1)
+- Dark Primary Action (`#4DB6AC`) with Foreground (`#0A2540`): **~6.36:1** (Passes >4.5:1)
+- Deep Navy (`#0A2540`) on Light Surface (`#F8F9FA`): **~14.74:1** (Passes >4.5:1)
+- Caution (`#FFB300`) with Foreground (`#332200`): **Passes >4.5:1**
 
 ## C. Typography and Layout
 - **Font Strategy:** Use standard system fonts (`Roboto` on Android, `San Francisco` on iOS, etc.) to ensure no network font downloads are required and text renders perfectly out-of-the-box.

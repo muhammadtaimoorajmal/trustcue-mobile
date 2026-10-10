@@ -50,4 +50,11 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 - **Branch:** `frontend`
 - **Checks Performed:** Validation of color contrast ratios, SVG syntax, and documentation.
 - **Manual Verification:** Visual inspection of `docs/design/brand_board.svg` is pending human review.
+- **Status:** Complete (Commit `815f029`). Integration into `main` paused until manual background/resume verification (Module 07) is completed.
+
+## Module 09: Light/Dark Themes, Color System, and Typography
+- **Scope:** Implement the visual direction from Module 08 in the Flutter app using `ThemeData` and `ThemeExtension`. Configure `ThemeMode.system`, define light and dark palettes (`AppColors`, `AppSemanticColors`), setup text themes, and update `TrustCueApp` and `HomeScreen`.
+- **Branch:** `frontend`
+- **Checks Performed:** `flutter test` (added theme switching, contrast calculation, and layout text scaling tests), `flutter build apk --debug`. All passed.
+- **Manual Verification:** Theme-switching readability, text sizing, and counter persistence check is pending on physical device.
 - **Status:** Complete (Commit pending). Integration into `main` paused until manual background/resume verification (Module 07) is completed.

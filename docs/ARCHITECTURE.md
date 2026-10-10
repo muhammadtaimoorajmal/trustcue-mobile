@@ -5,8 +5,9 @@ TrustCue is structured to grow sustainably while maintaining a clean separation 
 ## Directory Structure
 
 *   `app/`: Contains application composition, root configurations (like `MaterialApp`), and will eventually handle navigation and dependency registration.
-*   `core/`: Contains genuinely shared, cross-feature concerns (e.g., `theme/`, logging).
-*   `features/<feature>/presentation/`: Contains the feature's UI screens, widgets, and (when introduced) its state controllers.
+*   `core/`: Contains genuinely shared, cross-feature concerns (e.g., logging).
+    *   `core/theme/`: Owns the visual design system (`AppTheme`, `AppColors`, `AppSemanticColors`). Feature widgets must consume these centralized theme roles (e.g., `Theme.of(context)`) rather than hardcoding raw colors or using template defaults.
+*   `features/<feature>/presentation/`: Contains the feature's UI screens, widgets, and state controllers.
 *   *Future Data/Domain:* Feature-specific data access, models, and business logic will be placed within the owning feature when implemented. Business rules, network calls, OCR, and persistence must remain completely separated from UI components. Domain layers or additional abstractions should be introduced *only* when actual complexity requires them.
 
 ## State Management

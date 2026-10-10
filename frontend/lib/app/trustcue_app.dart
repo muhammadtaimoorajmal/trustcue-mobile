@@ -12,6 +12,8 @@ class TrustCueApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'TrustCue',
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       initialRoute: AppRoutes.home,
       getPages: AppPages.pages,
     );

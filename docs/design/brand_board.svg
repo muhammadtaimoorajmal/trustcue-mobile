@@ -24,8 +24,8 @@
 
     <!-- Action (Dark Theme) -->
     <rect x="390" y="250" width="150" height="80" rx="8" fill="#4DB6AC" />
-    <text x="405" y="280" font-size="16" font-weight="bold" fill="#00332C">Light Teal</text>
-    <text x="405" y="305" font-size="14" fill="#00332C">#4DB6AC</text>
+    <text x="405" y="280" font-size="16" font-weight="bold" fill="#0A2540">Light Teal</text>
+    <text x="405" y="305" font-size="14" fill="#0A2540">#4DB6AC</text>
     <text x="390" y="350" font-size="14" fill="#555555">Action (Dark Mode)</text>
 
     <!-- Caution -->
@@ -91,6 +91,6 @@
     <text x="640" y="875" font-size="16" fill="#EEEEEE">Never share verification codes with anyone.</text>
 
     <rect x="640" y="895" width="220" height="36" rx="8" fill="#4DB6AC" />
-    <text x="680" y="919" font-size="14" font-weight="bold" fill="#00332C">Verify Independently</text>
+    <text x="680" y="919" font-size="14" font-weight="bold" fill="#0A2540">Verify Independently</text>
 
 </svg>
