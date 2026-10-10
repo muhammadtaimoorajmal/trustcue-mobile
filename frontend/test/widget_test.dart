@@ -132,8 +132,6 @@ void main() {
     await tester.pumpWidget(const TrustCueApp());
     await tester.pumpAndSettle();
 
-
-
     // Test light theme contrast
     final lightBg = const Color(0xFFF8F9FA);
     final lightFg = const Color(0xFF111111);

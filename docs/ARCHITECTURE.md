@@ -7,6 +7,8 @@ TrustCue is structured to grow sustainably while maintaining a clean separation 
 *   `app/`: Contains application composition, root configurations (like `MaterialApp`), and will eventually handle navigation and dependency registration.
 *   `core/`: Contains genuinely shared, cross-feature concerns (e.g., logging).
     *   `core/theme/`: Owns the visual design system (`AppTheme`, `AppColors`, `AppSemanticColors`). Feature widgets must consume these centralized theme roles (e.g., `Theme.of(context)`) rather than hardcoding raw colors or using template defaults.
+    *   `core/widgets/`: Contains reusable, cross-feature UI components (`AppButton`, `AppTextField`, `AppCard`). These wrap Material components with consistent styling, behaviors, and accessibility defaults. They do not contain business logic or domain models.
+*   `dev/`: Contains development-only utilities and standalone previews (e.g., `component_preview.dart`). These must not be imported by production routes.
 *   `features/<feature>/presentation/`: Contains the feature's UI screens, widgets, and state controllers.
 *   *Future Data/Domain:* Feature-specific data access, models, and business logic will be placed within the owning feature when implemented. Business rules, network calls, OCR, and persistence must remain completely separated from UI components. Domain layers or additional abstractions should be introduced *only* when actual complexity requires them.
 

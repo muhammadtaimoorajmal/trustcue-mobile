@@ -53,3 +53,14 @@ Then run the integration test suite, replacing `<ACTUAL_DEVICE_ID>` with your sp
 ```bash
 flutter test integration_test/app_smoke_test.dart -d "<ACTUAL_DEVICE_ID>"
 ```
+
+### Component Preview
+To launch the standalone component development preview on your connected phone:
+```bash
+flutter run -d "ACTUAL_DEVICE_ID" -t lib/dev/component_preview.dart
+```
+
+To restore the normal application after checking the preview:
+```bash
+flutter run -d "ACTUAL_DEVICE_ID" -t lib/main.dart
+```
