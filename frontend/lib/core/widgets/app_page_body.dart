@@ -11,7 +11,8 @@ class AppPageBody extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final double currentWidth = constraints.maxWidth;
-        final double horizontalPadding = currentWidth >= AppSpacing.responsiveBreakpoint
+        final double horizontalPadding =
+            currentWidth >= AppSpacing.responsiveBreakpoint
             ? AppSpacing.pagePaddingLarge
             : AppSpacing.pagePaddingSmall;
 

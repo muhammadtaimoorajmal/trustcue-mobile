@@ -11,11 +11,11 @@
 ## B. Color Roles
 **Note:** Brand colors are separate from analysis meanings. A teal action button does not imply a message is safe.
 
-| Role | Light Theme Candidate | Dark Theme Candidate | Intended Use |
+| Role | Light Theme | Dark Theme | Intended Use |
 | :--- | :--- | :--- | :--- |
 | **Primary Action** | `#00695C` (Dark Teal) | `#4DB6AC` (Light Teal) | Primary buttons, active states, key interactive elements. |
-| **Action Foreground** | `#FFFFFF` | `#00332C` | Text and icons placed on top of the Primary Action color. |
-| **App Bar / Header** | `#0A2540` (Deep Navy) | `#121212` (Very Dark Grey)| Branding bar and top-level navigation. |
+| **Action Foreground** | `#FFFFFF` | `#0A2540` | Text and icons placed on top of the Primary Action color. |
+| **App Bar / Header** | `#0A2540` (Deep Navy) | `#05121F` (Darker Navy) | Branding bar and top-level navigation; distinct from the page surface. |
 | **Header Foreground** | `#FFFFFF` | `#FFFFFF` | Text and icons on the App Bar. |
 | **Page Surface** | `#F8F9FA` (Off-White) | `#121212` (Very Dark Grey) | The main background of screens. |
 | **Card Surface** | `#FFFFFF` (Pure White) | `#1E1E1E` (Dark Grey) | Elevated containers, message excerpts, evidence cards. |
@@ -29,6 +29,8 @@
 | **Success** | `#388E3C` | `#66BB6A` | Successful operations (e.g., "Saved to history"). |
 
 ### Contrast Measurements (WCAG AA Method)
+These measurements and the selected contrast, touch-target, and scaling tests are limited checks, not certification of the entire application's accessibility. Module 12A reconciles the table with the existing implementation and brand board; it does not redesign the theme. The dark page surface remains `#121212`.
+
 - Light Theme Text (`#111111`) on Surface (`#F8F9FA`): **Passes >4.5:1**
 - Dark Theme Text (`#EEEEEE`) on Surface (`#121212`): **Passes >4.5:1**
 - Light Primary Action (`#00695C`) with Foreground (`#FFFFFF`): **~6.61:1** (Passes >4.5:1)

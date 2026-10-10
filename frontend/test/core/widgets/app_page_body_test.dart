@@ -17,9 +17,7 @@ void main() {
           viewInsets: viewInsets,
           textScaler: TextScaler.linear(textScale),
         ),
-        child: Scaffold(
-          body: AppPageBody(child: child),
-        ),
+        child: Scaffold(body: AppPageBody(child: child)),
       ),
     );
   }
@@ -30,41 +28,53 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
 
       await tester.pumpWidget(
-        buildTestApp(
-          child: const Text('Narrow Content'),
-        ),
+        buildTestApp(child: const Text('Narrow Content')),
       );
 
-      final paddingWidget = tester.widget<Padding>(find.descendant(
-        of: find.byType(SingleChildScrollView),
-        matching: find.byType(Padding),
-      ).first);
+      final paddingWidget = tester.widget<Padding>(
+        find
+            .descendant(
+              of: find.byType(SingleChildScrollView),
+              matching: find.byType(Padding),
+            )
+            .first,
+      );
 
-      expect(paddingWidget.padding.resolve(TextDirection.ltr).left, AppSpacing.pagePaddingSmall);
-      
+      expect(
+        paddingWidget.padding.resolve(TextDirection.ltr).left,
+        AppSpacing.pagePaddingSmall,
+      );
+
       // Cleanup
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('Wider viewport applies large padding and bounds width', (tester) async {
+    testWidgets('Wider viewport applies large padding and bounds width', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1024, 768);
       tester.view.devicePixelRatio = 1.0;
 
-      await tester.pumpWidget(
-        buildTestApp(
-          child: const Text('Wide Content'),
-        ),
+      await tester.pumpWidget(buildTestApp(child: const Text('Wide Content')));
+
+      final paddingWidget = tester.widget<Padding>(
+        find
+            .descendant(
+              of: find.byType(SingleChildScrollView),
+              matching: find.byType(Padding),
+            )
+            .first,
       );
 
-      final paddingWidget = tester.widget<Padding>(find.descendant(
-        of: find.byType(SingleChildScrollView),
-        matching: find.byType(Padding),
-      ).first);
+      expect(
+        paddingWidget.padding.resolve(TextDirection.ltr).left,
+        AppSpacing.pagePaddingLarge,
+      );
 
-      expect(paddingWidget.padding.resolve(TextDirection.ltr).left, AppSpacing.pagePaddingLarge);
-      
-      final constrainedBox = tester.widget<ConstrainedBox>(find.byKey(const Key('app_page_body_constrained_box')));
+      final constrainedBox = tester.widget<ConstrainedBox>(
+        find.byKey(const Key('app_page_body_constrained_box')),
+      );
       expect(constrainedBox.constraints.maxWidth, AppSpacing.maxContentWidth);
 
       // Cleanup
@@ -72,31 +82,34 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('Short landscape viewport with enlarged text scrolls without overflow', (tester) async {
-      tester.view.physicalSize = const Size(800, 360);
-      tester.view.devicePixelRatio = 1.0;
+    testWidgets(
+      'Short landscape viewport with enlarged text scrolls without overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 360);
+        tester.view.devicePixelRatio = 1.0;
 
-      await tester.pumpWidget(
-        buildTestApp(
-          textScale: 2.0,
-          child: Column(
-            children: List.generate(20, (index) => Text('Item $index')),
+        await tester.pumpWidget(
+          buildTestApp(
+            textScale: 2.0,
+            child: Column(
+              children: List.generate(20, (index) => Text('Item $index')),
+            ),
           ),
-        ),
-      );
+        );
 
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull); // No overflow exceptions
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull); // No overflow exceptions
 
-      // Verify scrollable
-      await tester.drag(find.text('Item 1'), const Offset(0, -300));
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
+        // Verify scrollable
+        await tester.drag(find.text('Item 1'), const Offset(0, -300));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
 
-      // Cleanup
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
+        // Cleanup
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      },
+    );
 
     testWidgets('Respects SafeArea insets', (tester) async {
       tester.view.physicalSize = const Size(400, 800);
@@ -118,7 +131,9 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    testWidgets('Keyboard insets allow scrolling to bottom content', (tester) async {
+    testWidgets('Keyboard insets allow scrolling to bottom content', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1.0;
 
@@ -139,7 +154,7 @@ void main() {
       // Scroll to bottom input
       await tester.ensureVisible(find.byKey(const Key('bottom_input')));
       await tester.pumpAndSettle();
-      
+
       expect(find.byKey(const Key('bottom_input')), findsOneWidget);
       expect(tester.takeException(), isNull);
 

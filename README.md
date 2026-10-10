@@ -4,7 +4,7 @@ TrustCue is a Mobile Application Development project for CS3643, BSCS Semester 5
 The application is designed to help people worldwide understand potential scam indicators in suspicious digital communication.
 
 ## Project Status
-Currently, the project contains only the Flutter foundation scaffold. Product features and backend integration have not yet been implemented.
+The current foundation includes a temporary counter Home, GetX state/bindings and exact named-route resolution, About and fallback screens, light/dark themes, shared responsive components, a separate component preview, and widget/device tests. Onboarding, scam analysis, OCR, AI integration, report storage, and backend features are not implemented. Module 12A repairs the original Module 12 route-resolution and test-coverage deficiencies; see the module log for the historical checkpoints.
 
 ## Repository Structure
 - `frontend/`: The Flutter application (TrustCue), including its client services and future local-storage adapters.
@@ -23,26 +23,38 @@ To verify the development baseline, navigate to the `frontend/` directory and ru
 
 ```bash
 cd frontend
-flutter pub get
-dart format --output=none --set-exit-if-changed lib test
-flutter analyze
-flutter test
-flutter build apk --debug
+dart format --output=none --set-exit-if-changed lib test integration_test
+flutter analyze --no-pub
+flutter test --no-pub
+flutter build apk --debug --no-pub -t lib/main.dart
 ```
+
+These commands assume dependencies are already resolved. On a fresh checkout, run `flutter pub get` with the installed compatible SDK and review any manifest/lockfile changes; GetX is pinned exactly to `4.7.3`.
+
+On Windows, run the focused navigation suite first with a bounded runner, then the unfiltered suite (both execute `flutter test --no-pub --reporter expanded`):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tool/test.ps1 -Suite navigation -TimeoutSeconds 180
+powershell -NoProfile -ExecutionPolicy Bypass -File tool/test.ps1 -Suite all -TimeoutSeconds 180
+```
+
+Navigation widget tests also have explicit 20-second per-test limits. The runner stores logs in ignored `build/test-runner/`, propagates failures, and stops only its own process tree if the wall-clock limit expires. From the repository root, run `git diff --check` before checkpointing. Tests cover selected accessibility properties, not comprehensive accessibility certification.
 
 ### Verified Toolchain
 - **Flutter:** 3.47.4
 - **Dart SDK:** 3.13.3
-- **NDK:** 30.0.16138531 (Configured in `frontend/android/app/build.gradle.kts`)
+- **NDK:** 30.0.16138531 (installed metadata: r30-beta3; pinned in `frontend/android/app/build.gradle.kts`)
 - **Gradle Wrapper:** 9.3.1
+- **Java:** 25 runtime, Java/Kotlin 17 compilation targets
+- **Platform limits:** iOS identity/build verification remains future work (scaffold bundle ID `com.trustcue.trustcueMobile` differs from Android). Internal route tests do not establish platform deep-link support.
 
 ### Physical Phone Testing via VS Code
 1. Enable **Developer Options** and **USB Debugging** on your Android device.
 2. Connect your device via USB (select "File Transfer" or "PTP" mode if prompted).
 3. Open a terminal and run `flutter devices` to ensure your device is listed and authorized. If it says "unauthorized", check your phone screen to accept the USB debugging prompt.
-4. In VS Code, go to the **Run and Debug** view (`Ctrl+Shift+D`).
+4. Open `trustcue-mobile` as the VS Code workspace root so `.vscode/launch.json` resolves `frontend/` correctly. Go to **Run and Debug** (`Ctrl+Shift+D`).
 5. Select **"TrustCue Mobile"** from the dropdown configuration and click the green Play button to launch.
-6. Verify the sample counter increments and hot reload works upon saving `main.dart`.
+6. Increment the counter, open About, return with the back arrow, repeat with the phone's system back, and check that the counter remains intact. Background/resume should stay responsive while the process remains alive. Process-termination restoration is not implemented.
 
 ### Running Integration Tests
 To run automated device integration tests, first get your device identifier by running:
@@ -51,8 +63,12 @@ flutter devices
 ```
 Then run the integration test suite, replacing `<ACTUAL_DEVICE_ID>` with your specific device ID:
 ```bash
-flutter test integration_test/app_smoke_test.dart -d "<ACTUAL_DEVICE_ID>"
+flutter test --no-pub integration_test/app_smoke_test.dart -d "<ACTUAL_DEVICE_ID>"
 ```
+
+Stop an existing VS Code debug session through its Stop button before installing the integration-test build. For a bounded Windows run, use `powershell -NoProfile -ExecutionPolicy Bypass -File tool/test.ps1 -Suite device -DeviceId "<ACTUAL_DEVICE_ID>" -TimeoutSeconds 600`. The device test body has a two-minute timeout. Afterward, restore the normal application using the command below.
+
+Human confirmation is still needed for counter retention, ordinary background/resume, native back animations, theme readability, enlarged text, rotation, and real keyboard/component-preview behavior. Report each observation explicitly; on failure provide the action, expected/actual result, terminal error, and screenshot or recording. Automated framework back tests do not verify native predictive-back visuals. Integration into `main` remains gated on outstanding verification.
 
 ### Component Preview
 To launch the standalone component development preview on your connected phone:

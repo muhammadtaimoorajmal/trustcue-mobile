@@ -19,7 +19,10 @@ class HomeScreen extends GetView<HomeController> {
           IconButton(
             icon: const Icon(Icons.info_outline),
             tooltip: 'About TrustCue',
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48), // Ensure touch target
+            constraints: const BoxConstraints(
+              minWidth: 48,
+              minHeight: 48,
+            ), // Ensure touch target
             onPressed: () {
               // Rapid repeated taps shouldn't stack duplicate pages
               if (Get.currentRoute != AppRoutes.about) {

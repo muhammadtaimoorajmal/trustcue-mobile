@@ -26,11 +26,9 @@ class NotFoundScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Page unavailable'),
-      ),
+      appBar: AppBar(title: const Text('Page unavailable')),
       body: AppPageBody(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

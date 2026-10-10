@@ -130,14 +130,8 @@ void main() {
         buildTestApp(
           child: Column(
             children: [
-              const AppTextField(
-                label: 'Input1',
-                helperText: 'Helper message',
-              ),
-              const AppTextField(
-                label: 'Input2',
-                errorText: 'Error message',
-              ),
+              const AppTextField(label: 'Input1', helperText: 'Helper message'),
+              const AppTextField(label: 'Input2', errorText: 'Error message'),
             ],
           ),
         ),
@@ -181,7 +175,9 @@ void main() {
             child: const SingleChildScrollView(
               child: Column(
                 children: [
-                  AppButton.primary(label: 'Long text that should wrap if needed'),
+                  AppButton.primary(
+                    label: 'Long text that should wrap if needed',
+                  ),
                   AppTextField(
                     label: 'Input',
                     helperText: 'A very long helper text to ensure it wraps correctly at 200% scaling on a narrow screen without throwing layout exceptions.',

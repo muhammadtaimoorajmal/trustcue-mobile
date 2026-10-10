@@ -8,11 +8,9 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('About TrustCue'),
-      ),
+      appBar: AppBar(title: const Text('About TrustCue')),
       body: AppPageBody(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -36,11 +34,16 @@ class AboutScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: theme.colorScheme.outlineVariant),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
+                      ),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, color: theme.colorScheme.onSurfaceVariant),
+                        Icon(
+                          Icons.info_outline,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
