@@ -40,5 +40,22 @@ void main() {
 
     expect(find.text('1'), findsNothing);
     expect(find.text('2'), findsOneWidget);
+
+    // Verify Home -> About -> Home flow
+    final aboutFinder = find.byTooltip('About TrustCue');
+    expect(aboutFinder, findsOneWidget);
+    await tester.tap(aboutFinder);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Understand the signals. Verify before you act.'), findsOneWidget);
+
+    final backFinder = find.byType(BackButton);
+    expect(backFinder, findsOneWidget);
+    await tester.tap(backFinder);
+    await tester.pumpAndSettle();
+
+    // Verify counter state is preserved
+    expect(find.text('TrustCue'), findsWidgets);
+    expect(find.text('2'), findsOneWidget);
   });
 }

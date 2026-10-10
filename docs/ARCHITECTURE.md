@@ -21,9 +21,10 @@ TrustCue is structured to grow sustainably while maintaining a clean separation 
 ## State Management
 
 *   GetX is the primary state-management and dependency registration approach. No other state-management framework will be installed.
-*   **Routing:** Handled via centralized `app_routes.dart` (route constants) and `app_pages.dart` (route definitions mapped to bindings).
+*   **Routing:** Handled via centralized `app_routes.dart` (route constants) and `app_pages.dart` (route definitions mapped to bindings). Navigation is performed declaratively using `Get.toNamed`.
+*   **Fallback Routes:** `GetMaterialApp.unknownRoute` is configured to direct invalid or missing routes to a dedicated `NotFoundScreen`. This provides bounded recovery, ensuring users can safely return to a known route (like `/home`) without encountering a blank screen or a crash.
 *   **Bindings:** Feature-specific dependencies (like `HomeController`) are lazily registered in their respective bindings (e.g., `HomeBinding`).
-*   **Controllers:** Reactive state is owned by `GetxController` subclasses. They are disposed automatically by GetX when their corresponding route is popped.
+*   **Controllers:** Reactive state is owned by `GetxController` subclasses. They are disposed automatically by GetX when their corresponding route is popped (e.g., pressing back on the `AboutScreen` does not destroy the underlying `HomeController` because it remains on the stack).
 *   **Presentation:** Screens extend `GetView<T>` to strictly separate UI from state logic, reacting to changes via scoped `Obx` widgets. Business logic remains out of widget build methods.
 
 ## Repository Separation

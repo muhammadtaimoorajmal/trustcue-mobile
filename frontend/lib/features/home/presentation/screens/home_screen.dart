@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:trustcue_mobile/features/home/presentation/controllers/home_controller.dart';
 import 'package:trustcue_mobile/core/widgets/app_card.dart';
 import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
+import 'package:trustcue_mobile/app/routes/app_routes.dart';
 
 class HomeScreen extends GetView<HomeController> {
   const HomeScreen({super.key, required this.title});
@@ -12,7 +13,22 @@ class HomeScreen extends GetView<HomeController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(
+        title: Text(title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            tooltip: 'About TrustCue',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48), // Ensure touch target
+            onPressed: () {
+              // Rapid repeated taps shouldn't stack duplicate pages
+              if (Get.currentRoute != AppRoutes.about) {
+                Get.toNamed(AppRoutes.about);
+              }
+            },
+          ),
+        ],
+      ),
       body: AppPageBody(
         child: AppCard(
           child: Padding(

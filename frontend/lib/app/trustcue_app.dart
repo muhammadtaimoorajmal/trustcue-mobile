@@ -16,6 +16,7 @@ class TrustCueApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       initialRoute: AppRoutes.home,
       getPages: AppPages.pages,
+      unknownRoute: AppPages.unknownRoute,
     );
   }
 }

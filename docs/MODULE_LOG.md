@@ -72,3 +72,10 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 - **Checks Performed:** `flutter pub get`, `dart format`, `flutter analyze`, `flutter test` (added responsive bounding, padding, safe area, and simulated keyboard scrolling checks in `app_page_body_test.dart`), and built normal and preview debug APKs.
 - **Manual Verification:** Human verification of portrait/landscape scaling, font sizing readability, and real keyboard interaction on a physical device is pending.
 - **Status:** Complete (Commit pending). Integration into `main` remains paused.
+
+## Module 12: Application Navigation and Route Handling
+- **Scope:** Define centralized routing for application screens (`/`, `/about`, `/not-found`). Implement informational `AboutScreen` and resilient `NotFoundScreen`. Configure `unknownRoute` for bounded recovery. Update Home to launch About. Ensure route fallback logic protects against invalid state and maintains existing dependencies.
+- **Branch:** `frontend`
+- **Checks Performed:** `flutter test` (added navigation testing for expected routes, fallback routing, recovery to Home, state preservation, and system back behaviors), `flutter build apk --debug`.
+- **Manual Verification:** Human verification of navigating to About, pressing app-bar back versus system back (confirming counter state preservation), and verifying correct animation transitions is pending on a physical device.
+- **Status:** Complete (Commit pending). Integration into `main` remains paused.
