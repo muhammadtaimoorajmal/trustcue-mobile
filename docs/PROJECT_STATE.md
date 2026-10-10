@@ -22,10 +22,10 @@ TrustCue is a mobile application designed to explain potential scam indicators i
 - **Gradle & JVM:** Gradle 9.3.1 running on Java 25 (with Java 17 JVM target compatibility).
 
 ## Implementation Status
-- **Implemented:** Flutter foundation generated, repository layout created, VS Code debug config added, Android build successfully repaired, TrustCue application identity configured (`io.github.muhammadtaimoorajmal.trustcue`), Flutter code structure refactored, and GetX (v4.7.3) state management/routing foundation implemented.
-- **Checkpoints:** Modules 01-03 foundation committed (7578e65). Module 04 identity configuration committed (3db7ab5). Module 05 refactor committed (6e06bb3). Module 06 GetX foundation committed. Development checkpoints are pushed when automated checks pass, with manual verification tracked honestly without blocking pushes.
+- **Implemented:** Flutter foundation generated, repository layout created, VS Code debug config added, Android build successfully repaired, TrustCue application identity configured (`io.github.muhammadtaimoorajmal.trustcue`), Flutter code structure refactored, and GetX (v4.7.3) state management/routing foundation implemented. Added physical-device integration test (Module 07).
+- **Checkpoints:** Modules 01-03 foundation committed (7578e65). Module 04 identity configuration committed (3db7ab5). Module 05 refactor committed (6e06bb3). Module 06 GetX foundation committed (e4bf1f2). Module 07 integration tests added. Development checkpoints are pushed when automated checks pass, with manual verification tracked honestly without blocking pushes.
 - **Planned:** The project will be developed over approximately 100 small modules, culminating in Google Play Store preparation.
-- **Outstanding Blockers / Manual Actions:** Awaiting manual visual verification of the newly configured TrustCue app launching on the physical Android phone. iOS configuration remains untested on Windows.
+- **Outstanding Blockers / Manual Actions:** Awaiting manual verification of background/resume lifecycle on the physical Android phone. Integration into `main` remains paused until this manual test is completed. iOS configuration remains untested on Windows.
 
 ## Academic Assessment
 This project is part of CS3643, BSCS Semester 5-1, Fall 2026. The academic assessment stages are separate from the implementation modules:

@@ -38,3 +38,9 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 - **Manual Verification:** Visual check of phone launch pending.
 - **Status:** Checkpoint pushed. Pending manual visual verification and `main` integration.
 
+## Module 07: Physical-Device Verification and Foundation Checkpoint
+- **Scope:** Add `integration_test` dependency, create `app_smoke_test.dart` to verify title and counter behavior, execute test on physical device, and verify ordinary application launch.
+- **Branch:** `frontend`
+- **Checks Performed:** `flutter pub get`, `dart format`, `flutter analyze`, `flutter test`, `flutter test integration_test/app_smoke_test.dart -d <ACTUAL_DEVICE_ID>`, `flutter build apk --debug -t lib/main.dart`. All passed.
+- **Manual Verification:** Background/resume behavior and home screen check pending.
+- **Status:** Complete (Commit pending). Integration into `main` paused until manual background/resume verification.
