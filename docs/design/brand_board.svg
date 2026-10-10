@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000" width="1200" height="1000" style="font-family: system-ui, -apple-system, sans-serif;">
+    <rect width="1200" height="1000" fill="#EAEAEA" />
+
+    <!-- Title Section -->
+    <rect x="50" y="50" width="1100" height="120" rx="12" fill="#FFFFFF" />
+    <text x="90" y="105" font-size="36" font-weight="bold" fill="#0A2540">TrustCue</text>
+    <text x="90" y="135" font-size="18" fill="#555555">Understand the signals. Verify before you act.</text>
+    <text x="830" y="115" font-size="16" fill="#888888" font-style="italic">Design reference — application implementation pending</text>
+
+    <!-- Color Palette Section -->
+    <text x="50" y="230" font-size="24" font-weight="bold" fill="#111111">Color Palette &amp; Roles</text>
+
+    <!-- Primary / Brand -->
+    <rect x="50" y="250" width="150" height="80" rx="8" fill="#0A2540" />
+    <text x="65" y="280" font-size="16" font-weight="bold" fill="#FFFFFF">Deep Navy</text>
+    <text x="65" y="305" font-size="14" fill="#FFFFFF">#0A2540</text>
+    <text x="50" y="350" font-size="14" fill="#555555">App Bar / Header</text>
+
+    <!-- Action (Light Theme) -->
+    <rect x="220" y="250" width="150" height="80" rx="8" fill="#00695C" />
+    <text x="235" y="280" font-size="16" font-weight="bold" fill="#FFFFFF">Dark Teal</text>
+    <text x="235" y="305" font-size="14" fill="#FFFFFF">#00695C</text>
+    <text x="220" y="350" font-size="14" fill="#555555">Action (Light Mode)</text>
+
+    <!-- Action (Dark Theme) -->
+    <rect x="390" y="250" width="150" height="80" rx="8" fill="#4DB6AC" />
+    <text x="405" y="280" font-size="16" font-weight="bold" fill="#00332C">Light Teal</text>
+    <text x="405" y="305" font-size="14" fill="#00332C">#4DB6AC</text>
+    <text x="390" y="350" font-size="14" fill="#555555">Action (Dark Mode)</text>
+
+    <!-- Caution -->
+    <rect x="560" y="250" width="150" height="80" rx="8" fill="#FFB300" />
+    <text x="575" y="280" font-size="16" font-weight="bold" fill="#332200">Caution</text>
+    <text x="575" y="305" font-size="14" fill="#332200">#FFB300</text>
+    <text x="560" y="350" font-size="14" fill="#555555">Warning signs</text>
+
+    <!-- Error -->
+    <rect x="730" y="250" width="150" height="80" rx="8" fill="#D32F2F" />
+    <text x="745" y="280" font-size="16" font-weight="bold" fill="#FFFFFF">Error</text>
+    <text x="745" y="305" font-size="14" fill="#FFFFFF">#D32F2F</text>
+    <text x="730" y="350" font-size="14" fill="#555555">Failures</text>
+
+    <!-- Surfaces -->
+    <rect x="900" y="250" width="110" height="40" fill="#F8F9FA" stroke="#E0E0E0" />
+    <text x="910" y="275" font-size="14" fill="#111111">Light Pg #F8</text>
+    <rect x="1010" y="250" width="110" height="40" fill="#FFFFFF" stroke="#E0E0E0" />
+    <text x="1020" y="275" font-size="14" fill="#111111">Light Crd #FF</text>
+    <rect x="900" y="290" width="110" height="40" fill="#121212" />
+    <text x="910" y="315" font-size="14" fill="#EEEEEE">Dark Pg #12</text>
+    <rect x="1010" y="290" width="110" height="40" fill="#1E1E1E" />
+    <text x="1020" y="315" font-size="14" fill="#EEEEEE">Dark Crd #1E</text>
+
+    <!-- Typography Section -->
+    <text x="50" y="420" font-size="24" font-weight="bold" fill="#111111">Typography Hierarchy</text>
+    <rect x="50" y="440" width="1100" height="130" rx="12" fill="#FFFFFF" />
+    <text x="80" y="480" font-size="28" font-weight="bold" fill="#111111">Heading (System Font Bold)</text>
+    <text x="80" y="515" font-size="16" fill="#111111">Body Text (16px) - The quick brown fox jumps over the lazy dog. Used for explanations and ordinary text.</text>
+    <text x="80" y="545" font-size="14" fill="#555555">Supporting Text (14px) - Used for timestamps and secondary information.</text>
+
+    <!-- Example Cards Section -->
+    <text x="50" y="630" font-size="24" font-weight="bold" fill="#111111">Evidence Trail Examples (Illustrative)</text>
+
+    <!-- Light Theme Card -->
+    <rect x="50" y="660" width="530" height="280" rx="12" fill="#F8F9FA" stroke="#E0E0E0" />
+    <rect x="50" y="660" width="530" height="60" fill="#0A2540" />
+    <text x="70" y="698" font-size="20" font-weight="bold" fill="#FFFFFF">Evidence Trail</text>
+
+    <rect x="70" y="740" width="490" height="80" rx="8" fill="#FFFFFF" stroke="#E0E0E0" />
+    <rect x="70" y="740" width="6" height="80" fill="#FFB300" />
+    <text x="90" y="770" font-size="14" font-weight="bold" fill="#555555">MESSAGE EXCERPT</text>
+    <text x="90" y="795" font-size="16" font-style="italic" fill="#111111">"Send your verification code."</text>
+
+    <text x="70" y="850" font-size="16" fill="#111111">This phrasing is a common warning sign.</text>
+    <text x="70" y="875" font-size="16" fill="#111111">Never share verification codes with anyone.</text>
+
+    <rect x="70" y="895" width="220" height="36" rx="8" fill="#00695C" />
+    <text x="110" y="919" font-size="14" font-weight="bold" fill="#FFFFFF">Verify Independently</text>
+
+
+    <!-- Dark Theme Card -->
+    <rect x="620" y="660" width="530" height="280" rx="12" fill="#121212" stroke="#333333" />
+    <rect x="620" y="660" width="530" height="60" fill="#05121F" />
+    <text x="640" y="698" font-size="20" font-weight="bold" fill="#EEEEEE">Evidence Trail</text>
+
+    <rect x="640" y="740" width="490" height="80" rx="8" fill="#1E1E1E" stroke="#333333" />
+    <rect x="640" y="740" width="6" height="80" fill="#FFCA28" />
+    <text x="660" y="770" font-size="14" font-weight="bold" fill="#AAAAAA">MESSAGE EXCERPT</text>
+    <text x="660" y="795" font-size="16" font-style="italic" fill="#EEEEEE">"Send your verification code."</text>
+
+    <text x="640" y="850" font-size="16" fill="#EEEEEE">This phrasing is a common warning sign.</text>
+    <text x="640" y="875" font-size="16" fill="#EEEEEE">Never share verification codes with anyone.</text>
+
+    <rect x="640" y="895" width="220" height="36" rx="8" fill="#4DB6AC" />
+    <text x="680" y="919" font-size="14" font-weight="bold" fill="#00332C">Verify Independently</text>
+
+</svg>

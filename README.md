@@ -15,6 +15,8 @@ Currently, the project contains only the Flutter foundation scaffold. Product fe
 - [Project State](docs/PROJECT_STATE.md)
 - [Module Log](docs/MODULE_LOG.md)
 - [Architecture](docs/ARCHITECTURE.md)
+- [Design Specification](docs/DESIGN_SPEC.md)
+- [Design Brand Board](docs/design/brand_board.svg)
 
 ## Development & Phone Verification
 To verify the development baseline, navigate to the `frontend/` directory and run the following checks:
@@ -41,3 +43,13 @@ flutter build apk --debug
 4. In VS Code, go to the **Run and Debug** view (`Ctrl+Shift+D`).
 5. Select **"TrustCue Mobile"** from the dropdown configuration and click the green Play button to launch.
 6. Verify the sample counter increments and hot reload works upon saving `main.dart`.
+
+### Running Integration Tests
+To run automated device integration tests, first get your device identifier by running:
+```bash
+flutter devices
+```
+Then run the integration test suite, replacing `<ACTUAL_DEVICE_ID>` with your specific device ID:
+```bash
+flutter test integration_test/app_smoke_test.dart -d "<ACTUAL_DEVICE_ID>"
+```
