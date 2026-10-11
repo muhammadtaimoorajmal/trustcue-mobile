@@ -229,19 +229,19 @@ void main() {
       title: 'Message text',
       route: AppRoutes.inputText,
       buttonLabel: 'Enter message',
-      isPrepared: true,
+      noticeText: 'Text preparation is available. Scam analysis is not available in this build yet.',
     ),
     (
       title: 'Screenshot',
       route: AppRoutes.inputScreenshot,
-      buttonLabel: 'View input options',
-      isPrepared: false,
+      buttonLabel: 'Choose screenshot',
+      noticeText: 'Image preview is available. Text extraction and scam analysis are not available yet.',
     ),
     (
       title: 'Link or QR code',
       route: AppRoutes.inputLink,
       buttonLabel: 'View input options',
-      isPrepared: false,
+      noticeText: 'Coming soon',
     ),
   ]) {
     testWidgets(
@@ -267,16 +267,7 @@ void main() {
         expect(Get.currentRoute, option.route);
         expect(stack.names, [AppRoutes.home, option.route]);
         expect(find.text(option.title), findsWidgets);
-        if (!option.isPrepared) {
-          expect(find.text('Coming soon'), findsOneWidget);
-        } else {
-          expect(
-            find.text(
-              'Text preparation is available. Scam analysis is not available in this build yet.',
-            ),
-            findsOneWidget,
-          );
-        }
+        expect(find.text(option.noticeText), findsOneWidget);
         expect(find.text('Safety reminder'), findsOneWidget);
 
         // Navigate to guidance from input preparation screen

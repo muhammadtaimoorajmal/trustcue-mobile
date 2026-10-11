@@ -85,6 +85,15 @@ Module 12's original `unknownRoute` configuration did not enforce this policy: G
 *   **Immediate Draft Invalidation:** Any typing, editing, or clearing immediately invalidates the prepared snapshot, clears the inline confirmation banner, and resets transient error states.
 *   **Unsaved Draft Protection:** Leaving `/input/text` with a non-empty draft (via AppBar back or system PopScope) presents a discard confirmation dialog ("Keep editing" vs "Discard"). Pushing safe-use guidance (`/safe-use`) preserves the draft without triggering discard warnings. Clearing text requires user confirmation.
 
+## Screenshot Selection, Validation, Preview, and Storage Lifecycle (Module 17)
+
+*   **Pure-Dart Policy & Validation:** `ImageValidator` and `ImageValidationPolicy` inspect image files independently of UI or framework code. They verify file existence, file size (<= 10MB), MIME type via magic bytes (PNG `89 50 4E 47`, JPEG `FF D8 FF`), and dimensions (minimum 32x32px, maximum 20 megapixels total pixel count).
+*   **Isolated Storage Ownership:** `ScreenshotStorageService` manages temporary file copies within an app-owned cache subfolder (`trustcue_screenshots/`). Newly selected gallery images are copied immediately with timestamp and collision-resistant IDs. All operations (replacement, removal, route-exit cleanup) strictly delete only files verified to belong to the app-owned directory via canonical path verification. The user's original gallery files are never modified or deleted.
+*   **Route-Owned Lifecycle:** `InputScreenshotController` is registered lazily via `InputScreenshotBinding` at `AppRoutes.inputScreenshot`. Temporary file state is tracked within the controller and automatically deleted on controller disposal unless intentionally passed forward.
+*   **Privacy & User-Facing Safety:** Absolute filesystem paths and raw file names are never surfaced in user-facing UI or error messages. Only friendly image metadata (file size in KB/MB, pixel dimensions) is displayed.
+*   **Android Lost-Data Recovery:** `ScreenshotRecoveryCoordinator` handles Android activity destruction during image picker interactions using `ImagePicker.retrieveLostData()`.
+*   **Interactive Preview:** `InputScreenshotScreen` uses `InteractiveViewer` with constrained min/max scale factors (0.8x - 4.0x) to allow inspection of suspicious screenshots before any future extraction/analysis. Leaving with an active preview prompts for discard confirmation.
+
 ## Repository Separation
 
 *   `frontend/`: The complete Flutter application and its client-side integrations.

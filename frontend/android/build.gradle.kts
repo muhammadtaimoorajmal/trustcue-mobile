@@ -18,6 +18,21 @@ subprojects {
 subprojects {
     project.evaluationDependsOn(":app")
 }
+subprojects {
+    if (project.name != "app") {
+        afterEvaluate {
+            val androidExt = extensions.findByName("android")
+            if (androidExt != null) {
+                try {
+                    val setNdk = androidExt.javaClass.getMethod("setNdkVersion", String::class.java)
+                    setNdk.invoke(androidExt, "30.0.16138531")
+                } catch (_: Exception) {
+                    // Ignore if method not present
+                }
+            }
+        }
+    }
+}
 
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)

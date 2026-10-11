@@ -30,8 +30,8 @@ This roadmap outlines the complete 50-module development plan for TrustCue, repl
 | **13** | First-run onboarding, safe-use guidance, build repair, preference persistence, and verification (includes Module 13A reconciliation) | Completed (`68aa084`) | `frontend` |
 | **14** | Home dashboard and input-method navigation | Completed (`ed9e699`) | `frontend` |
 | **15** | Typed input/finding/report contracts, serialization, errors, service interfaces | Completed (`2fae68a`) | `frontend` |
-| **16** | Pasted-text input, normalization, validation, and limits | Completed | `frontend` |
-| **17** | Screenshot selection, preview, temporary-file lifecycle | Planned | `frontend` |
+| **16** | Pasted-text input, normalization, validation, and limits | Completed (`2c4149c`) | `frontend` |
+| **17** | Screenshot selection, preview, temporary-file lifecycle | Completed | `frontend` |
 | **18** | On-device OCR integration, supported scripts, failures, retries | Planned | `frontend` |
 | **19** | Extracted-text correction, sensitive-data detection, redaction review | Planned | `frontend` |
 | **20** | URL parsing, QR decoding, destination review, safe-opening boundaries | Planned | `frontend` |

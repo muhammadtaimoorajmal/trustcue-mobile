@@ -1,6 +1,7 @@
 param(
-    [ValidateSet('navigation', 'all', 'device')]
+    [ValidateSet('navigation', 'all', 'device', 'focused')]
     [string]$Suite = 'navigation',
+    [string]$TestPath,
     [ValidatePattern('^[a-zA-Z0-9:._-]+$')]
     [string]$DeviceId,
     [ValidateRange(30, 900)]
@@ -19,6 +20,9 @@ $flutterPath = (Get-Command flutter -ErrorAction Stop).Source
 $testArguments = 'test --no-pub --reporter expanded'
 if ($Suite -eq 'navigation') {
     $testArguments += ' test/app/navigation_test.dart'
+} elseif ($Suite -eq 'focused') {
+    if (!$TestPath) { throw 'TestPath is required for focused suite.' }
+    $testArguments += " $TestPath"
 } elseif ($Suite -eq 'device') {
     if (!$DeviceId) { throw 'DeviceId is required for device tests.' }
     $testArguments += " integration_test/app_smoke_test.dart -d $DeviceId"

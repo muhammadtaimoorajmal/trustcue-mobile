@@ -186,3 +186,32 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Physical device installation & launch: Updated APK installed and launched on Vivo V2207 (`10AC9R1ABF0013A`).
 - **Manual Verification:** Human phone visual checklist provided for inspecting message entry, character counter updates, validation error display, in-memory preparation banner, discard dialog upon leaving with unsaved draft, and clear dialog.
 - **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.
+
+## Module 17: Screenshot Selection, Preview, and Temporary-File Handling
+- **Scope:** Implement functional screenshot selection, validation, local preview, and temporary file lifecycle on `/input/screenshot` replacing the placeholder. Implement pure-Dart `ImageValidator` and `ImageValidationPolicy` enforcing MIME type check (PNG, JPEG magic bytes), dimension bounds (width/height >= 32px, max 20 megapixels total pixel count), size bounds (<= 10MB). Interactive pan and zoom preview via `InteractiveViewer`. Temporary file lifecycle owned by `ScreenshotStorageService` (`DefaultScreenshotStorageService` writing uniquely timestamped copies to isolated `trustcue_screenshots` app-owned cache directory). File removal and replacement with previous file deletion, page back/discard dialogs, and route-pop cleanup. Android picker recovery coordinator handling `retrieveLostData()`. Never delete original user gallery files. Never expose absolute filesystem paths or file names in user-facing UI or error messages. Update Home dashboard Screenshot card from "Coming soon" to "Preview available". Android build repairs: NDK subproject override for `:jni` to `30.0.16138531`, Kotlin `kotlin.incremental=false` to resolve cross-drive path comparison bug. Widget test fake storage sync fix for `FakeAsync` compatibility.
+- **Branch:** `frontend`
+- **Domain, Storage, & Presentation Components:**
+  - `lib/features/input/domain/models/selected_image_descriptor.dart`: Immutable descriptor containing `path`, `fileSizeBytes`, `width`, `height`, and `mimeType`.
+  - `lib/features/input/domain/validation/image_validation_policy.dart`: Limits defining allowed MIME types (`image/png`, `image/jpeg`), max bytes (10MB), min dimension (32px), max megapixels (20MP).
+  - `lib/features/input/domain/validation/image_validator.dart`: Pure-Dart validator checking file existence, size, header magic bytes (PNG `89 50 4E 47`, JPEG `FF D8 FF`), and dimension extraction without UI dependencies.
+  - `lib/features/input/domain/contracts/screenshot_storage_service.dart`: Abstract interface for creating owned copies, deleting owned files, and checking ownership.
+  - `lib/features/input/domain/contracts/image_picker_adapter.dart`: Abstract adapter for `pickImage()` and `retrieveLostData()`.
+  - `lib/features/input/data/services/default_screenshot_storage_service.dart`: Implementation writing to `cacheDir/trustcue_screenshots/` with timestamp and UUID-based collision resistance.
+  - `lib/features/input/data/services/default_image_picker_adapter.dart`: Production adapter wrapping `ImagePicker`.
+  - `lib/features/input/presentation/controllers/input_screenshot_controller.dart`: Route-scoped GetX controller managing picking, validation, selection state, replacement/removal, discard confirmation, and route-exit cleanup.
+  - `lib/features/input/presentation/controllers/screenshot_recovery_coordinator.dart`: Android lost-data recovery coordinator.
+  - `lib/features/input/presentation/bindings/input_screenshot_binding.dart`: Route-level lazy dependency injection.
+  - `lib/features/input/presentation/screens/input_screenshot_screen.dart`: Complete screen layout with `AppPageBody`, `InteractiveViewer` pan/zoom preview, image metadata chip, pick/replace/remove action buttons, safety reminder, and safe-use review navigation.
+  - `lib/features/home/presentation/screens/home_screen.dart`: Updated Screenshot card from "Coming soon" to active "Preview available" status.
+  - `lib/app/routes/app_pages.dart`: Wired `InputScreenshotBinding` to `AppRoutes.inputScreenshot`.
+  - `android/build.gradle.kts`: Subproject `setNdkVersion` override for `:jni` to local NDK `30.0.16138531`.
+  - `android/gradle.properties`: Added `kotlin.incremental=false` to prevent cross-drive `IllegalArgumentException` in Kotlin compilation.
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (75 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (175/175 tests passed across 15 suites, adding 30 new tests across validator, storage, controller, and screen suites).
+  - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (`build/app/outputs/flutter-apk/app-debug.apk` built in 114.6s).
+  - `powershell -File tool/test.ps1 -Suite device -DeviceId "10AC9R1ABF0013A" -TimeoutSeconds 600`: PASS (integration smoke test on Vivo V2207 passed in 17s).
+  - Physical device installation & launch: Updated APK installed and launched on Vivo V2207 (`10AC9R1ABF0013A`).
+- **Manual Verification:** Human phone visual checklist provided for inspecting screenshot selection from gallery, preview pan and zoom, metadata display (file size, dimensions), image replacement, image removal confirmation, back/discard dialog on unsaved preview, and safe-use review navigation.
+- **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.

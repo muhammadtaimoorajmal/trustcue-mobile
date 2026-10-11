@@ -58,12 +58,13 @@ class HomeScreen extends GetView<HomeController> {
               statusText: 'Preparation available',
               actionLabel: 'Enter message',
             ),
-            const SizedBox(height: AppSpacing.pagePaddingSmall),
             const _InputOptionCard(
               title: 'Screenshot',
-              description: 'For suspicious messages captured in an image.',
+              description: 'For suspicious messages captured in an image. Image preview is available; text extraction is coming soon.',
               icon: Icons.image_outlined,
               route: AppRoutes.inputScreenshot,
+              statusText: 'Preview available',
+              actionLabel: 'Choose screenshot',
             ),
             const SizedBox(height: AppSpacing.pagePaddingSmall),
             const _InputOptionCard(
