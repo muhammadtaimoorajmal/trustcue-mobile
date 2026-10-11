@@ -225,9 +225,24 @@ void main() {
 
   // Input preparation screens navigation tests
   for (final option in [
-    (title: 'Message text', route: AppRoutes.inputText),
-    (title: 'Screenshot', route: AppRoutes.inputScreenshot),
-    (title: 'Link or QR code', route: AppRoutes.inputLink),
+    (
+      title: 'Message text',
+      route: AppRoutes.inputText,
+      buttonLabel: 'Enter message',
+      isPrepared: true,
+    ),
+    (
+      title: 'Screenshot',
+      route: AppRoutes.inputScreenshot,
+      buttonLabel: 'View input options',
+      isPrepared: false,
+    ),
+    (
+      title: 'Link or QR code',
+      route: AppRoutes.inputLink,
+      buttonLabel: 'View input options',
+      isPrepared: false,
+    ),
   ]) {
     testWidgets(
       'Input option ${option.title} opens ${option.route} and returns with back',
@@ -244,7 +259,7 @@ void main() {
         );
         final buttonFinder = find.descendant(
           of: cardFinder,
-          matching: find.text('View input options'),
+          matching: find.text(option.buttonLabel),
         );
         await tester.tap(buttonFinder);
         await tester.pumpAndSettle();
@@ -252,7 +267,16 @@ void main() {
         expect(Get.currentRoute, option.route);
         expect(stack.names, [AppRoutes.home, option.route]);
         expect(find.text(option.title), findsWidgets);
-        expect(find.text('Coming soon'), findsOneWidget);
+        if (!option.isPrepared) {
+          expect(find.text('Coming soon'), findsOneWidget);
+        } else {
+          expect(
+            find.text(
+              'Text preparation is available. Scam analysis is not available in this build yet.',
+            ),
+            findsOneWidget,
+          );
+        }
         expect(find.text('Safety reminder'), findsOneWidget);
 
         // Navigate to guidance from input preparation screen

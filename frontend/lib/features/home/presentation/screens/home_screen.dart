@@ -52,9 +52,11 @@ class HomeScreen extends GetView<HomeController> {
             const SizedBox(height: AppSpacing.pagePaddingLarge),
             const _InputOptionCard(
               title: 'Message text',
-              description: 'For messages copied from SMS, email, or chat.',
+              description: 'For messages copied from SMS, email, or chat. Text preparation is available; analysis is coming soon.',
               icon: Icons.chat_bubble_outline,
               route: AppRoutes.inputText,
+              statusText: 'Preparation available',
+              actionLabel: 'Enter message',
             ),
             const SizedBox(height: AppSpacing.pagePaddingSmall),
             const _InputOptionCard(
@@ -109,12 +111,16 @@ class _InputOptionCard extends StatelessWidget {
     required this.description,
     required this.icon,
     required this.route,
+    this.statusText = 'Coming soon',
+    this.actionLabel = 'View input options',
   });
 
   final String title;
   final String description;
   final IconData icon;
   final String route;
+  final String? statusText;
+  final String actionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -130,19 +136,21 @@ class _InputOptionCard extends StatelessWidget {
               Expanded(child: Text(title, style: theme.textTheme.titleMedium)),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Coming soon',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.bold,
+          if (statusText != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              statusText!,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 8),
           Text(description, style: theme.textTheme.bodyMedium),
           const SizedBox(height: 12),
           AppButton.secondary(
-            label: 'View input options',
+            label: actionLabel,
             onPressed: () {
               if (Get.currentRoute != route) {
                 Get.toNamed(route);

@@ -183,8 +183,32 @@ abstract class Result<T> {
 
 ---
 
-## 6. Future Extension Points
+## 6. Message Text Validation & Normalization (Module 16)
 
-- **Module 16:** Message text entry, normalization, validation, and character limits.
+### 6.1 Input Limits and Counting Policy
+- **Maximum Code Points (Runes):** `10,000` (`text.runes.length`). Displayed in UI as `"X / 10,000 characters"`.
+- **Maximum UTF-8 Bytes:** `40,000` (`utf8.encode(text).length`).
+- Limits are evaluated against the original, unnormalized editor text to prevent bypass.
+
+### 6.2 Normalization Rules for TextSnapshot
+- Converts CRLF (`\r\n`) and standalone CR (`\r`) line breaks to standard LF (`\n`).
+- Preserves all other text properties exactly: casing, internal spacing, tabs, leading/trailing whitespace, URLs, punctuation, and Unicode scripts (e.g., Urdu Nastaliq glyphs, emojis, symbols).
+- Editor input remains completely unchanged during typing and validation.
+
+### 6.3 Validation Rejection Criteria
+- **Empty input:** Rejects empty string (`MessageTextValidationReason.empty`).
+- **Whitespace / invisible-only content:** Rejects inputs composed solely of spaces, tabs, newlines, or invisible Unicode formatting marks (e.g. `\u200B`, `\u200C`, `\u200D`, `\uFEFF`, bidi markers) without visible glyphs (`MessageTextValidationReason.onlyWhitespace`).
+- **Length exceeded:** Rejects code points > 10,000 (`MessageTextValidationReason.tooLongCodePoints`) or bytes > 40,000 (`MessageTextValidationReason.tooLongBytes`).
+- **Unsupported control characters:** Rejects NUL (`\u0000`), bell, ESC, or C0/C1 control characters other than `\t`, `\n`, `\r` (`MessageTextValidationReason.unsupportedControlCharacters`).
+- **Malformed Unicode:** Rejects unpaired UTF-16 surrogate code units (`MessageTextValidationReason.malformedUnicode`).
+
+### 6.4 Privacy and Invariants
+- `MessageTextValidationError` and mapped `AnalysisFailure` instances never include user message contents, fragments, or credentials in diagnostics or error messages.
+- `TextSnapshot` prepared from message text entry is held in-memory within the route-scoped `InputTextController` and is invalidated immediately upon subsequent user edits.
+
+---
+
+## 7. Future Extension Points
+
 - **Module 17–21:** Screenshot intake, temporary file lifecycle, OCR extraction, and QR/URL parsing.
 - **Module 22–26:** Warning taxonomy, rule engine, evidence location mapping, and local assessment aggregation.

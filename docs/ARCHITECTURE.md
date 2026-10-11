@@ -76,6 +76,15 @@ Navigation widget tests specify a 20-second timeout explicitly. `frontend/tool/t
 
 Module 12's original `unknownRoute` configuration did not enforce this policy: GetX could match `/` or `/about` as an ancestor. Its explicit `/not-found` tests did not establish unknown-route resolution. Module 12A records and repairs that defect without changing the original checkpoint.
 
+## Message Text Entry, Validation, and Lifecycle (Module 16)
+
+*   **Pure-Dart Policy Enforcement:** `MessageTextValidator` encapsulates validation and normalization rules without UI or framework dependencies.
+*   **Dual Enforced Limits:** Maximum 10,000 Unicode code points (runes) and 40,000 UTF-8 bytes. Limits are evaluated against the original, unnormalized editor input so normalization or trimming cannot bypass boundaries.
+*   **Line-Break Normalization:** Converts `\r\n` and `\r` to standard `\n` (LF) for stored snapshot text while preserving casing, spaces, tabs, leading/trailing whitespace, and multilingual text (including Urdu scripts and emojis).
+*   **Route-Owned Lifecycle:** `InputTextController` is bound via `InputTextBinding` to `AppRoutes.inputText`. All prepared snapshots are held strictly in-memory.
+*   **Immediate Draft Invalidation:** Any typing, editing, or clearing immediately invalidates the prepared snapshot, clears the inline confirmation banner, and resets transient error states.
+*   **Unsaved Draft Protection:** Leaving `/input/text` with a non-empty draft (via AppBar back or system PopScope) presents a discard confirmation dialog ("Keep editing" vs "Discard"). Pushing safe-use guidance (`/safe-use`) preserves the draft without triggering discard warnings. Clearing text requires user confirmation.
+
 ## Repository Separation
 
 *   `frontend/`: The complete Flutter application and its client-side integrations.
@@ -84,4 +93,3 @@ Module 12's original `unknownRoute` configuration did not enforce this policy: G
 *   `docs/`: Shared project documentation.
 
 Dart database adapters and client models belong inside the `frontend/` Flutter package. We do not enforce moving Flutter-related code out of `frontend/` just to conceptually match a Git branch name.
-

@@ -81,12 +81,10 @@ void main() {
     final controller = Get.find<HomeController>();
 
     // Verify navigating to an input preparation screen and returning
-    final viewInputFinder = find
-        .widgetWithText(AppButton, 'View input options')
-        .first;
-    await tester.ensureVisible(viewInputFinder);
+    final enterMessageFinder = find.widgetWithText(AppButton, 'Enter message');
+    await tester.ensureVisible(enterMessageFinder);
     await tester.pumpAndSettle();
-    await tester.tap(viewInputFinder);
+    await tester.tap(enterMessageFinder);
     await tester.pumpAndSettle();
 
     expect(Get.currentRoute, AppRoutes.inputText);

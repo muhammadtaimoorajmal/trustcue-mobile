@@ -10,6 +10,7 @@ import 'package:trustcue_mobile/app/startup_screen.dart';
 import 'package:trustcue_mobile/features/onboarding/data/onboarding_preferences.dart';
 import 'package:trustcue_mobile/features/onboarding/presentation/bindings/onboarding_binding.dart';
 import 'package:trustcue_mobile/features/onboarding/presentation/screens/onboarding_screen.dart';
+import 'package:trustcue_mobile/features/input/presentation/bindings/input_text_binding.dart';
 import 'package:trustcue_mobile/features/input/presentation/screens/input_text_screen.dart';
 import 'package:trustcue_mobile/features/input/presentation/screens/input_screenshot_screen.dart';
 import 'package:trustcue_mobile/features/input/presentation/screens/input_link_screen.dart';
@@ -41,7 +42,11 @@ class AppPages {
       name: AppRoutes.guidance,
       page: () => const OnboardingScreen(mode: OnboardingMode.review),
     ),
-    GetPage(name: AppRoutes.inputText, page: () => const InputTextScreen()),
+    GetPage(
+      name: AppRoutes.inputText,
+      page: () => const InputTextScreen(),
+      binding: InputTextBinding(),
+    ),
     GetPage(
       name: AppRoutes.inputScreenshot,
       page: () => const InputScreenshotScreen(),

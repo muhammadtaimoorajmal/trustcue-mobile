@@ -5,6 +5,7 @@ class AppTextField extends StatelessWidget {
   final String? hint;
   final String? helperText;
   final String? errorText;
+  final String? counterText;
   final TextEditingController? controller;
   final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
@@ -19,6 +20,7 @@ class AppTextField extends StatelessWidget {
     this.hint,
     this.helperText,
     this.errorText,
+    this.counterText,
     this.controller,
     this.focusNode,
     this.onChanged,
@@ -43,6 +45,7 @@ class AppTextField extends StatelessWidget {
         hintText: hint,
         helperText: helperText,
         errorText: errorText,
+        counterText: counterText,
         helperMaxLines: 5,
         errorMaxLines: 5,
         border: const OutlineInputBorder(),

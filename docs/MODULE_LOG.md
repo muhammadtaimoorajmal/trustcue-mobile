@@ -166,3 +166,23 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `git diff --check`: PASS (clean whitespace).
 - **Device Verification:** Module 14's physical-device install and smoke-test PASS on Vivo V2207 (`10AC9R1ABF0013A`) is retained as historical verification. No UI or runtime integration changed; device re-installation was not required for pure data contracts.
 - **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.
+
+## Module 16: Message-Text Entry, Normalization, Validation, and Limits
+- **Scope:** Implement functional local message text entry on `/input/text` replacing the preparation placeholder. Implement pure-Dart `MessageTextValidator` enforcing dual limits (10,000 code points, 40,000 UTF-8 bytes) on original editor text, CRLF line ending normalization (`\r\n`/`\r` to `\n`), blank and invisible Unicode glyph rejection, unsupported control character rejection, and unpaired surrogate validation. Implement route-owned `InputTextController` via `InputTextBinding` managing text editing, live character counter (`X / 10,000 characters`), in-memory `TextSnapshot` creation, draft change invalidation, and discard/clear confirmation dialogs. Update Home dashboard Message text card from "Coming soon" to active "Preparation available" status with "Enter message" action.
+- **Branch:** `frontend`
+- **Domain & Presentation Components:**
+  - `lib/features/input/domain/validation/message_text_validator.dart`: Pure-Dart validation and normalization policy. Enforces 10,000 code-point limit and 40,000 UTF-8 byte limit on original input. Converts line breaks to LF. Rejects empty, blank/invisible-only, malformed UTF-16 surrogates, and control characters (excluding tab, LF, CR). Maps to `AnalysisFailure` without exposing user text.
+  - `lib/features/input/presentation/controllers/input_text_controller.dart`: Route-scoped GetX controller. Reactive draft synchronization, character counter state, in-memory snapshot preparation with injectable ID generator and clock, text change invalidation, clear confirmation dialog, and unsaved draft discard dialog.
+  - `lib/features/input/presentation/bindings/input_text_binding.dart`: Route-level lazy dependency injection.
+  - `lib/features/input/presentation/screens/input_text_screen.dart`: Complete screen layout with `AppPageBody`, multiline `AppTextField` with persistent "Message" label and character counter, development availability notice ("Text preparation is available. Scam analysis is not available in this build yet."), inline confirmation banner ("Text prepared on this device. It has not been analyzed or sent anywhere."), "Prepare text" and "Clear text" action buttons, safety reminder, and safe-use guidance review navigation.
+  - `lib/features/home/presentation/screens/home_screen.dart`: Updated Message text option card with "Preparation available" status, updated copy, and "Enter message" action button.
+  - `lib/core/widgets/app_text_field.dart`: Added optional `counterText` parameter passing to `InputDecoration`.
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (61 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (145/145 tests passed across 11 suites, adding 29 new tests across validator, controller, and screen suites).
+  - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (`build/app/outputs/flutter-apk/app-debug.apk` built in 12.6s).
+  - `powershell -File tool/test.ps1 -Suite device -DeviceId "10AC9R1ABF0013A" -TimeoutSeconds 600`: PASS (integration smoke test on Vivo V2207 passed in 17s).
+  - Physical device installation & launch: Updated APK installed and launched on Vivo V2207 (`10AC9R1ABF0013A`).
+- **Manual Verification:** Human phone visual checklist provided for inspecting message entry, character counter updates, validation error display, in-memory preparation banner, discard dialog upon leaving with unsaved draft, and clear dialog.
+- **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.
