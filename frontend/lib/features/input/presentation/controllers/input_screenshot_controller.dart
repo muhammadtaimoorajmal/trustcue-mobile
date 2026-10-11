@@ -7,29 +7,39 @@ import 'package:trustcue_mobile/app/routes/app_routes.dart';
 
 import '../../data/services/default_image_picker_adapter.dart';
 import '../../data/services/default_screenshot_storage_service.dart';
+import '../../data/services/default_text_recognition_service.dart';
 import '../../domain/contracts/image_picker_adapter.dart';
 import '../../domain/contracts/screenshot_storage_service.dart';
+import '../../domain/contracts/text_recognition_service.dart';
+import '../../domain/models/ocr_failure.dart';
+import '../../domain/models/ocr_result.dart';
 import '../../domain/models/selected_image_descriptor.dart';
 import '../../domain/validation/image_validation_policy.dart';
 import '../../domain/validation/image_validator.dart';
 import 'screenshot_recovery_coordinator.dart';
 
 /// Presentation controller managing screenshot selection, validation, local preview,
-/// transactional replacement, and temporary file ownership.
+/// transactional replacement, temporary file ownership, and on-device text recognition.
 class InputScreenshotController extends GetxController {
   InputScreenshotController({
     ImagePickerAdapter? pickerAdapter,
     ScreenshotStorageService? storageService,
+    TextRecognitionService? ocrService,
     this.recoveryCoordinator,
     String Function()? idGenerator,
+    Duration? ocrTimeout,
   }) : _pickerAdapter = pickerAdapter ?? DefaultImagePickerAdapter(),
        _storageService = storageService ?? DefaultScreenshotStorageService(),
-       _idGenerator = idGenerator ?? _defaultIdGenerator;
+       _ocrService = ocrService ?? DefaultTextRecognitionService(),
+       _idGenerator = idGenerator ?? _defaultIdGenerator,
+       _ocrTimeout = ocrTimeout ?? const Duration(seconds: 30);
 
   final ImagePickerAdapter _pickerAdapter;
   final ScreenshotStorageService _storageService;
+  final TextRecognitionService _ocrService;
   final ScreenshotRecoveryCoordinator? recoveryCoordinator;
   final String Function() _idGenerator;
+  final Duration _ocrTimeout;
 
   final Rxn<SelectedImageDescriptor> selectedImage =
       Rxn<SelectedImageDescriptor>();
@@ -37,7 +47,19 @@ class InputScreenshotController extends GetxController {
   final Rxn<ImageValidationError> validationError = Rxn<ImageValidationError>();
   final RxBool isNavigatingAway = false.obs;
 
+  // Module 18: OCR state
+  final RxBool isExtracting = false.obs;
+  final RxBool isNativeSettling = false.obs;
+  final Rxn<OcrResult> ocrResult = Rxn<OcrResult>();
+  final Rxn<OcrFailure> ocrFailure = Rxn<OcrFailure>();
+
+  String? _currentOperationToken;
+  final Set<String> _activeReadingFiles = <String>{};
+  final Set<String> _pendingDeletionFiles = <String>{};
+  bool _isDisposed = false;
+
   bool get hasImage => selectedImage.value != null;
+  bool get hasExtractedText => ocrResult.value != null;
 
   @override
   void onInit() {
@@ -58,17 +80,112 @@ class InputScreenshotController extends GetxController {
 
   @override
   void onClose() {
-    // If controller is disposed and not explicitly retained, clean up owned file
+    _isDisposed = true;
+    if (_currentOperationToken != null) {
+      _ocrService.cancelOperation(_currentOperationToken!);
+    }
+    _ocrService.dispose();
+
+    // If controller is disposed and not retained, clean up owned file
     final current = selectedImage.value;
     if (current != null) {
-      _storageService.deleteOwnedFile(current.filePath);
+      _safelyDeleteOwnedFile(current.filePath);
     }
+
     super.onClose();
+  }
+
+  /// Triggers on-device OCR extraction for the currently selected screenshot.
+  Future<void> extractText() async {
+    if (!hasImage ||
+        isExtracting.value ||
+        isNativeSettling.value ||
+        _isDisposed) {
+      return;
+    }
+
+    final image = selectedImage.value!;
+    final token = 'ocr-${_idGenerator()}';
+    _currentOperationToken = token;
+
+    isExtracting.value = true;
+    ocrFailure.value = null;
+
+    _activeReadingFiles.add(image.filePath);
+
+    try {
+      final result = await _ocrService.processImage(
+        filePath: image.filePath,
+        imageRevision: image.id,
+        operationToken: token,
+        timeout: _ocrTimeout,
+      );
+
+      if (_isDisposed || isClosed) return;
+
+      // Discard results from superseded or cancelled operations
+      if (_currentOperationToken != token) return;
+
+      result.fold(
+        onSuccess: (extracted) {
+          ocrResult.value = extracted;
+          ocrFailure.value = null;
+        },
+        onFailure: (failure) {
+          ocrFailure.value = OcrFailure.fromAnalysisFailure(failure);
+        },
+      );
+    } catch (_) {
+      if (_isDisposed || isClosed) return;
+      if (_currentOperationToken == token) {
+        ocrFailure.value = const OcrFailure.internalError();
+      }
+    } finally {
+      _activeReadingFiles.remove(image.filePath);
+      _flushPendingDeletions();
+
+      if (!_isDisposed && !isClosed) {
+        if (_activeReadingFiles.isEmpty) {
+          isNativeSettling.value = false;
+        }
+        if (_currentOperationToken == token) {
+          isExtracting.value = false;
+        }
+      }
+    }
+  }
+
+  /// Cancels an in-flight text extraction request.
+  Future<void> cancelExtraction() async {
+    if (!isExtracting.value || _currentOperationToken == null) return;
+
+    final token = _currentOperationToken!;
+    _currentOperationToken = null;
+    isExtracting.value = false;
+    isNativeSettling.value = true;
+    ocrFailure.value = const OcrFailure.userCancelled();
+
+    await _ocrService.cancelOperation(token);
+
+    // Keep settling status truthful until active native read on file completes
+    if (_activeReadingFiles.isEmpty) {
+      isNativeSettling.value = false;
+    }
+  }
+
+  /// Navigates to the manual message text entry screen.
+  void navigateToMessageInput() {
+    if (Get.currentRoute != AppRoutes.inputText) {
+      Get.toNamed(AppRoutes.inputText);
+    }
   }
 
   /// Picks a new image or transactionally replaces an existing selection.
   Future<bool> chooseImage() async {
     if (isProcessing.value) return false;
+    if (isExtracting.value) {
+      await cancelExtraction();
+    }
     isProcessing.value = true;
     validationError.value = null;
 
@@ -112,13 +229,16 @@ class InputScreenshotController extends GetxController {
         filePath: importedFile.path,
       );
 
-      // Transactional swap: update preview and delete old owned file
+      // Transactional swap: invalidate previous OCR result and swap image
       final oldImage = selectedImage.value;
       selectedImage.value = newDescriptor;
       validationError.value = null;
+      ocrResult.value = null;
+      ocrFailure.value = null;
+      _currentOperationToken = null;
 
       if (oldImage != null) {
-        await _storageService.deleteOwnedFile(oldImage.filePath);
+        _safelyDeleteOwnedFile(oldImage.filePath);
       }
 
       return true;
@@ -133,17 +253,25 @@ class InputScreenshotController extends GetxController {
     }
   }
 
-  /// Confirms and removes the current screenshot preview.
+  /// Confirms and removes the current screenshot preview and OCR state.
   Future<bool> requestRemoveImage(BuildContext context) async {
     if (!hasImage) return false;
 
     final shouldRemove = await confirmRemove(context);
     if (shouldRemove) {
+      if (isExtracting.value) {
+        await cancelExtraction();
+      }
+
       final current = selectedImage.value;
       selectedImage.value = null;
       validationError.value = null;
+      ocrResult.value = null;
+      ocrFailure.value = null;
+      _currentOperationToken = null;
+
       if (current != null) {
-        await _storageService.deleteOwnedFile(current.filePath);
+        _safelyDeleteOwnedFile(current.filePath);
       }
       return true;
     }
@@ -180,8 +308,10 @@ class InputScreenshotController extends GetxController {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Discard screenshot?'),
-        content: const Text(
-          'You have a screenshot selected for preview. If you leave now, the preview will be discarded.',
+        content: Text(
+          hasExtractedText
+              ? 'You have a screenshot with extracted text. If you leave now, the preview and extracted text will be discarded.'
+              : 'You have a screenshot selected for preview. If you leave now, the preview will be discarded.',
         ),
         actions: [
           TextButton(
@@ -203,10 +333,19 @@ class InputScreenshotController extends GetxController {
     if (hasImage) {
       final shouldDiscard = await confirmDiscard(context);
       if (!shouldDiscard) return;
+
+      if (isExtracting.value) {
+        await cancelExtraction();
+      }
+
       final current = selectedImage.value;
       selectedImage.value = null;
+      ocrResult.value = null;
+      ocrFailure.value = null;
+      _currentOperationToken = null;
+
       if (current != null) {
-        await _storageService.deleteOwnedFile(current.filePath);
+        _safelyDeleteOwnedFile(current.filePath);
       }
     }
 
@@ -216,6 +355,24 @@ class InputScreenshotController extends GetxController {
       Navigator.of(context).pop();
     } else {
       Get.offAllNamed(AppRoutes.home);
+    }
+  }
+
+  void _safelyDeleteOwnedFile(String filePath) {
+    if (_activeReadingFiles.contains(filePath)) {
+      _pendingDeletionFiles.add(filePath);
+    } else {
+      _storageService.deleteOwnedFile(filePath);
+    }
+  }
+
+  void _flushPendingDeletions() {
+    final readyToDelete = _pendingDeletionFiles
+        .where((p) => !_activeReadingFiles.contains(p))
+        .toList();
+    for (final p in readyToDelete) {
+      _pendingDeletionFiles.remove(p);
+      _storageService.deleteOwnedFile(p);
     }
   }
 

@@ -11,8 +11,8 @@ import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
 import '../controllers/input_screenshot_controller.dart';
 import '../../domain/models/selected_image_descriptor.dart';
 
-/// Screen allowing users to select, validate, and interactively preview a screenshot
-/// locally before future text extraction and analysis modules.
+/// Screen allowing users to select, validate, interactively preview, and extract
+/// text from a suspicious screenshot on-device.
 class InputScreenshotScreen extends GetView<InputScreenshotController> {
   const InputScreenshotScreen({super.key, this.imageBuilder});
 
@@ -176,6 +176,46 @@ class InputScreenshotScreen extends GetView<InputScreenshotController> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.pagePaddingSmall),
+                  AppCard(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.translate_outlined,
+                          size: 20,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Text extraction currently supports Latin-script text, including English. Urdu and Arabic text in images are not supported yet.',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.pagePaddingSmall),
+                  AppCard(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.lightbulb_outline,
+                          size: 20,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Text extraction can miss or misread words. Check the result against your screenshot.',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   if (controller.validationError.value != null) ...[
                     const SizedBox(height: AppSpacing.pagePaddingSmall),
                     AppCard(
@@ -201,11 +241,18 @@ class InputScreenshotScreen extends GetView<InputScreenshotController> {
                     ),
                   ],
                   const SizedBox(height: AppSpacing.pagePaddingLarge),
-                  AppButton.primary(
+
+                  // OCR extraction area
+                  _buildOcrSection(context),
+
+                  const SizedBox(height: AppSpacing.pagePaddingLarge),
+                  AppButton.secondary(
                     label: 'Replace image',
                     icon: Icons.refresh_outlined,
                     isLoading: controller.isProcessing.value,
-                    onPressed: controller.isProcessing.value
+                    onPressed:
+                        (controller.isProcessing.value ||
+                            controller.isExtracting.value)
                         ? null
                         : () => controller.chooseImage(),
                   ),
@@ -213,7 +260,9 @@ class InputScreenshotScreen extends GetView<InputScreenshotController> {
                   AppButton.secondary(
                     label: 'Remove image',
                     icon: Icons.delete_outline,
-                    onPressed: controller.isProcessing.value
+                    onPressed:
+                        (controller.isProcessing.value ||
+                            controller.isExtracting.value)
                         ? null
                         : () => controller.requestRemoveImage(context),
                   ),
@@ -252,39 +301,230 @@ class InputScreenshotScreen extends GetView<InputScreenshotController> {
     });
   }
 
+  Widget _buildOcrSection(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (controller.isExtracting.value) {
+      return AppCard(
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              'Extracting text on this device...',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Processing image with on-device Latin model.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 16),
+            AppButton.secondary(
+              label: 'Cancel extraction',
+              icon: Icons.cancel_outlined,
+              onPressed: () => controller.cancelExtraction(),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      );
+    }
+
+    if (controller.ocrFailure.value != null) {
+      final failure = controller.ocrFailure.value!;
+      return AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 20,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        failure.message,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: theme.colorScheme.error,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        failure.recoverySuggestion,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: AppButton.primary(
+                    label: controller.isNativeSettling.value
+                        ? 'Settling...'
+                        : 'Retry extraction',
+                    icon: Icons.refresh_outlined,
+                    onPressed: controller.isNativeSettling.value
+                        ? null
+                        : () => controller.extractText(),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: AppButton.secondary(
+                    label: 'Enter text manually',
+                    icon: Icons.edit_note_outlined,
+                    onPressed: () => controller.navigateToMessageInput(),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (controller.ocrResult.value != null) {
+      final result = controller.ocrResult.value!;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Extracted text', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.verified_outlined,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Extracted on this device. This text has not been reviewed or analyzed.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: theme.colorScheme.outlineVariant),
+                  ),
+                  child: SelectableText(
+                    result.snapshot.text,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.pagePaddingSmall),
+          AppButton.secondary(
+            label: 'Extract text again',
+            icon: Icons.document_scanner_outlined,
+            onPressed: controller.isNativeSettling.value
+                ? null
+                : () => controller.extractText(),
+          ),
+        ],
+      );
+    }
+
+    return AppButton.primary(
+      label: 'Extract text',
+      icon: Icons.document_scanner_outlined,
+      isLoading: controller.isProcessing.value,
+      onPressed:
+          (controller.isProcessing.value || controller.isNativeSettling.value)
+          ? null
+          : () => controller.extractText(),
+    );
+  }
+
   Widget _buildPreviewArea(
     BuildContext context,
     SelectedImageDescriptor image,
   ) {
     final theme = Theme.of(context);
-    return Card(
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      height: 320,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? Colors.black26 : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
+      ),
       clipBehavior: Clip.antiAlias,
-      margin: EdgeInsets.zero,
-      elevation: 2,
-      child: Container(
-        height: 320,
-        width: double.infinity,
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        child: InteractiveViewer(
-          minScale: 1.0,
-          maxScale: 4.0,
-          clipBehavior: Clip.hardEdge,
-          child: Center(
-            child: imageBuilder != null
-                ? imageBuilder!(context, image.filePath)
-                : Image.file(
-                    File(image.filePath),
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => Center(
-                      child: Text(
-                        'Unable to load preview',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.error,
-                        ),
+      child: InteractiveViewer(
+        minScale: 0.8,
+        maxScale: 4.0,
+        child: Center(
+          child: imageBuilder != null
+              ? imageBuilder!(context, image.filePath)
+              : Image.file(
+                  File(image.filePath),
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.broken_image_outlined,
+                            size: 40,
+                            color: theme.colorScheme.error,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Unable to display image preview.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-          ),
+                ),
         ),
       ),
     );
@@ -295,46 +535,56 @@ class InputScreenshotScreen extends GetView<InputScreenshotController> {
     SelectedImageDescriptor image,
   ) {
     final theme = Theme.of(context);
+    final sizeKb = (image.byteCount / 1024).toStringAsFixed(1);
+    final sizeMb = (image.byteCount / (1024 * 1024)).toStringAsFixed(2);
+    final formattedSize = image.byteCount > 1024 * 1024
+        ? '$sizeMb MB'
+        : '$sizeKb KB';
+    final formatLabel = image.format.name.toUpperCase();
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Image details', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            runSpacing: 4,
             children: [
-              Text('Format', style: theme.textTheme.bodyMedium),
+              Text('Format', style: theme.textTheme.bodySmall),
               Text(
-                image.formatName,
+                formatLabel,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
           const Divider(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            runSpacing: 4,
             children: [
-              Text('Dimensions', style: theme.textTheme.bodyMedium),
+              Text('Dimensions', style: theme.textTheme.bodySmall),
               Text(
-                image.dimensionsText,
+                '${image.width} × ${image.height} px',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
           const Divider(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            runSpacing: 4,
             children: [
-              Text('Size', style: theme.textTheme.bodyMedium),
+              Text('File size', style: theme.textTheme.bodySmall),
               Text(
-                image.formattedFileSize,
+                formattedSize,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

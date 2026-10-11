@@ -94,6 +94,15 @@ Module 12's original `unknownRoute` configuration did not enforce this policy: G
 *   **Android Lost-Data Recovery:** `ScreenshotRecoveryCoordinator` handles Android activity destruction during image picker interactions using `ImagePicker.retrieveLostData()`.
 *   **Interactive Preview:** `InputScreenshotScreen` uses `InteractiveViewer` with constrained min/max scale factors (0.8x - 4.0x) to allow inspection of suspicious screenshots before any future extraction/analysis. Leaving with an active preview prompts for discard confirmation.
 
+## On-Device OCR, Script Limitations, and Reader Lifecycle (Module 18)
+
+*   **Google ML Kit On-Device Recognition:** Uses `google_mlkit_text_recognition: 0.17.1` configured strictly for Latin script (`TextRecognitionScript.latin`). The Flutter bridge is community-maintained by `flutter-ml.dev` and wraps Google's on-device C++/Java ML Kit libraries without requiring API keys, cloud accounts, or network requests.
+*   **Deliberate User Request:** OCR is never triggered automatically upon image selection or picker recovery. Extraction requires an intentional tap on "Extract text from image".
+*   **Script & Accuracy Transparency:** Explicit UI notices inform users of Latin alphabet limitations and that OCR is imperfect and unreviewed. Extracted text is presented in a selectable read-only container with an unreviewed warning banner.
+*   **Safe Error Handling & Recovery:** Failures (`OcrFailure`) map to user-friendly messages for empty text, exceeded limits (10,000 runes / 40,000 UTF-8 bytes), unsupported platform (desktop/web), timeout, or cancellation. Users are given explicit recovery actions ("Retry extraction" or "Enter message text manually").
+*   **Truthful Native Settling State:** Cancellation or timeout cannot immediately abort a background native C++ thread. The controller tracks `isNativeSettling` to prevent overlapping native calls while a prior thread finishes, resetting the settling state only when native execution completes.
+*   **File Reader Lifecycle Coordination:** `InputScreenshotController` tracks `_activeReadingFiles`. Active native OCR readers prevent premature temporary file deletion during replacement, removal, or controller disposal; pending file deletions are queued and executed safely only once native readers release their handles.
+
 ## Repository Separation
 
 *   `frontend/`: The complete Flutter application and its client-side integrations.

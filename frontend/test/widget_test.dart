@@ -38,7 +38,7 @@ void main() {
     expect(find.text('Screenshot'), findsOneWidget);
     expect(find.text('Link or QR code'), findsOneWidget);
     expect(find.text('Preparation available'), findsOneWidget);
-    expect(find.text('Preview available'), findsOneWidget);
+    expect(find.text('Text extraction available'), findsOneWidget);
     expect(find.text('Coming soon'), findsOneWidget);
     expect(find.text('Enter message'), findsOneWidget);
     expect(find.text('Choose screenshot'), findsOneWidget);

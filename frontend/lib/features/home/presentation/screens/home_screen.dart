@@ -60,10 +60,10 @@ class HomeScreen extends GetView<HomeController> {
             ),
             const _InputOptionCard(
               title: 'Screenshot',
-              description: 'For suspicious messages captured in an image. Image preview is available; text extraction is coming soon.',
+              description: 'For suspicious messages captured in an image. Preview and local text extraction are available; scam analysis is coming soon.',
               icon: Icons.image_outlined,
               route: AppRoutes.inputScreenshot,
-              statusText: 'Preview available',
+              statusText: 'Text extraction available',
               actionLabel: 'Choose screenshot',
             ),
             const SizedBox(height: AppSpacing.pagePaddingSmall),

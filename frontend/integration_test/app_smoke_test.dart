@@ -1,11 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:get/get.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/features/home/presentation/controllers/home_controller.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trustcue_mobile/features/input/data/services/default_text_recognition_service.dart';
+import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/onboarding/data/onboarding_preferences.dart';
 
 import 'package:trustcue_mobile/main.dart' as app;
@@ -152,5 +158,59 @@ void main() {
     expect(Get.key.currentState!.canPop(), isFalse);
     expect(Get.find<HomeController>(), same(controller));
     expect(find.text('Understand the signals.'), findsOneWidget);
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
+  testWidgets('Real native OCR integration test with synthetic fixture', (
+    WidgetTester tester,
+  ) async {
+    // 1. Load the bundled asset fixture
+    final byteData = await rootBundle.load('assets/fixtures/ocr_test_card.png');
+    final bytes = byteData.buffer.asUint8List();
+
+    // 2. Write to a temporary file on the device
+    final tempDir = await getTemporaryDirectory();
+    final fixtureFile = File('${tempDir.path}/real_device_ocr_fixture.png');
+    await fixtureFile.writeAsBytes(bytes, flush: true);
+
+    expect(await fixtureFile.exists(), isTrue);
+
+    // 3. Create real native DefaultTextRecognitionService
+    final ocrService = DefaultTextRecognitionService();
+
+    // 4. Exercise real native OCR against the fixture
+    final result = await ocrService.processImage(
+      filePath: fixtureFile.path,
+      imageRevision: 'real-fixture-1',
+      operationToken: 'device-ocr-op',
+      timeout: const Duration(seconds: 30),
+    );
+
+    // 5. Assert recognition outcome
+    expect(
+      result.isSuccess,
+      isTrue,
+      reason:
+          'Native OCR should succeed on real device: ${result.failureOrNull?.message}',
+    );
+    final ocrResult = result.valueOrNull!;
+
+    // 6. Assert stable expected words while allowing whitespace/formatting variance
+    final text = ocrResult.snapshot.text.toLowerCase();
+    expect(text, contains('trustcue'), reason: 'Recognized text: $text');
+    expect(text, contains('ocr'), reason: 'Recognized text: $text');
+    expect(text, contains('test'), reason: 'Recognized text: $text');
+    expect(text, contains('verify'), reason: 'Recognized text: $text');
+    expect(text, contains('act'), reason: 'Recognized text: $text');
+
+    // 7. Verify source and snapshot invariants
+    expect(ocrResult.snapshot.source, InputSource.screenshot);
+    expect(ocrResult.script, 'latin');
+    expect(ocrResult.limitations.isNotEmpty, isTrue);
+
+    // 8. Clean up
+    await ocrService.dispose();
+    if (await fixtureFile.exists()) {
+      await fixtureFile.delete();
+    }
   }, timeout: const Timeout(Duration(minutes: 2)));
 }
