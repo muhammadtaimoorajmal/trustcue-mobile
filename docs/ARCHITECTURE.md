@@ -6,11 +6,15 @@ TrustCue is structured to grow sustainably while maintaining a clean separation 
 
 *   `app/`: Owns application composition (`GetMaterialApp`), centralized route definitions, exact route resolution, and route bindings.
 *   `core/`: Contains genuinely shared, cross-feature concerns (e.g., logging).
+    *   `core/errors/`: Owns structured failure categories (`AnalysisFailure`, `AnalysisFailureCode`).
+    *   `core/types/`: Owns typed monads and outcome types (`Result<T>`, `Success<T>`, `Failure<T>`).
     *   `core/theme/`: Owns the visual design system (`AppTheme`, `AppColors`, `AppSemanticColors`). Feature widgets must consume these centralized theme roles (e.g., `Theme.of(context)`) rather than hardcoding raw colors or using template defaults.
-    *   `core/widgets/`: Contains reusable, cross-feature UI components (`AppButton`, `AppTextField`, `AppCard`). These wrap Material components with consistent styling, behaviors, and accessibility defaults. They do not contain business logic or domain models.
+    *   `core/widgets/`: Contains reusable, cross-feature UI components (`AppButton`, `AppTextField`, `AppCard`, `AppPageBody`). These wrap Material components with consistent styling, behaviors, and accessibility defaults. They do not contain business logic or domain models.
 *   `dev/`: Contains development-only utilities and standalone previews (e.g., `component_preview.dart`). These must not be imported by production routes.
 *   `features/<feature>/presentation/`: Contains the feature's UI screens, widgets, and state controllers.
-*   *Future Data/Domain:* Feature-specific data access, models, and business logic will be placed within the owning feature when implemented. Business rules, network calls, OCR, and persistence must remain completely separated from UI components. Domain layers or additional abstractions should be introduced *only* when actual complexity requires them.
+*   `features/<feature>/domain/`: Contains platform-independent business models, invariants, and abstract service contracts (e.g., `TextSnapshot`, `AnalysisReport`, `AnalysisService`). Domain entities must never import Flutter widgets, GetX, or platform plugins.
+*   `features/<feature>/data/`: Contains feature data sources and serialization codecs (e.g., `TextSnapshotCodec`, `AnalysisReportCodec`).
+*   *Future Data/Domain:* Feature-specific data access, models, and business logic remain strictly isolated within the owning feature. Business rules, network calls, OCR, and persistence must remain completely separated from UI components. Domain layers or additional abstractions should be introduced *only* when actual complexity requires them.
 
 ## Layout and Boundaries
 
@@ -39,6 +43,16 @@ Module 14 retires the initial counter demonstration completely from production c
 * Debounced navigation: Actions prevent rapid repeated taps from pushing duplicate routes onto the stack.
 
 The input preparation screens (`InputTextScreen`, `InputScreenshotScreen`, `InputLinkScreen`) share a responsive `InputPreparationLayout` adhering to `AppPageBody`. They clearly display the chosen method, relevant method-specific safety guidance, honest "Coming soon" status, and a "Review safe-use guidance" button linking to `/safe-use`. Exact-path routing resolution applies to all three input routes.
+
+## Typed Data Contracts and Analysis Interfaces (Module 15)
+
+Module 15 establishes platform-independent domain models, typed outcomes, and version-1 serialization codecs for intake and scam indicator analysis:
+*   **Platform Independence:** Domain models (`TextSnapshot`, `EvidenceReference`, `AnalysisFinding`, `AnalysisReport`) and the asynchronous `AnalysisService` contract are pure Dart with zero dependencies on Flutter UI, GetX, HTTP clients, or plugins.
+*   **One-Way Dependency Flow:** The analysis feature consumes input snapshot contracts, but the input feature has no dependencies on analysis models or logic.
+*   **Immutability & Defensive Copying:** All domain models are immutable and defensively copy collection properties (`List.unmodifiable`), enforcing invariants in public constructors.
+*   **Strict Evidence Grounding:** `EvidenceReference` uses 0-based UTF-16 code-unit offsets and enforces exact substring matching against the referenced `TextSnapshot`. Boundaries are guarded to prevent splitting UTF-16 surrogate pairs (e.g., emojis). Invented quotes or approximate spans are strictly rejected.
+*   **Version-1 Serialization Policy:** `AnalysisReportCodec`, `AnalysisFindingCodec`, `EvidenceReferenceCodec`, and `TextSnapshotCodec` implement strict encoding and decoding. Timestamps require explicit timezone indicators and normalize to UTC; integer offsets reject string or float coercion. Unknown top-level fields are safely ignored for future forward compatibility while invariants remain enforced.
+*   **Privacy & Diagnostic Boundaries:** Errors and `Result.failure` wrap `AnalysisFailure` with standardized codes (`invalidInput`, `unsupportedInput`, `unavailable`, `timeout`, `cancelled`, `malformedData`). Diagnostic output (`toString()`) strictly excludes user-submitted text, credentials, or provider response bodies.
 
 ## Startup and Onboarding (Module 13)
 

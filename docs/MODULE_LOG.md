@@ -145,3 +145,24 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Device install and launch: Successfully installed on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34) and verified `mFocusedApp=MainActivity`.
 - **Manual Verification:** Human phone visual checklist provided for inspecting dashboard layout, entering each input preparation screen, verifying safe-use review navigation, testing back button behavior, and background/resume lifecycle.
 - **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.
+
+## Module 15: Typed Data Models, Serialization, Errors, and Analysis Interfaces
+- **Scope:** Implement platform-independent data foundation for input intake and scam indicator analysis without UI changes or runtime wiring. Define `InputSource` enum and immutable `TextSnapshot`. Implement `FindingOrigin`, `EvidenceReference` with UTF-16 code-unit offsets and surrogate-pair boundary validation, `AnalysisFinding` with defensive unmodifiable collections, `AnalysisReport` grouping findings, limitations, and suggested actions. Define typed `Result<T>` monad and privacy-preserving `AnalysisFailure`. Implement asynchronous `AnalysisService` contract. Author strict version-1 JSON serialization codecs (`TextSnapshotCodec`, `EvidenceReferenceCodec`, `AnalysisFindingCodec`, `AnalysisReportCodec`).
+- **Branch:** `frontend`
+- **Domain & Serialization Models:**
+  - `lib/core/errors/analysis_failure.dart`: Standardized failure codes (`invalidInput`, `unsupportedInput`, `unavailable`, `timeout`, `cancelled`, `malformedData`). Diagnostic output strictly omits submitted user text and credentials.
+  - `lib/core/types/result.dart`: Generic `Result<T>` (`Success<T>` and `Failure<T>`) outcome type.
+  - `lib/features/input/domain/models/`: `InputSource` (`messageText`, `screenshot`, `link`, `qrCode`), `TextSnapshot`.
+  - `lib/features/input/data/serialization/`: `TextSnapshotCodec`.
+  - `lib/features/analysis/domain/models/`: `FindingOrigin` (`localRule`, `remoteAi`), `EvidenceReference`, `AnalysisFinding`, `AnalysisReport`.
+  - `lib/features/analysis/domain/contracts/`: `AnalysisService` (asynchronous interface).
+  - `lib/features/analysis/data/serialization/`: `EvidenceReferenceCodec`, `AnalysisFindingCodec`, `AnalysisReportCodec`.
+  - `docs/DATA_CONTRACTS.md`: Comprehensive documentation of models, fields, strict version-1 JSON policy, and synthetic example.
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (55 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (116/116 tests passed across 8 suites, adding 53 new data model, serialization, and error handling tests).
+  - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (`build/app/outputs/flutter-apk/app-debug.apk` built in 22.6s).
+  - `git diff --check`: PASS (clean whitespace).
+- **Device Verification:** Module 14's physical-device install and smoke-test PASS on Vivo V2207 (`10AC9R1ABF0013A`) is retained as historical verification. No UI or runtime integration changed; device re-installation was not required for pure data contracts.
+- **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.
