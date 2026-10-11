@@ -14,7 +14,7 @@ void main() {
     Get.reset();
   });
 
-  testWidgets('TrustCueApp renders title and counter increments', (
+  testWidgets('TrustCueApp renders title and dashboard elements', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -23,21 +23,32 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('TrustCue'), findsOneWidget);
+    expect(find.text('Understand the signals.'), findsOneWidget);
+    expect(
+      find.text('Choose how you want to review a suspicious message or link.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Analysis is not available in this development build yet.'),
+      findsOneWidget,
+    );
 
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify all 3 input options and availability text
+    expect(find.text('Message text'), findsOneWidget);
+    expect(find.text('Screenshot'), findsOneWidget);
+    expect(find.text('Link or QR code'), findsOneWidget);
+    expect(find.text('Coming soon'), findsNWidgets(3));
+    expect(find.text('View input options'), findsNWidgets(3));
 
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Verify safety guidance card
+    expect(find.text('Pause before you act.'), findsOneWidget);
+    expect(find.text('Review safe-use guidance'), findsOneWidget);
 
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
-
-    // Verify ordinary rebuild doesn't reset counter
+    // Verify ordinary rebuild preserves dashboard
     await tester.pumpWidget(
       TrustCueApp(preferences: FakeOnboardingPreferences(value: 1)),
     );
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Understand the signals.'), findsOneWidget);
   });
 
   testWidgets('Home route lifecycle and controller disposal', (
@@ -57,20 +68,22 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('0'), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Understand the signals.'), findsOneWidget);
+    expect(Get.isRegistered<HomeController>(), isTrue);
+    final controller = Get.find<HomeController>();
 
     // Push another route, state should be preserved
     Get.toNamed('/test');
     await tester.pumpAndSettle();
     expect(find.text('Test Screen'), findsOneWidget);
+    expect(Get.isRegistered<HomeController>(), isTrue);
+    expect(Get.find<HomeController>(), same(controller));
 
     // Return to home, state should be preserved
     Get.back();
     await tester.pumpAndSettle();
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Understand the signals.'), findsOneWidget);
+    expect(Get.find<HomeController>(), same(controller));
 
     // Remove home route entirely
     Get.offAllNamed('/test');
@@ -83,10 +96,11 @@ void main() {
     // Re-enter home, state should be fresh
     Get.offAllNamed(AppRoutes.home);
     await tester.pumpAndSettle();
-    expect(find.text('0'), findsOneWidget);
+    expect(find.text('Understand the signals.'), findsOneWidget);
+    expect(Get.isRegistered<HomeController>(), isTrue);
   });
 
-  testWidgets('Theme switching preserves counter and updates appearance', (
+  testWidgets('Theme switching preserves dashboard and updates appearance', (
     WidgetTester tester,
   ) async {
     // Start with light mode
@@ -100,11 +114,7 @@ void main() {
     BuildContext context = tester.element(find.byType(Scaffold));
     expect(Theme.of(context).brightness, Brightness.light);
     expect(Theme.of(context).scaffoldBackgroundColor, const Color(0xFFF8F9FA));
-
-    // Tap to increment counter
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pumpAndSettle();
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Understand the signals.'), findsOneWidget);
 
     // Switch to dark mode
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
@@ -115,8 +125,8 @@ void main() {
     expect(Theme.of(context).brightness, Brightness.dark);
     expect(Theme.of(context).scaffoldBackgroundColor, const Color(0xFF121212));
 
-    // Verify counter is preserved
-    expect(find.text('1'), findsOneWidget);
+    // Verify dashboard is preserved
+    expect(find.text('Understand the signals.'), findsOneWidget);
 
     // Reset brightness
     tester.platformDispatcher.clearPlatformBrightnessTestValue();
@@ -183,7 +193,8 @@ void main() {
 
     // Verify UI is present and didn't crash/overflow fatally (pumpAndSettle completes)
     expect(find.text('TrustCue'), findsOneWidget);
-    expect(find.text('0'), findsOneWidget);
+    expect(find.text('Understand the signals.'), findsOneWidget);
+    expect(find.text('Message text'), findsOneWidget);
 
     // Reset test values
     tester.platformDispatcher.clearTextScaleFactorTestValue();

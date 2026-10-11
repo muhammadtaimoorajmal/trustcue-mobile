@@ -125,3 +125,23 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Analyzer: Fresh `flutter analyze --no-pub` reported 0 issues across the workspace; editor problem markers were stale artifacts.
 - **Verification:** All 51 widget/unit tests PASS via `tool/test.ps1 -Suite all`. Formatting passes with 0 changes.
 - **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.
+
+## Module 14: TrustCue Home Dashboard and Input-Method Navigation
+- **Scope:** Retire the temporary counter demonstration completely from production and test code. Replace Home (`/`) with the product dashboard featuring brand header ("Understand the signals."), supporting copy, honest development status ("Analysis is not available in this development build yet."), three vertically structured input method cards with "Coming soon" badges and buttons navigating to `/input/text`, `/input/screenshot`, and `/input/link`, and a "Pause before you act." safety guidance card routing to `/safe-use`. Implement dedicated input preparation screens (`InputTextScreen`, `InputScreenshotScreen`, `InputLinkScreen`) sharing `InputPreparationLayout` with method safety tips, "Coming soon" notices, and safe-use review button. Register routes and exact-path resolution. Implement debounced navigation to prevent multi-push races.
+- **Branch:** `frontend`
+- **Retired Components:**
+  - `HomeController`: Removed `_counter` observable state, getter, and `incrementCounter()`.
+  - Floating action button and counter text removed from `HomeScreen`.
+  - All counter test assertions retired across widget tests, onboarding tests, navigation tests, and integration smoke test.
+- **Route Additions:**
+  - `AppRoutes.inputText` (`/input/text`) -> `InputTextScreen`
+  - `AppRoutes.inputScreenshot` (`/input/screenshot`) -> `InputScreenshotScreen`
+  - `AppRoutes.inputLink` (`/input/link`) -> `InputLinkScreen`
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (34 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (63/63 tests passed across 4 suites: 29 navigation, 16 onboarding, 5 widget/theme, 13 core/layout).
+  - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (`build/app/outputs/flutter-apk/app-debug.apk` built in 23.4s).
+  - Device install and launch: Successfully installed on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34) and verified `mFocusedApp=MainActivity`.
+- **Manual Verification:** Human phone visual checklist provided for inspecting dashboard layout, entering each input preparation screen, verifying safe-use review navigation, testing back button behavior, and background/resume lifecycle.
+- **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.

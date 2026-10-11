@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/app/trustcue_app.dart';
 import 'package:trustcue_mobile/core/widgets/app_button.dart';
+import 'package:trustcue_mobile/core/widgets/app_card.dart';
 import 'package:trustcue_mobile/features/home/presentation/controllers/home_controller.dart';
 
 // Observe the real Navigator rather than inferring its stack from visible text.
@@ -64,18 +65,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> increment(WidgetTester tester) async {
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-    expect(find.text('1'), findsOneWidget);
-  }
-
-  testWidgets('Normal startup opens Home and increments', (tester) async {
+  testWidgets('Normal startup opens Home dashboard', (tester) async {
     await start(tester);
     expect(stack.names, [AppRoutes.home]);
     expect(find.text('TrustCue'), findsOneWidget);
-    expect(find.text('0'), findsOneWidget);
-    await increment(tester);
+    expect(find.text('Understand the signals.'), findsOneWidget);
+    expect(Get.isRegistered<HomeController>(), isTrue);
   }, timeout: timeout);
 
   for (final frameworkBack in [false, true]) {
@@ -83,7 +78,6 @@ void main() {
       'About returns with ${frameworkBack ? 'framework' : 'app-bar'} back and retains controller',
       (tester) async {
         await start(tester);
-        await increment(tester);
         final controller = Get.find<HomeController>();
         await tester.tap(find.byTooltip('About TrustCue'));
         await tester.pumpAndSettle();
@@ -98,7 +92,7 @@ void main() {
         expect(stack.names, [AppRoutes.home]);
         expect(Get.find<HomeController>(), same(controller));
         expect(controller.isClosed, isFalse);
-        expect(find.text('1'), findsOneWidget);
+        expect(find.text('Understand the signals.'), findsOneWidget);
       },
       timeout: timeout,
     );
@@ -162,8 +156,8 @@ void main() {
       await tester.tap(find.text('Return to Home'));
       await tester.pumpAndSettle();
       expect(stack.names, [AppRoutes.home]);
-      expect(find.text('0'), findsOneWidget);
-      await increment(tester);
+      expect(find.text('Understand the signals.'), findsOneWidget);
+      expect(Get.isRegistered<HomeController>(), isTrue);
     }, timeout: timeout);
   }
 
@@ -171,7 +165,6 @@ void main() {
     tester,
   ) async {
     await start(tester);
-    await increment(tester);
     final homeRoute = stack.routes.single;
     final controller = Get.find<HomeController>();
     await tester.tap(find.byTooltip('About TrustCue'));
@@ -193,7 +186,7 @@ void main() {
     expect(stack.routes, [homeRoute]);
     expect(Get.find<HomeController>(), same(controller));
     expect(controller.isClosed, isFalse);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Understand the signals.'), findsOneWidget);
     expect(Get.key.currentState!.canPop(), isFalse);
     expect(tester.takeException(), isNull);
   }, timeout: timeout);
@@ -202,7 +195,6 @@ void main() {
     'Home removal disposes controller and repeated recovery registers a fresh Home',
     (tester) async {
       await start(tester);
-      await increment(tester);
       final oldController = Get.find<HomeController>();
       final returned = expectLater(
         Get.offAllNamed('/unsupported'),
@@ -223,19 +215,121 @@ void main() {
       await returned;
       expect(stack.names, [AppRoutes.home]);
       expect(Get.find<HomeController>(), isNot(same(oldController)));
-      expect(find.text('0'), findsOneWidget);
-      await increment(tester);
+      expect(find.text('Understand the signals.'), findsOneWidget);
+      expect(Get.isRegistered<HomeController>(), isTrue);
       expect(Get.key.currentState!.canPop(), isFalse);
       expect(tester.takeException(), isNull);
     },
     timeout: timeout,
   );
 
+  // Input preparation screens navigation tests
+  for (final option in [
+    (title: 'Message text', route: AppRoutes.inputText),
+    (title: 'Screenshot', route: AppRoutes.inputScreenshot),
+    (title: 'Link or QR code', route: AppRoutes.inputLink),
+  ]) {
+    testWidgets(
+      'Input option ${option.title} opens ${option.route} and returns with back',
+      (tester) async {
+        await start(tester);
+        final controller = Get.find<HomeController>();
+        await tester.ensureVisible(find.text(option.title));
+        await tester.pumpAndSettle();
+
+        // Find the card containing this option and tap its button
+        final cardFinder = find.ancestor(
+          of: find.text(option.title),
+          matching: find.byType(AppCard),
+        );
+        final buttonFinder = find.descendant(
+          of: cardFinder,
+          matching: find.text('View input options'),
+        );
+        await tester.tap(buttonFinder);
+        await tester.pumpAndSettle();
+
+        expect(Get.currentRoute, option.route);
+        expect(stack.names, [AppRoutes.home, option.route]);
+        expect(find.text(option.title), findsWidgets);
+        expect(find.text('Coming soon'), findsOneWidget);
+        expect(find.text('Safety reminder'), findsOneWidget);
+
+        // Navigate to guidance from input preparation screen
+        await tester.ensureVisible(find.text('Review safe-use guidance'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Review safe-use guidance'));
+        await tester.pumpAndSettle();
+        expect(Get.currentRoute, AppRoutes.guidance);
+        expect(stack.names, [AppRoutes.home, option.route, AppRoutes.guidance]);
+
+        // Pop back to input preparation screen
+        await tester.tap(find.byType(BackButton));
+        await tester.pumpAndSettle();
+        expect(Get.currentRoute, option.route);
+        expect(stack.names, [AppRoutes.home, option.route]);
+
+        // Pop back to Home
+        await tester.tap(find.byType(BackButton));
+        await tester.pumpAndSettle();
+        expect(Get.currentRoute, AppRoutes.home);
+        expect(stack.names, [AppRoutes.home]);
+        expect(Get.find<HomeController>(), same(controller));
+        expect(find.text('Understand the signals.'), findsOneWidget);
+      },
+      timeout: timeout,
+    );
+  }
+
+  testWidgets(
+    'Input screen with no previous route returns deterministically to Home',
+    (tester) async {
+      await start(tester, route: AppRoutes.inputText);
+      expect(Get.currentRoute, AppRoutes.inputText);
+      expect(stack.names, [AppRoutes.inputText]);
+
+      // Tap back button when no previous page exists
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(Get.currentRoute, AppRoutes.home);
+      expect(stack.names, [AppRoutes.home]);
+      expect(find.text('Understand the signals.'), findsOneWidget);
+    },
+    timeout: timeout,
+  );
+
+  testWidgets('Rapid repeated input action taps push only once', (
+    tester,
+  ) async {
+    await start(tester);
+    final cardFinder = find.ancestor(
+      of: find.text('Message text'),
+      matching: find.byType(AppCard),
+    );
+    final buttonFinder = find.descendant(
+      of: cardFinder,
+      matching: find.byType(AppButton),
+    );
+    final button = tester.widget<AppButton>(buttonFinder);
+    button.onPressed!();
+    button.onPressed!();
+    button.onPressed!();
+    await tester.pumpAndSettle();
+    expect(stack.names, [AppRoutes.home, AppRoutes.inputText]);
+  }, timeout: timeout);
+
   for (final entry in {
     '/about?source=synthetic': AppRoutes.about,
     '/?source=synthetic': AppRoutes.home,
+    '/input/text?source=synthetic': AppRoutes.inputText,
+    '/input/screenshot?source=synthetic': AppRoutes.inputScreenshot,
+    '/input/link?source=synthetic': AppRoutes.inputLink,
     '/about/': AppRoutes.notFound,
     '/about/unknown?source=synthetic': AppRoutes.notFound,
+    '/input/text/': AppRoutes.notFound,
+    '/input/text/extra': AppRoutes.notFound,
+    '/input/screenshot/': AppRoutes.notFound,
+    '/input/link/': AppRoutes.notFound,
     'https://example.invalid/about': AppRoutes.notFound,
     '/about#section': AppRoutes.notFound,
   }.entries) {

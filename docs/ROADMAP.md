@@ -28,7 +28,7 @@ This roadmap outlines the complete 50-module development plan for TrustCue, repl
 | **11** | Responsive layout (`AppPageBody`), safe areas, spacing, keyboard behavior | Completed (`1dc5d3d`) | `frontend` |
 | **12** | Application navigation, About, fallback screen, and route recovery (includes Module 12A repair) | Completed (`b133586`) | `frontend` |
 | **13** | First-run onboarding, safe-use guidance, build repair, preference persistence, and verification (includes Module 13A reconciliation) | Completed (`68aa084`) | `frontend` |
-| **14** | Home dashboard and input-method navigation | Planned | `frontend` |
+| **14** | Home dashboard and input-method navigation | Completed | `frontend` |
 | **15** | Typed input/finding/report contracts, serialization, errors, service interfaces | Planned | `frontend` |
 | **16** | Pasted-text input, normalization, validation, and limits | Planned | `frontend` |
 | **17** | Screenshot selection, preview, temporary-file lifecycle | Planned | `frontend` |

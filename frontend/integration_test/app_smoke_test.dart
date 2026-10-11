@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:get/get.dart';
 import 'package:trustcue_mobile/app/routes/app_routes.dart';
+import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/features/home/presentation/controllers/home_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trustcue_mobile/features/onboarding/data/onboarding_preferences.dart';
@@ -70,34 +71,37 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Welcome to TrustCue'), findsNothing);
 
-    // Verify that the title is visible
+    // Verify that the dashboard is visible
     expect(find.text('TrustCue'), findsOneWidget);
-
-    // Verify the counter starts at zero
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Find the increment button and tap it
-    final fabFinder = find.byIcon(Icons.add);
-    expect(fabFinder, findsOneWidget);
-
-    await tester.tap(fabFinder);
-
-    // Wait for animations and state updates
-    await tester.pumpAndSettle();
-
-    // Verify the count has changed
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
-
-    // Tap again to confirm successive increments
-    await tester.tap(fabFinder);
-    await tester.pumpAndSettle();
-
-    expect(find.text('1'), findsNothing);
-    expect(find.text('2'), findsOneWidget);
+    expect(find.text('Understand the signals.'), findsOneWidget);
+    expect(find.text('Message text'), findsOneWidget);
+    expect(find.text('Screenshot'), findsOneWidget);
+    expect(find.text('Link or QR code'), findsOneWidget);
 
     final controller = Get.find<HomeController>();
+
+    // Verify navigating to an input preparation screen and returning
+    final viewInputFinder = find
+        .widgetWithText(AppButton, 'View input options')
+        .first;
+    await tester.ensureVisible(viewInputFinder);
+    await tester.pumpAndSettle();
+    await tester.tap(viewInputFinder);
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, AppRoutes.inputText);
+    expect(find.text('Message text'), findsWidgets);
+    expect(find.text('Safety reminder'), findsOneWidget);
+
+    // Return to Home via back button
+    final backFinder = find.byType(BackButton);
+    expect(backFinder, findsOneWidget);
+    await tester.tap(backFinder);
+    await tester.pumpAndSettle();
+
+    expect(Get.currentRoute, AppRoutes.home);
+    expect(Get.find<HomeController>(), same(controller));
+    expect(find.text('Understand the signals.'), findsOneWidget);
 
     // Verify Home -> About -> Home flow
     final aboutFinder = find.byTooltip('About TrustCue');
@@ -110,8 +114,6 @@ void main() {
       findsOneWidget,
     );
 
-    final backFinder = find.byType(BackButton);
-    expect(backFinder, findsOneWidget);
     await tester.ensureVisible(find.text('Review safe-use guidance'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Review safe-use guidance'));
@@ -125,9 +127,9 @@ void main() {
     await tester.tap(backFinder);
     await tester.pumpAndSettle();
 
-    // Verify counter state is preserved
+    // Verify Home dashboard is preserved
     expect(find.text('TrustCue'), findsWidgets);
-    expect(find.text('2'), findsOneWidget);
+    expect(find.text('Understand the signals.'), findsOneWidget);
 
     await tester.tap(aboutFinder);
     await tester.pumpAndSettle();
@@ -135,7 +137,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(Get.currentRoute, AppRoutes.home);
     expect(Get.find<HomeController>(), same(controller));
-    expect(find.text('2'), findsOneWidget);
+    expect(find.text('Understand the signals.'), findsOneWidget);
 
     await tester.tap(aboutFinder);
     await tester.pumpAndSettle();
@@ -151,6 +153,6 @@ void main() {
     expect(Get.currentRoute, AppRoutes.home);
     expect(Get.key.currentState!.canPop(), isFalse);
     expect(Get.find<HomeController>(), same(controller));
-    expect(find.text('2'), findsOneWidget);
+    expect(find.text('Understand the signals.'), findsOneWidget);
   }, timeout: const Timeout(Duration(minutes: 2)));
 }

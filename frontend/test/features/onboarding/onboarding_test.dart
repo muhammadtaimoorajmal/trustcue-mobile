@@ -105,16 +105,14 @@ void main() {
       expect(Get.key.currentState!.canPop(), isFalse);
       expect(store.value, 1);
       expect(controller.isClosed, isTrue);
-      await tester.tap(find.byIcon(Icons.add));
-      await tester.pump();
-      expect(find.text('1'), findsOneWidget);
+      expect(find.text('Understand the signals.'), findsOneWidget);
       // New root and GetX lifecycle with the same saved data, not a process restart.
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
       Get.reset();
       await start(tester, store);
       expect(Get.currentRoute, AppRoutes.home);
-      expect(find.text('0'), findsOneWidget);
+      expect(find.text('Understand the signals.'), findsOneWidget);
       expect(store.writes, 1);
       expect(store.reads, 2);
     },
@@ -139,12 +137,10 @@ void main() {
   }, timeout: timeout);
 
   testWidgets(
-    'About review has no acknowledgment, writes, duplicates, or counter loss',
+    'About review has no acknowledgment, writes, duplicates, or home controller loss',
     (tester) async {
       final store = FakeOnboardingPreferences(value: 1);
       await start(tester, store);
-      await tester.tap(find.byIcon(Icons.add));
-      await tester.pump();
       final home = Get.find<HomeController>();
       await tester.tap(find.byTooltip('About TrustCue'));
       await tester.pumpAndSettle();
@@ -168,7 +164,7 @@ void main() {
       expect(Get.currentRoute, AppRoutes.home);
       expect(Get.key.currentState!.canPop(), isFalse);
       expect(Get.find<HomeController>(), same(home));
-      expect(find.text('1'), findsOneWidget);
+      expect(find.text('Understand the signals.'), findsOneWidget);
       expect(store.value, 1);
       expect(store.writes, 0);
     },

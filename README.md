@@ -4,7 +4,7 @@ TrustCue is a Mobile Application Development project for CS3643, BSCS Semester 5
 The application is designed to help people worldwide understand potential scam indicators in suspicious digital communication.
 
 ## Project Status
-The current foundation includes first-run onboarding with a locally remembered safe-use acknowledgment, review from About, a temporary counter Home, GetX state/bindings and exact named-route resolution, fallback screens, light/dark themes, responsive components, a separate component preview, and widget/device tests. Scam analysis, OCR, AI integration, report storage, and backend features are not implemented. The acknowledgment is an introduction, not consent to upload content. See the module log for Module 12A's routing repair and Module 13's onboarding checkpoint.
+The current foundation includes first-run onboarding with a locally remembered safe-use acknowledgment, review from About, the product Home dashboard with three input method navigation cards (`/input/text`, `/input/screenshot`, `/input/link`), GetX state/bindings and exact named-route resolution, fallback screens, light/dark themes, responsive components, a separate component preview, and widget/device tests. The temporary counter demonstration is retired. Scam analysis, OCR, AI integration, report storage, and backend features are not implemented yet. The acknowledgment is an introduction, not consent to upload content. See the module log for Module 12A's routing repair, Module 13's onboarding checkpoint, and Module 14's dashboard implementation.
 
 ## Repository Structure
 - `frontend/`: The Flutter application (TrustCue), including its client services and future local-storage adapters.
@@ -33,7 +33,7 @@ These commands assume dependencies are already resolved. On a fresh checkout, ru
 
 Module 13 adds `shared_preferences: 2.5.6` and uses `SharedPreferencesAsync`. On Windows, new Pub downloads can stay project-local by setting `$env:PUB_CACHE = Join-Path (Get-Location) '.pub-cache'` in the current terminal before `flutter pub get`; `.pub-cache/` is ignored. This is a process-scoped setting, not a global environment change. Flutter's SDK lock/cache and the existing Gradle cache still require their normal external-directory access.
 
-Startup reads only `trustcue.onboarding.completed_version` (integer `1`), with a labeled loading state and Retry on read failure. Missing, invalid, or old values show onboarding. Successful acknowledgment waits for saving before replacing onboarding with Home; failures stay retryable. About's “Review safe-use guidance” action reuses the content without saving or asking again. The temporary analysis-unavailable wording must be updated only when analysis is implemented. General preferences/history and process-restored counter state are not implemented.
+Startup reads only `trustcue.onboarding.completed_version` (integer `1`), with a labeled loading state and Retry on read failure. Missing, invalid, or old values show onboarding. Successful acknowledgment waits for saving before replacing onboarding with Home; failures stay retryable. About's “Review safe-use guidance” action reuses the content without saving or asking again. The temporary analysis-unavailable wording must be updated only when analysis is implemented. General preferences/history are not implemented, and the temporary counter demonstration is retired in Module 14.
 
 On Windows, run the focused navigation suite first with a bounded runner, then the unfiltered suite (both execute `flutter test --no-pub --reporter expanded`):
 
