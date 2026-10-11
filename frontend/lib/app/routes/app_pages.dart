@@ -6,15 +6,38 @@ import 'package:trustcue_mobile/features/home/presentation/screens/home_screen.d
 
 import 'package:trustcue_mobile/features/about/presentation/screens/about_screen.dart';
 import 'package:trustcue_mobile/features/not_found/presentation/screens/not_found_screen.dart';
+import 'package:trustcue_mobile/app/startup_screen.dart';
+import 'package:trustcue_mobile/features/onboarding/data/onboarding_preferences.dart';
+import 'package:trustcue_mobile/features/onboarding/presentation/bindings/onboarding_binding.dart';
+import 'package:trustcue_mobile/features/onboarding/presentation/screens/onboarding_screen.dart';
 
-abstract class AppPages {
-  static final pages = [
+class AppPages {
+  AppPages(this.preferences, {this.requestedRoute});
+  final OnboardingPreferences preferences;
+  final String? requestedRoute;
+  late final pages = [
     GetPage(
       name: AppRoutes.home,
       page: () => const HomeScreen(title: 'TrustCue'),
       binding: HomeBinding(),
     ),
     GetPage(name: AppRoutes.about, page: () => const AboutScreen()),
+    GetPage(
+      name: AppRoutes.startup,
+      page: () => StartupScreen(
+        preferences: preferences,
+        requestedRoute: requestedRoute,
+      ),
+    ),
+    GetPage(
+      name: AppRoutes.onboarding,
+      page: () => const OnboardingScreen(mode: OnboardingMode.firstRun),
+      binding: OnboardingBinding(preferences),
+    ),
+    GetPage(
+      name: AppRoutes.guidance,
+      page: () => const OnboardingScreen(mode: OnboardingMode.review),
+    ),
     unknownRoute,
   ];
 
@@ -25,7 +48,7 @@ abstract class AppPages {
 
   /// Exact paths only: queries do not select a different destination, while
   /// trailing slashes and unsupported descendants are not aliases.
-  static Route<dynamic> resolve(RouteSettings settings) {
+  Route<dynamic> resolve(RouteSettings settings) {
     final uri = Uri.tryParse(settings.name ?? '');
     var destination = unknownRoute;
     if (uri != null &&
@@ -50,7 +73,7 @@ abstract class AppPages {
     );
   }
 
-  static List<Route<dynamic>> initialRoutes(String name) => [
+  List<Route<dynamic>> initialRoutes(String name) => [
     resolve(RouteSettings(name: name)),
   ];
 }

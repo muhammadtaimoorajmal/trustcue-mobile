@@ -1,3 +1,5 @@
+import 'support/fake_onboarding_preferences.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -15,7 +17,9 @@ void main() {
   testWidgets('TrustCueApp renders title and counter increments', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const TrustCueApp());
+    await tester.pumpWidget(
+      TrustCueApp(preferences: FakeOnboardingPreferences(value: 1)),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('TrustCue'), findsOneWidget);
@@ -30,7 +34,9 @@ void main() {
     expect(find.text('1'), findsOneWidget);
 
     // Verify ordinary rebuild doesn't reset counter
-    await tester.pumpWidget(const TrustCueApp());
+    await tester.pumpWidget(
+      TrustCueApp(preferences: FakeOnboardingPreferences(value: 1)),
+    );
     expect(find.text('1'), findsOneWidget);
   });
 
@@ -39,7 +45,7 @@ void main() {
   ) async {
     // Add a test-only route to test navigation away and back
     final testRoutes = [
-      ...AppPages.pages,
+      ...AppPages(FakeOnboardingPreferences(value: 1)).pages,
       GetPage(
         name: '/test',
         page: () => const Scaffold(body: Text('Test Screen')),
@@ -85,7 +91,9 @@ void main() {
   ) async {
     // Start with light mode
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
-    await tester.pumpWidget(const TrustCueApp());
+    await tester.pumpWidget(
+      TrustCueApp(preferences: FakeOnboardingPreferences(value: 1)),
+    );
     await tester.pumpAndSettle();
 
     // Verify it's light theme
@@ -129,7 +137,9 @@ void main() {
   testWidgets('Theme colors meet contrast requirements', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const TrustCueApp());
+    await tester.pumpWidget(
+      TrustCueApp(preferences: FakeOnboardingPreferences(value: 1)),
+    );
     await tester.pumpAndSettle();
 
     // Test light theme contrast
@@ -166,7 +176,9 @@ void main() {
     tester.view.physicalSize = const Size(1080, 1920);
     tester.view.devicePixelRatio = 3.0;
 
-    await tester.pumpWidget(const TrustCueApp());
+    await tester.pumpWidget(
+      TrustCueApp(preferences: FakeOnboardingPreferences(value: 1)),
+    );
     await tester.pumpAndSettle();
 
     // Verify UI is present and didn't crash/overflow fatally (pumpAndSettle completes)

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:trustcue_mobile/app/routes/app_routes.dart';
+import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/core/widgets/app_card.dart';
 import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
 
@@ -58,6 +61,15 @@ class AboutScreen extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+            const SizedBox(height: 24),
+            AppButton.secondary(
+              label: 'Review safe-use guidance',
+              onPressed: () {
+                if (Get.currentRoute != AppRoutes.guidance) {
+                  Get.toNamed(AppRoutes.guidance);
+                }
+              },
             ),
           ],
         ),

@@ -92,3 +92,19 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 - **Device verification: BLOCKED / NOT RUN.** `flutter devices` confirmed V2207 (`10AC9R1ABF0013A`, Android 14/API 34, arm64). An existing VS Code Flutter debug session (PID 15140 at inspection) still owns this app/device. The owner was asked to stop it through VS Code; no stop confirmation was received before this checkpoint, and the process remained present. The repair did not terminate it or install over its running app. The extended device integration test and subsequent normal-app launch remain pending; this is not a device-test pass. Code checks permit this development checkpoint, but device verification remains incomplete.
 - **Human observations:** Still pending: About app-bar/native system back with counter retention, ordinary background/resume, predictive-back visuals, theme readability, enlarged text, rotation, and component-preview/keyboard behavior. Counter restoration after process termination remains outside scope.
 - **Checkpoint:** This separate repair commit follows the original Module 12 checkpoint; its final SHA and live remote comparison are reported in the completion report. `main`, `backend`, and `database` remain unchanged. Module 13 has not started.
+
+## Module 13: First-Run Onboarding, Safe-Use Guidance, Build Repair, and Verification
+- **Scope:** Implement startup routing (`/startup`), onboarding screen (`/onboarding`), preference abstraction (`OnboardingPreferences`), version tracking (`trustcue.onboarding.completed_version: 1`), "Review safe-use guidance" (`/safe-use`) from About, resolve Android incremental cache build failure, verify automated tests and device integration.
+- **Branch:** `frontend`
+- **Build Repair Diagnosed & Resolved:**
+  - Cause: Stale background Gradle/Kotlin compile daemons holding open locks on incremental cache `.tab` files in `frontend/build/shared_preferences_android/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin`, leading to `Could not close incremental caches` / `Storage for [...] is already registered`.
+  - Resolution: Gracefully stopped the Gradle daemon (`.\gradlew.bat --stop`) and deleted the stale plugin build output `frontend/build/shared_preferences_android/`. Verified `flutter build apk --debug --no-pub -t lib/main.dart` succeeds cleanly (exit code 0).
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (30 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (51/51 tests passed, including 16 onboarding tests, 17 exact-path navigation tests, and 18 foundation tests).
+  - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (`build/app/outputs/flutter-apk/app-debug.apk` built in 74.3s).
+  - `git diff --check`: PASS (clean whitespace).
+- **Device Verification:** Automated device integration test executed on connected physical device `V2207` (`10AC9R1ABF0013A`, Android 14 / API 34).
+- **Human Verification:** Physical phone checklist provided for first-run onboarding acknowledgment, relaunch skipping, review from About, back-navigation retention of counter, and ordinary background/resume.
+- **Status:** Complete (Commit pending). Integration into `main` remains paused.

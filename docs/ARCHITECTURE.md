@@ -29,9 +29,23 @@ TrustCue is structured to grow sustainably while maintaining a clean separation 
 *   **Controllers:** Reactive state is owned by `GetxController` subclasses. They are disposed automatically by GetX when their corresponding route is popped (e.g., pressing back on the `AboutScreen` does not destroy the underlying `HomeController` because it remains on the stack).
 *   **Presentation:** Screens extend `GetView<T>` to strictly separate UI from state logic, reacting to changes via scoped `Obx` widgets. Business logic remains out of widget build methods.
 
-## Navigation Verification
+## Startup and Onboarding (Module 13)
+
+`TrustCueApp` owns one `AppPages` instance and an injectable `OnboardingPreferences`. Its default implementation uses `SharedPreferencesAsync`; widget tests inject an in-memory fake instead of invoking a platform plugin. The temporary `/startup` route reads once, shows a themed labeled loading indicator, then replaces itself with `/onboarding` or `/`. There is no hidden Home/controller beneath onboarding. Read errors (including a ten-second timeout) display Retry; missing/invalid data is not confused with an I/O exception. An explicit internal initial destination is still resolved exactly, independently of onboarding; this introduction is not an authentication boundary.
+
+The single convenience key is `trustcue.onboarding.completed_version`, currently integer `1`. Missing, non-integer, negative, or older values require onboarding; an integer at least `1` is complete. The adapter reads only this key via an allow-list. It stores no messages, screenshots, identifiers, counter state, or legally recorded consent. `shared_preferences` is pinned to `2.5.6`; the resolved Android implementation requires Flutter >=3.44, satisfied by installed 3.47.4. Existing Android API 24 and iOS 15 minimums are unchanged. See the [maintainer documentation](https://pub.dev/packages/shared_preferences) for the async API and non-critical-storage limits.
+
+`OnboardingBinding` creates a route-owned `OnboardingController`. An unchecked acknowledgment disables continuation. The controller prevents duplicate requests, awaits the version write, and replaces first-run onboarding with Home through `HomeBinding`. Save errors/timeouts clear the loading state and show a retryable error without navigation. A timeout cannot cancel an underlying platform write; a late result never triggers navigation or a claim of confirmed saving. Retrying writes the same non-sensitive version.
+
+`/safe-use`, opened from About, uses the same `OnboardingScreen` with the explicit `OnboardingMode.review`. It has ordinary back navigation, no acknowledgment or write, and no onboarding controller binding. The existing Home/About stack and counter remain alive. Repeated review actions use the production route guard and GetX duplicate prevention.
+
+The acknowledgment only confirms understanding of the introduction. It is not a waiver, legal agreement, permission to collect content, or consent to remote AI processing. The availability sentence “Analysis features are not available in this development build yet.” is intentionally temporary and must be reviewed when actual analysis becomes available. Broader preferences, history, and counter persistence remain future work.
+
+## Navigation and Onboarding Verification
 
 The production `TrustCueApp` accepts an initial route and Navigator observers so regression tests can exercise the same router and bindings as the app. Tests observe route identity/stack contents, retained controller identity, disposal, fresh registration, and repeated production action callbacks. Actual UI taps and framework back requests are tested separately. Navigation-result expectations are attached immediately and awaited only after the pushed route is popped or removed.
+
+Routing tests inject a completed-onboarding fake. Onboarding tests exercise fresh startup, delayed/error/invalid reads, failed saves, duplicate submissions, relaunch logic, review, and narrow 200% text in both themes. Rebuilding a root with saved fake data is not a process restart. The Android integration test instead uses the real adapter, snapshots only the onboarding key, temporarily removes it, completes onboarding, verifies a new adapter/startup and review navigation, and restores the exact prior key value in teardown. It never clears all preferences or app data.
 
 Navigation widget tests specify a 20-second timeout explicitly. `frontend/tool/test.ps1` adds a wall-clock bound (180 seconds by default) around the entire test process and captures logs under ignored `build/test-runner/`. On timeout it stops only that invocation's process tree. The CLI timeout alone does not override Flutter's explicit widget-test timeout. Device tests use a two-minute test-body timeout and a longer bounded runner allowance for build/install.
 

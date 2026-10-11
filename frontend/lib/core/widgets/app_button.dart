@@ -80,7 +80,7 @@ class AppButton extends StatelessWidget {
 
     return Semantics(
       button: true,
-      enabled: !isDisabled,
+      enabled: canPress,
       label: isLoading ? '$label, loading' : null,
       excludeSemantics: isLoading,
       child: _variant == _AppButtonVariant.primary

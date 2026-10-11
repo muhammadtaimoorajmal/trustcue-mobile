@@ -4,7 +4,7 @@ TrustCue is a Mobile Application Development project for CS3643, BSCS Semester 5
 The application is designed to help people worldwide understand potential scam indicators in suspicious digital communication.
 
 ## Project Status
-The current foundation includes a temporary counter Home, GetX state/bindings and exact named-route resolution, About and fallback screens, light/dark themes, shared responsive components, a separate component preview, and widget/device tests. Onboarding, scam analysis, OCR, AI integration, report storage, and backend features are not implemented. Module 12A repairs the original Module 12 route-resolution and test-coverage deficiencies; see the module log for the historical checkpoints.
+The current foundation includes first-run onboarding with a locally remembered safe-use acknowledgment, review from About, a temporary counter Home, GetX state/bindings and exact named-route resolution, fallback screens, light/dark themes, responsive components, a separate component preview, and widget/device tests. Scam analysis, OCR, AI integration, report storage, and backend features are not implemented. The acknowledgment is an introduction, not consent to upload content. See the module log for Module 12A's routing repair and Module 13's onboarding checkpoint.
 
 ## Repository Structure
 - `frontend/`: The Flutter application (TrustCue), including its client services and future local-storage adapters.
@@ -30,6 +30,10 @@ flutter build apk --debug --no-pub -t lib/main.dart
 ```
 
 These commands assume dependencies are already resolved. On a fresh checkout, run `flutter pub get` with the installed compatible SDK and review any manifest/lockfile changes; GetX is pinned exactly to `4.7.3`.
+
+Module 13 adds `shared_preferences: 2.5.6` and uses `SharedPreferencesAsync`. On Windows, new Pub downloads can stay project-local by setting `$env:PUB_CACHE = Join-Path (Get-Location) '.pub-cache'` in the current terminal before `flutter pub get`; `.pub-cache/` is ignored. This is a process-scoped setting, not a global environment change. Flutter's SDK lock/cache and the existing Gradle cache still require their normal external-directory access.
+
+Startup reads only `trustcue.onboarding.completed_version` (integer `1`), with a labeled loading state and Retry on read failure. Missing, invalid, or old values show onboarding. Successful acknowledgment waits for saving before replacing onboarding with Home; failures stay retryable. About's “Review safe-use guidance” action reuses the content without saving or asking again. The temporary analysis-unavailable wording must be updated only when analysis is implemented. General preferences/history and process-restored counter state are not implemented.
 
 On Windows, run the focused navigation suite first with a bounded runner, then the unfiltered suite (both execute `flutter test --no-pub --reporter expanded`):
 
@@ -69,6 +73,8 @@ flutter test --no-pub integration_test/app_smoke_test.dart -d "<ACTUAL_DEVICE_ID
 Stop an existing VS Code debug session through its Stop button before installing the integration-test build. For a bounded Windows run, use `powershell -NoProfile -ExecutionPolicy Bypass -File tool/test.ps1 -Suite device -DeviceId "<ACTUAL_DEVICE_ID>" -TimeoutSeconds 600`. The device test body has a two-minute timeout. Afterward, restore the normal application using the command below.
 
 Human confirmation is still needed for counter retention, ordinary background/resume, native back animations, theme readability, enlarged text, rotation, and real keyboard/component-preview behavior. Report each observation explicitly; on failure provide the action, expected/actual result, terminal error, and screenshot or recording. Automated framework back tests do not verify native predictive-back visuals. Integration into `main` remains gated on outstanding verification.
+
+The device test preserves the previous onboarding value, changes only that key, and restores it in teardown. It verifies real-adapter save/read and startup reconstruction; that reconstruction is not a process restart. Widget tests use injected fake storage and never access developer preferences. For human onboarding checks, read/scroll the introduction, acknowledge and continue, normally stop/relaunch without clearing data, confirm onboarding is skipped, then review from About and return. Also check readability and background/resume. No clearing app data or uninstalling is needed.
 
 ### Component Preview
 To launch the standalone component development preview on your connected phone:

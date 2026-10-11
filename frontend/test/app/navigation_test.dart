@@ -1,3 +1,5 @@
+import '../support/fake_onboarding_preferences.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -53,7 +55,11 @@ void main() {
     String route = AppRoutes.home,
   }) async {
     await tester.pumpWidget(
-      TrustCueApp(initialRoute: route, navigatorObservers: [stack]),
+      TrustCueApp(
+        preferences: FakeOnboardingPreferences(value: 1),
+        initialRoute: route,
+        navigatorObservers: [stack],
+      ),
     );
     await tester.pumpAndSettle();
   }
