@@ -455,6 +455,35 @@ class InputScreenshotScreen extends GetView<InputScreenshotController> {
             ),
           ),
           const SizedBox(height: AppSpacing.pagePaddingSmall),
+          AppButton.primary(
+            label: 'Review and correct text',
+            icon: Icons.rate_review_outlined,
+            onPressed: () => controller.navigateToReview(),
+          ),
+          if (controller.reviewedResult.value != null) ...[
+            const SizedBox(height: AppSpacing.pagePaddingSmall),
+            AppCard(
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.verified_outlined,
+                    size: 20,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Reviewed text confirmed on device.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.pagePaddingSmall),
           AppButton.secondary(
             label: 'Extract text again',
             icon: Icons.document_scanner_outlined,

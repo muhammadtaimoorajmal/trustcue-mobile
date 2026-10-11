@@ -103,6 +103,16 @@ Module 12's original `unknownRoute` configuration did not enforce this policy: G
 *   **Truthful Native Settling State:** Cancellation or timeout cannot immediately abort a background native C++ thread. The controller tracks `isNativeSettling` to prevent overlapping native calls while a prior thread finishes, resetting the settling state only when native execution completes.
 *   **File Reader Lifecycle Coordination:** `InputScreenshotController` tracks `_activeReadingFiles`. Active native OCR readers prevent premature temporary file deletion during replacement, removal, or controller disposal; pending file deletions are queued and executed safely only once native readers release their handles.
 
+## Text Review, Correction, Sensitive-Data Detection, and Redaction (Module 19)
+
+*   **Unified Review Workflow:** `/input/review` provides a shared inspection and correction interface accessible from both typed/pasted message entry (`/input/text`) and extracted OCR output (`/input/screenshot`). Source channel provenance is strictly preserved (`InputSource.messageText` vs `InputSource.screenshot`).
+*   **Pure-Dart Heuristic Detection:** `LocalSensitiveDataDetector` operates entirely on-device without network dependencies, regex-scanning for emails, phone numbers, payment cards (13–19 digits satisfying Luhn checksum), and verification codes (4–8 digits near authentication context triggers). Formatted multi-group numbers (such as phone numbers or hyphenated codes) are protected from partial OTP misclassification.
+*   **Deterministic Conflict Resolution:** Overlapping matches are resolved deterministically using category priority: `paymentCard` (4) > `verificationCode` (3) > `phone` (2) > `email` (1). Ties are broken by longer match length, then earlier start index.
+*   **Descending-Offset Redaction Application:** User-selected redactions are replaced with category placeholders (`[EMAIL]`, `[PHONE]`, `[CARD NUMBER]`, `[VERIFICATION CODE]`) in descending UTF-16 code-unit offset order so that earlier replacement offsets in the text are never corrupted.
+*   **Reactive State & Draft Invalidation:** `InputReviewController` maintains reactive draft state. Any text modification immediately invalidates previous candidate suggestions, selections, preview, and confirmation. Selection changes immediately recalculate the real-time preview and invalidate previous confirmation.
+*   **Immutable Confirmation:** Confirming produces an immutable `ReviewedTextResult` holding a newly minted `TextSnapshot` with a unique UUID, UTC timestamp, and unmodifiable `redactionCounts` map. The original input snapshot is never mutated.
+*   **Ownership & Local Boundary:** For screenshot inputs, image ownership remains with `/input/screenshot`; the review screen allows visual comparison but does not delete the temporary file. All review and redaction operations are strictly local to the device memory session.
+
 ## Repository Separation
 
 *   `frontend/`: The complete Flutter application and its client-side integrations.

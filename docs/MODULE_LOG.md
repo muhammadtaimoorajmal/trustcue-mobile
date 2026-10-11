@@ -239,4 +239,27 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `powershell -File tool/test.ps1 -Suite device -DeviceId "10AC9R1ABF0013A" -TimeoutSeconds 600`: PASS (integration smoke test and real native Google ML Kit OCR test executed on physical Vivo V2207 device, validating recognition of expected words "trustcue", "ocr", "test", "verify", "act").
   - Physical device installation & launch: Updated APK installed and launched on Vivo V2207 (`10AC9R1ABF0013A`, PID 15999).
 - **Manual Verification:** Human phone visual checklist provided for inspecting Latin script limitation notice, deliberate OCR extraction triggering, progress indicator and cancel button, unreviewed banner and text selectable container, error retry and manual entry fallbacks, and back-button discard confirmation warning about extracted text.
+- **Status:** Complete (Commit `f73b920`). Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.
+
+## Module 19: Text Review, Correction, Sensitive-Data Suggestions, and Redaction
+- **Scope:** Connect prepared message text (`/input/text`) and extracted OCR text (`/input/screenshot`) to one shared, local review and correction screen at `/input/review`. Allow users to edit text, inspect possible sensitive details via a pure-Dart heuristic detector (`LocalSensitiveDataDetector`), select/deselect suggested redactions, preview the exact redacted text in real time, and confirm reviewed text on-device. Preserve input source provenance (`InputSource.messageText` or `InputSource.screenshot`). Ensure complete local operation with explicit privacy banners stating that reviewing text does not analyze it or authorize uploading it. Never transmit text or perform scam analysis in this module.
+- **Branch:** `frontend`
+- **Domain, Service, & Presentation Components:**
+  - `lib/features/input/domain/models/sensitive_data_type.dart`: Enum defining categories (`email`, `phone`, `paymentCard`, `verificationCode`), labels, placeholders (`[EMAIL]`, `[PHONE]`, `[CARD NUMBER]`, `[VERIFICATION CODE]`), and priority (`paymentCard` (4) > `verificationCode` (3) > `phone` (2) > `email` (1)).
+  - `lib/features/input/domain/models/sensitive_data_candidate.dart`: Immutable candidate model with UTF-16 code-unit offsets, masked labels, contextual summary, and privacy-safe `toString()`.
+  - `lib/features/input/domain/models/review_input.dart`: Parameter container passed to `/input/review` holding `snapshot`, `sourceRevision`, and optional `imagePath`.
+  - `lib/features/input/domain/models/reviewed_text_result.dart`: Immutable final result holding new `TextSnapshot`, `sourceSnapshotId`, `sourceRevision`, `reviewedAt`, and `redactionCounts` mapping.
+  - `lib/features/input/domain/services/local_sensitive_data_detector.dart`: Pure-Dart heuristic detector with Luhn verification for payment cards, context check for OTPs, overlap resolution, formatted-number protection, and descending-offset redaction application.
+  - `lib/features/input/presentation/controllers/input_review_controller.dart`: GetX controller managing editable draft, character counting, candidate detection, selection toggling, real-time preview, confirmation, discard dialog on exit, and comparison image toggle.
+  - `lib/features/input/presentation/bindings/input_review_binding.dart`: Dependency injection binding for `/input/review`.
+  - `lib/features/input/presentation/screens/input_review_screen.dart`: Screen with privacy banner, editable text field, character counter, suggestions card with checkboxes, preview card, and confirmation status banner.
+  - Integration with `/input/text` and `/input/screenshot`: Navigation to review, result reception, and edit invalidation.
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (95 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (227/227 tests passed across 21 suites, adding 27 new tests).
+  - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (`build/app/outputs/flutter-apk/app-debug.apk` built cleanly).
+  - `powershell -File tool/test.ps1 -Suite device -DeviceId "10AC9R1ABF0013A" -TimeoutSeconds 600`: PASS (smoke test, native OCR test, and synthetic review/redaction integration test passed on physical Vivo V2207 device in 23s).
+  - Physical device installation & launch: Updated APK installed and launched on Vivo V2207 (`10AC9R1ABF0013A`).
+- **Manual Verification:** Human phone visual checklist provided for inspecting review entry from text and screenshot, editable text corrections, sensitive detail detection, candidate toggling and placeholder preview, confirmation banner, and back-button navigation.
 - **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.

@@ -8,4 +8,5 @@ abstract class AppRoutes {
   static const inputText = '/input/text';
   static const inputScreenshot = '/input/screenshot';
   static const inputLink = '/input/link';
+  static const inputReview = '/input/review';
 }

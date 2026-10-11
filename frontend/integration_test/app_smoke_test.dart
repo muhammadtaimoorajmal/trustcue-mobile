@@ -12,6 +12,7 @@ import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/features/home/presentation/controllers/home_controller.dart';
 import 'package:trustcue_mobile/features/input/data/services/default_text_recognition_service.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
+import 'package:trustcue_mobile/features/input/presentation/controllers/input_text_controller.dart';
 import 'package:trustcue_mobile/features/onboarding/data/onboarding_preferences.dart';
 
 import 'package:trustcue_mobile/main.dart' as app;
@@ -213,4 +214,108 @@ void main() {
       await fixtureFile.delete();
     }
   }, timeout: const Timeout(Duration(minutes: 2)));
+
+  testWidgets(
+    'Module 19 text review and sensitive data redaction integration test',
+    (WidgetTester tester) async {
+      // Launch the application using main entry point
+      app.main();
+      await tester.pumpAndSettle();
+
+      // Navigate to /input/text from Home
+      final enterMessageFinder = find.widgetWithText(
+        AppButton,
+        'Enter message',
+      );
+      if (enterMessageFinder.evaluate().isNotEmpty) {
+        await tester.ensureVisible(enterMessageFinder);
+        await tester.pumpAndSettle();
+        await tester.tap(enterMessageFinder);
+        await tester.pumpAndSettle();
+      } else {
+        Get.toNamed(AppRoutes.inputText);
+        await tester.pumpAndSettle();
+      }
+
+      expect(Get.currentRoute, AppRoutes.inputText);
+
+      // Enter message containing an email address
+      final inputController = Get.find<InputTextController>();
+      inputController.textEditingController.text = 'Urgent invoice alert: contact billing@suspicious-bank.com immediately.';
+      await tester.pumpAndSettle();
+
+      // Prepare text
+      final prepareButton = find.widgetWithText(AppButton, 'Prepare text');
+      await tester.ensureVisible(prepareButton);
+      await tester.pumpAndSettle();
+      await tester.tap(prepareButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Review text'), findsOneWidget);
+
+      // Navigate to review
+      final reviewButton = find.widgetWithText(AppButton, 'Review text');
+      await tester.ensureVisible(reviewButton);
+      await tester.pumpAndSettle();
+      await tester.tap(reviewButton);
+      await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, AppRoutes.inputReview);
+      expect(
+        find.text(
+          'Reviewing text does not analyze it or authorize uploading it.',
+        ),
+        findsOneWidget,
+      );
+
+      // Verify candidate detection
+      expect(find.text('Possible sensitive details'), findsOneWidget);
+      expect(find.text('[EMAIL]'), findsOneWidget);
+
+      // Select candidate checkbox for redaction
+      final checkboxFinder = find.byType(Checkbox);
+      await tester.ensureVisible(checkboxFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(checkboxFinder);
+      await tester.pumpAndSettle();
+
+      // Verify preview is updated with placeholder
+      expect(
+        find.text('Urgent invoice alert: contact [EMAIL] immediately.'),
+        findsOneWidget,
+      );
+
+      // Confirm reviewed text
+      final confirmButton = find.widgetWithText(
+        AppButton,
+        'Confirm reviewed text',
+      );
+      await tester.ensureVisible(confirmButton);
+      await tester.pumpAndSettle();
+      await tester.tap(confirmButton);
+      await tester.pumpAndSettle();
+
+      // Verify confirmation banner on review screen
+      expect(
+        find.text(
+          'Reviewed text is ready on this device. It has not been analyzed or sent anywhere.',
+        ),
+        findsOneWidget,
+      );
+
+      // Navigate back to input/text
+      final backFinder = find.byType(IconButton).first;
+      await tester.tap(backFinder);
+      await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, AppRoutes.inputText);
+      expect(find.text('Reviewed text confirmed on device.'), findsOneWidget);
+      expect(inputController.reviewedResult.value, isNotNull);
+      expect(
+        inputController.reviewedResult.value!.snapshot.text,
+        'Urgent invoice alert: contact [EMAIL] immediately.',
+      );
+    },
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
 }

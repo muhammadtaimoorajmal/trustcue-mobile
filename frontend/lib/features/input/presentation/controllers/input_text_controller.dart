@@ -2,7 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
+import 'package:trustcue_mobile/features/input/domain/models/review_input.dart';
+import 'package:trustcue_mobile/features/input/domain/models/reviewed_text_result.dart';
 import 'package:trustcue_mobile/features/input/domain/models/text_snapshot.dart';
 import 'package:trustcue_mobile/features/input/domain/validation/message_text_validator.dart';
 
@@ -30,6 +33,7 @@ class InputTextController extends GetxController {
   final Rxn<MessageTextValidationError> validationError =
       Rxn<MessageTextValidationError>();
   final Rxn<TextSnapshot> preparedSnapshot = Rxn<TextSnapshot>();
+  final Rxn<ReviewedTextResult> reviewedResult = Rxn<ReviewedTextResult>();
   final RxBool showPreparedConfirmation = false.obs;
   final RxBool isNavigatingAway = false.obs;
 
@@ -55,8 +59,9 @@ class InputTextController extends GetxController {
   void _syncText(String newText) {
     text.value = newText;
     codePointCount.value = MessageTextValidator.countCodePoints(newText);
-    // Any change in text invalidates existing preparation, confirmation, and error.
+    // Any change in text invalidates existing preparation, confirmation, error, and reviewed result.
     preparedSnapshot.value = null;
+    reviewedResult.value = null;
     showPreparedConfirmation.value = false;
     validationError.value = null;
   }
@@ -108,6 +113,25 @@ class InputTextController extends GetxController {
     showPreparedConfirmation.value = true;
     focusNode.unfocus();
     return true;
+  }
+
+  /// Navigates to `/input/review` with prepared snapshot and awaits confirmed review result.
+  Future<void> navigateToReview() async {
+    final snapshot = preparedSnapshot.value;
+    if (snapshot == null || isNavigatingAway.value) return;
+
+    isNavigatingAway.value = true;
+    try {
+      final result = await Get.toNamed(
+        AppRoutes.inputReview,
+        arguments: ReviewInput(snapshot: snapshot, sourceRevision: snapshot.id),
+      );
+      if (result is ReviewedTextResult) {
+        reviewedResult.value = result;
+      }
+    } finally {
+      isNavigatingAway.value = false;
+    }
   }
 
   /// Clears the current draft and resets all transient input state.

@@ -10,11 +10,13 @@ import 'package:trustcue_mobile/app/startup_screen.dart';
 import 'package:trustcue_mobile/features/onboarding/data/onboarding_preferences.dart';
 import 'package:trustcue_mobile/features/onboarding/presentation/bindings/onboarding_binding.dart';
 import 'package:trustcue_mobile/features/onboarding/presentation/screens/onboarding_screen.dart';
+import 'package:trustcue_mobile/features/input/presentation/bindings/input_review_binding.dart';
 import 'package:trustcue_mobile/features/input/presentation/bindings/input_screenshot_binding.dart';
 import 'package:trustcue_mobile/features/input/presentation/bindings/input_text_binding.dart';
-import 'package:trustcue_mobile/features/input/presentation/screens/input_text_screen.dart';
-import 'package:trustcue_mobile/features/input/presentation/screens/input_screenshot_screen.dart';
 import 'package:trustcue_mobile/features/input/presentation/screens/input_link_screen.dart';
+import 'package:trustcue_mobile/features/input/presentation/screens/input_review_screen.dart';
+import 'package:trustcue_mobile/features/input/presentation/screens/input_screenshot_screen.dart';
+import 'package:trustcue_mobile/features/input/presentation/screens/input_text_screen.dart';
 
 class AppPages {
   AppPages(this.preferences, {this.requestedRoute});
@@ -52,6 +54,11 @@ class AppPages {
       name: AppRoutes.inputScreenshot,
       page: () => const InputScreenshotScreen(),
       binding: InputScreenshotBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.inputReview,
+      page: () => const InputReviewScreen(),
+      binding: InputReviewBinding(),
     ),
     GetPage(name: AppRoutes.inputLink, page: () => const InputLinkScreen()),
     unknownRoute,

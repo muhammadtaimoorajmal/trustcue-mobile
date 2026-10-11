@@ -13,6 +13,8 @@ import '../../domain/contracts/screenshot_storage_service.dart';
 import '../../domain/contracts/text_recognition_service.dart';
 import '../../domain/models/ocr_failure.dart';
 import '../../domain/models/ocr_result.dart';
+import '../../domain/models/review_input.dart';
+import '../../domain/models/reviewed_text_result.dart';
 import '../../domain/models/selected_image_descriptor.dart';
 import '../../domain/validation/image_validation_policy.dart';
 import '../../domain/validation/image_validator.dart';
@@ -52,6 +54,7 @@ class InputScreenshotController extends GetxController {
   final RxBool isNativeSettling = false.obs;
   final Rxn<OcrResult> ocrResult = Rxn<OcrResult>();
   final Rxn<OcrFailure> ocrFailure = Rxn<OcrFailure>();
+  final Rxn<ReviewedTextResult> reviewedResult = Rxn<ReviewedTextResult>();
 
   String? _currentOperationToken;
   final Set<String> _activeReadingFiles = <String>{};
@@ -110,6 +113,7 @@ class InputScreenshotController extends GetxController {
 
     isExtracting.value = true;
     ocrFailure.value = null;
+    reviewedResult.value = null;
 
     _activeReadingFiles.add(image.filePath);
 
@@ -180,6 +184,30 @@ class InputScreenshotController extends GetxController {
     }
   }
 
+  /// Navigates to `/input/review` with extracted OCR snapshot and screenshot path.
+  Future<void> navigateToReview() async {
+    final ocr = ocrResult.value;
+    final img = selectedImage.value;
+    if (ocr == null || img == null || isNavigatingAway.value) return;
+
+    isNavigatingAway.value = true;
+    try {
+      final result = await Get.toNamed(
+        AppRoutes.inputReview,
+        arguments: ReviewInput(
+          snapshot: ocr.snapshot,
+          sourceRevision: ocr.imageRevision,
+          imagePath: img.filePath,
+        ),
+      );
+      if (result is ReviewedTextResult) {
+        reviewedResult.value = result;
+      }
+    } finally {
+      isNavigatingAway.value = false;
+    }
+  }
+
   /// Picks a new image or transactionally replaces an existing selection.
   Future<bool> chooseImage() async {
     if (isProcessing.value) return false;
@@ -229,12 +257,13 @@ class InputScreenshotController extends GetxController {
         filePath: importedFile.path,
       );
 
-      // Transactional swap: invalidate previous OCR result and swap image
+      // Transactional swap: invalidate previous OCR result, reviewed result, and swap image
       final oldImage = selectedImage.value;
       selectedImage.value = newDescriptor;
       validationError.value = null;
       ocrResult.value = null;
       ocrFailure.value = null;
+      reviewedResult.value = null;
       _currentOperationToken = null;
 
       if (oldImage != null) {
@@ -268,6 +297,7 @@ class InputScreenshotController extends GetxController {
       validationError.value = null;
       ocrResult.value = null;
       ocrFailure.value = null;
+      reviewedResult.value = null;
       _currentOperationToken = null;
 
       if (current != null) {

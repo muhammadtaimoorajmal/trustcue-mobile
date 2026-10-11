@@ -126,6 +126,34 @@ class InputTextScreen extends GetView<InputTextController> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.pagePaddingSmall),
+                  AppButton.primary(
+                    label: 'Review text',
+                    onPressed: () => controller.navigateToReview(),
+                  ),
+                ],
+                if (controller.reviewedResult.value != null) ...[
+                  const SizedBox(height: AppSpacing.pagePaddingSmall),
+                  AppCard(
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.verified_outlined,
+                          size: 20,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Reviewed text confirmed on device.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
                 const SizedBox(height: AppSpacing.pagePaddingLarge),
                 AppButton.primary(

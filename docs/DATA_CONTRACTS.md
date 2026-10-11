@@ -208,7 +208,31 @@ abstract class Result<T> {
 
 ---
 
-## 7. Future Extension Points
+## 7. Text Review, Sensitive Data Detection, and Redaction (Module 19)
 
-- **Module 17–21:** Screenshot intake, temporary file lifecycle, OCR extraction, and QR/URL parsing.
+### 7.1 Domain Models
+- **`SensitiveDataType`**: Enum defining detected sensitive categories:
+  - `email`: Placeholder `[EMAIL]`, priority 1.
+  - `phone`: Placeholder `[PHONE]`, priority 2.
+  - `verificationCode`: Placeholder `[VERIFICATION CODE]`, priority 3 (4–8 digits near authentication context triggers like `code`, `otp`, `verification`).
+  - `paymentCard`: Placeholder `[CARD NUMBER]`, priority 4 (13–19 digits satisfying standard Luhn checksum).
+- **`SensitiveDataCandidate`**: Immutable candidate model with UTF-16 code-unit offsets `[startIndex, endIndex)`, masked label (`•••• 1234`), contextual summary snippet, and revision tag.
+- **`ReviewInput`**: In-memory container passed to `/input/review` holding `snapshot`, `sourceRevision`, and optional `imagePath`. Never serialized to query strings or URLs.
+- **`ReviewedTextResult`**: Immutable confirmation result holding freshly minted `TextSnapshot`, `sourceSnapshotId`, `sourceRevision`, UTC timestamp `reviewedAt`, and unmodifiable `redactionCounts` map.
+
+### 7.2 Overlap Resolution & Redaction Application Policy
+- **Deterministic Priority:** `paymentCard` (4) > `verificationCode` (3) > `phone` (2) > `email` (1). When candidate ranges overlap, higher-priority items take precedence. Ties broken by longer match length, then earlier start offset.
+- **Descending Offset Application:** Redactions are applied in descending UTF-16 code-unit offset order so that earlier replacement offsets in the text remain exact and uncorrupted.
+- **Invariants:** Replacement ranges never split UTF-16 surrogate code pairs.
+
+### 7.3 Privacy & Local-Only Boundary
+- Review and redaction operations are strictly local to the device memory session.
+- Diagnostic `toString()` representations omit unmasked sensitive candidate strings.
+- Neither unredacted nor redacted text is transmitted or evaluated by AI in this module.
+
+---
+
+## 8. Future Extension Points
+
+- **Module 20–21:** URL parsing, QR decoding, and Android incoming-share handling.
 - **Module 22–26:** Warning taxonomy, rule engine, evidence location mapping, and local assessment aggregation.
