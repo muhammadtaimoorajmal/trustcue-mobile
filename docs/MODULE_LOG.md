@@ -314,6 +314,9 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (109 files checked, 0 changed).
   - `flutter analyze --no-pub`: PASS (0 issues found).
   - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (274/274 tests passed across 25 suites, adding 1 new controller test).
+  - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (`build\app\outputs\flutter-apk\app-debug.apk`, 209,059,186 bytes, built in 111.5s).
+  - `powershell -File tool/test.ps1 -Suite device -DeviceId "10AC9R1ABF0013A" -TimeoutSeconds 600`: PASS (4/4 tests passed in 28s on physical Vivo V2207 Android 14 / API 34).
+  - `flutter run --no-pub -d "10AC9R1ABF0013A" -t lib/main.dart`: PASS (restored and launched normal app on device, PID 25535, detached cleanly).
   - `git diff --check`: PASS (clean whitespace).
-- **Physical Device & Build Status:** Physical device Vivo V2207 (`10AC9R1ABF0013A`) is connected and authorized. Android APK assembly cannot succeed until a standard full JDK is installed on the host machine outside the project boundary. Independent project work and test suite verification are complete.
-- **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending physical device verification once host JDK is installed.
+- **Physical Device & Build Status:** Verified on physical Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34) running with Eclipse Adoptium OpenJDK 21.0.12.1 (`Temurin-21.0.12.1+1 LTS, hotspot`). Native QR decoding via Google ML Kit verified against `assets/fixtures/qr_test_card.png` without automatic destination launch. Native OCR and review/redaction integration coverage fully preserved.
+- **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.

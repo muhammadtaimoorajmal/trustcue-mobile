@@ -50,7 +50,7 @@ Navigation widget tests also have explicit 20-second per-test limits. The runner
 - **Dart SDK:** 3.13.3
 - **NDK:** 30.0.16138531 (installed metadata: r30-beta3; pinned in `frontend/android/app/build.gradle.kts`)
 - **Gradle Wrapper:** 9.3.1
-- **Java:** 25 runtime, Java/Kotlin 17 compilation targets
+- **Java:** Eclipse Adoptium OpenJDK 21.0.12.1 (Temurin-21.0.12.1+1 LTS, hotspot) runtime, Java/Kotlin 17 compilation targets
 - **Platform limits:** iOS identity/build verification remains future work (scaffold bundle ID `com.trustcue.trustcueMobile` differs from Android). Internal route tests do not establish platform deep-link support.
 
 ### Physical Phone Testing via VS Code
