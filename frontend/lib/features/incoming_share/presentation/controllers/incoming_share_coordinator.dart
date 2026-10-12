@@ -45,6 +45,7 @@ class IncomingShareCoordinator extends GetxController {
     UrlInspectionService? urlInspector,
     String Function()? idGenerator,
     this.imageBuilder,
+    this.onShareRejected,
   }) : _adapter = adapter ?? DefaultIncomingShareAdapter(),
        _preferences = preferences ?? LocalOnboardingPreferences(),
        _storageService = storageService ?? DefaultScreenshotStorageService(),
@@ -57,6 +58,7 @@ class IncomingShareCoordinator extends GetxController {
   final UrlInspectionService _urlInspector;
   final String Function() _idGenerator;
   final Widget Function(BuildContext context, String path)? imageBuilder;
+  final void Function(String message)? onShareRejected;
 
   final Rxn<IncomingSharePayload> pendingShare = Rxn<IncomingSharePayload>();
   final RxBool isDialogVisible = false.obs;
@@ -97,11 +99,20 @@ class IncomingShareCoordinator extends GetxController {
     if (_consumedEventIds.contains(payload.eventId)) return;
     if (pendingShare.value?.eventId == payload.eventId) return;
 
-    // Bounded pending share policy: at most one pending share awaiting decision
-    final previous = pendingShare.value;
-    if (previous != null && previous.stagedImagePath != null) {
-      // Clean up previous staged file if replaced by a new arriving share
-      await _adapter.cleanStagedFile(previous.stagedImagePath!);
+    // Bounded pending share policy: preserve existing pending item and reject additional share
+    final existing = pendingShare.value;
+    if (existing != null) {
+      // Clean up only the rejected item's app-owned temporary file
+      if (payload.stagedImagePath != null) {
+        await _adapter.cleanStagedFile(payload.stagedImagePath!);
+      }
+      _consumedEventIds.add(payload.eventId);
+      await _adapter.consumeShare(payload.eventId);
+
+      _notifyShareRejected(
+        'Another shared item is currently awaiting review. Please complete or dismiss it first.',
+      );
+      return;
     }
 
     pendingShare.value = payload;
@@ -110,6 +121,18 @@ class IncomingShareCoordinator extends GetxController {
     final version = await _preferences.readVersion();
     if (OnboardingPreferences.isComplete(version)) {
       presentPendingShare();
+    }
+  }
+
+  void _notifyShareRejected(String message) {
+    onShareRejected?.call(message);
+    if (Get.context != null && Get.overlayContext != null) {
+      Get.rawSnackbar(
+        title: 'Share not processed',
+        message: message,
+        duration: const Duration(seconds: 4),
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 
@@ -157,16 +180,18 @@ class IncomingShareCoordinator extends GetxController {
   }
 
   /// Dismisses the active pending share and cleans up staged files and native state.
-  Future<void> dismissPendingShare() async {
+  Future<void> dismissPendingShare({String? expectedEventId}) async {
     final current = pendingShare.value;
+    if (current == null) return;
+    if (expectedEventId != null && current.eventId != expectedEventId) {
+      return;
+    }
     pendingShare.value = null;
 
-    if (current != null) {
-      _consumedEventIds.add(current.eventId);
-      await _adapter.consumeShare(current.eventId);
-      if (current.stagedImagePath != null) {
-        await _adapter.cleanStagedFile(current.stagedImagePath!);
-      }
+    _consumedEventIds.add(current.eventId);
+    await _adapter.consumeShare(current.eventId);
+    if (current.stagedImagePath != null) {
+      await _adapter.cleanStagedFile(current.stagedImagePath!);
     }
 
     if (isDialogVisible.value && Get.isDialogOpen == true) {
@@ -190,16 +215,18 @@ class IncomingShareCoordinator extends GetxController {
   }
 
   /// Applies shared text as message text input.
-  Future<void> applySharedMessage(String text) async {
+  Future<void> applySharedMessage(String text, {String? expectedEventId}) async {
     final current = pendingShare.value;
+    if (current == null) return;
+    if (expectedEventId != null && current.eventId != expectedEventId) {
+      return;
+    }
     pendingShare.value = null;
 
-    if (current != null) {
-      _consumedEventIds.add(current.eventId);
-      await _adapter.consumeShare(current.eventId);
-      if (current.stagedImagePath != null) {
-        await _adapter.cleanStagedFile(current.stagedImagePath!);
-      }
+    _consumedEventIds.add(current.eventId);
+    await _adapter.consumeShare(current.eventId);
+    if (current.stagedImagePath != null) {
+      await _adapter.cleanStagedFile(current.stagedImagePath!);
     }
 
     if (isDialogVisible.value && Get.isDialogOpen == true) {
@@ -233,16 +260,18 @@ class IncomingShareCoordinator extends GetxController {
   }
 
   /// Applies shared text as inspected link input.
-  Future<void> applySharedLink(String url) async {
+  Future<void> applySharedLink(String url, {String? expectedEventId}) async {
     final current = pendingShare.value;
+    if (current == null) return;
+    if (expectedEventId != null && current.eventId != expectedEventId) {
+      return;
+    }
     pendingShare.value = null;
 
-    if (current != null) {
-      _consumedEventIds.add(current.eventId);
-      await _adapter.consumeShare(current.eventId);
-      if (current.stagedImagePath != null) {
-        await _adapter.cleanStagedFile(current.stagedImagePath!);
-      }
+    _consumedEventIds.add(current.eventId);
+    await _adapter.consumeShare(current.eventId);
+    if (current.stagedImagePath != null) {
+      await _adapter.cleanStagedFile(current.stagedImagePath!);
     }
 
     if (isDialogVisible.value && Get.isDialogOpen == true) {
@@ -286,6 +315,11 @@ class IncomingShareCoordinator extends GetxController {
     );
   }
 
+  /// Deletes an imported candidate file from app-owned storage.
+  Future<bool> deleteImportedFile(String filePath) async {
+    return _storageService.deleteOwnedFile(filePath);
+  }
+
   /// Checks for conflict with an active screenshot draft.
   DraftConflict? checkScreenshotDraftConflict(
     SelectedImageDescriptor imported,
@@ -304,14 +338,19 @@ class IncomingShareCoordinator extends GetxController {
   }
 
   /// Applies imported image as screenshot preview.
-  Future<void> applySharedScreenshot(SelectedImageDescriptor image) async {
+  Future<void> applySharedScreenshot(
+    SelectedImageDescriptor image, {
+    String? expectedEventId,
+  }) async {
     final current = pendingShare.value;
+    if (current == null) return;
+    if (expectedEventId != null && current.eventId != expectedEventId) {
+      return;
+    }
     pendingShare.value = null;
 
-    if (current != null) {
-      _consumedEventIds.add(current.eventId);
-      await _adapter.consumeShare(current.eventId);
-    }
+    _consumedEventIds.add(current.eventId);
+    await _adapter.consumeShare(current.eventId);
 
     if (isDialogVisible.value && Get.isDialogOpen == true) {
       Get.back<void>();
@@ -345,14 +384,19 @@ class IncomingShareCoordinator extends GetxController {
   }
 
   /// Applies imported image as QR image draft.
-  Future<void> applySharedQrImage(SelectedImageDescriptor image) async {
+  Future<void> applySharedQrImage(
+    SelectedImageDescriptor image, {
+    String? expectedEventId,
+  }) async {
     final current = pendingShare.value;
+    if (current == null) return;
+    if (expectedEventId != null && current.eventId != expectedEventId) {
+      return;
+    }
     pendingShare.value = null;
 
-    if (current != null) {
-      _consumedEventIds.add(current.eventId);
-      await _adapter.consumeShare(current.eventId);
-    }
+    _consumedEventIds.add(current.eventId);
+    await _adapter.consumeShare(current.eventId);
 
     if (isDialogVisible.value && Get.isDialogOpen == true) {
       Get.back<void>();

@@ -327,7 +327,9 @@ class _IncomingShareDialogState extends State<IncomingShareDialog> {
     if (_isProcessing) return;
     setState(() => _isProcessing = true);
     try {
-      await widget.coordinator.dismissPendingShare();
+      await widget.coordinator.dismissPendingShare(
+        expectedEventId: widget.payload.eventId,
+      );
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -348,7 +350,10 @@ class _IncomingShareDialogState extends State<IncomingShareDialog> {
 
     setState(() => _isProcessing = true);
     try {
-      await widget.coordinator.applySharedMessage(text);
+      await widget.coordinator.applySharedMessage(
+        text,
+        expectedEventId: widget.payload.eventId,
+      );
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -369,7 +374,10 @@ class _IncomingShareDialogState extends State<IncomingShareDialog> {
 
     setState(() => _isProcessing = true);
     try {
-      await widget.coordinator.applySharedLink(url);
+      await widget.coordinator.applySharedLink(
+        url,
+        expectedEventId: widget.payload.eventId,
+      );
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -386,7 +394,8 @@ class _IncomingShareDialogState extends State<IncomingShareDialog> {
       if (imported == null) {
         setState(() {
           _isProcessing = false;
-          _errorMessage = 'The shared image could not be verified or imported. It may exceed size/dimension bounds.';
+          _errorMessage =
+              'The shared image could not be verified or imported. It may exceed size/dimension bounds.';
         });
         return;
       }
@@ -397,12 +406,16 @@ class _IncomingShareDialogState extends State<IncomingShareDialog> {
       if (conflict != null) {
         final replace = await _promptConflictReplacement(conflict);
         if (!replace) {
+          await widget.coordinator.deleteImportedFile(imported.filePath);
           await _handleDismiss();
           return;
         }
       }
 
-      await widget.coordinator.applySharedScreenshot(imported);
+      await widget.coordinator.applySharedScreenshot(
+        imported,
+        expectedEventId: widget.payload.eventId,
+      );
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -419,7 +432,8 @@ class _IncomingShareDialogState extends State<IncomingShareDialog> {
       if (imported == null) {
         setState(() {
           _isProcessing = false;
-          _errorMessage = 'The shared image could not be verified or imported. It may exceed size/dimension bounds.';
+          _errorMessage =
+              'The shared image could not be verified or imported. It may exceed size/dimension bounds.';
         });
         return;
       }
@@ -428,12 +442,16 @@ class _IncomingShareDialogState extends State<IncomingShareDialog> {
       if (conflict != null) {
         final replace = await _promptConflictReplacement(conflict);
         if (!replace) {
+          await widget.coordinator.deleteImportedFile(imported.filePath);
           await _handleDismiss();
           return;
         }
       }
 
-      await widget.coordinator.applySharedQrImage(imported);
+      await widget.coordinator.applySharedQrImage(
+        imported,
+        expectedEventId: widget.payload.eventId,
+      );
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);
