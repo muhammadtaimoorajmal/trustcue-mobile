@@ -113,6 +113,13 @@ Module 12's original `unknownRoute` configuration did not enforce this policy: G
 *   **Immutable Confirmation:** Confirming produces an immutable `ReviewedTextResult` holding a newly minted `TextSnapshot` with a unique UUID, UTC timestamp, and unmodifiable `redactionCounts` map. The original input snapshot is never mutated.
 *   **Ownership & Local Boundary:** For screenshot inputs, image ownership remains with `/input/screenshot`; the review screen allows visual comparison but does not delete the temporary file. All review and redaction operations are strictly local to the device memory session.
 
+### Link Inspection, QR Decoding, and Destination Opening Architecture (Module 20)
+
+*   **Offline Link Inspection (`UrlInspectionService`):** Pure-Dart local parser evaluating URIs without network access, socket creation, or DNS resolution. Performs offline security checks: RFC 1918 private/loopback IPv4/IPv6 detection, non-standard port detection, excessive subdomain counting, potential open redirect parameter detection (`url=`, `redirect=`, etc.), percent-encoded host check, and strict rejection of userinfo/credentials, bidi override characters, and non-ASCII hostnames.
+*   **On-Device Barcode Scanning (`DefaultQrDecoderService`):** Wraps Google ML Kit Barcode Scanning (`google_mlkit_barcode_scanning: 0.16.1`) for `BarcodeFormat.qrCode` on on-device images. Categorizes payloads into `webUrl`, `plainText`, and `unsupported` (e.g., Wi-Fi, vCard, mailto, tel, SMS, payment/UPI, app intents). Unsupported payloads are never executed. Duplicate identical codes in an image are deduplicated while multiple distinct codes are surfaced for explicit user selection.
+*   **Explicit Destination Opening Boundary (`UrlLauncherAdapter`):** External navigation delegates to `url_launcher` using strictly `LaunchMode.externalApplication` (never in-app WebView). Opening requires an explicit two-step user confirmation dialog displaying the complete destination hostname and exact selectable URL. Any change in input immediately invalidates previous confirmation.
+*   **Review Pipeline Integration:** Inspected web links and decoded QR text can be forwarded to `/input/review` creating a `TextSnapshot` with source `InputSource.link` or `InputSource.qrCode`.
+
 ## Repository Separation
 
 *   `frontend/`: The complete Flutter application and its client-side integrations.

@@ -240,8 +240,8 @@ void main() {
     (
       title: 'Link or QR code',
       route: AppRoutes.inputLink,
-      buttonLabel: 'View input options',
-      noticeText: 'Coming soon',
+      buttonLabel: 'Inspect link or QR',
+      noticeText: 'Link inspection is available. Scam analysis is not available in this build yet.',
     ),
   ]) {
     testWidgets(

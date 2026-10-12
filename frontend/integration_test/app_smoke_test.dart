@@ -10,8 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/features/home/presentation/controllers/home_controller.dart';
+import 'package:trustcue_mobile/features/input/data/services/default_qr_decoder_service.dart';
 import 'package:trustcue_mobile/features/input/data/services/default_text_recognition_service.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
+import 'package:trustcue_mobile/features/input/presentation/controllers/input_link_controller.dart';
 import 'package:trustcue_mobile/features/input/presentation/controllers/input_text_controller.dart';
 import 'package:trustcue_mobile/features/onboarding/data/onboarding_preferences.dart';
 
@@ -318,4 +320,74 @@ void main() {
     },
     timeout: const Timeout(Duration(minutes: 2)),
   );
+
+  testWidgets('Module 20 link inspection and QR code decoding integration test', (
+    WidgetTester tester,
+  ) async {
+    // 1. Launch the application
+    app.main();
+    await tester.pumpAndSettle();
+
+    // 2. Navigate to /input/link from Home
+    final linkOptionFinder = find.widgetWithText(
+      AppButton,
+      'Inspect link or QR',
+    );
+    if (linkOptionFinder.evaluate().isNotEmpty) {
+      await tester.ensureVisible(linkOptionFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(linkOptionFinder);
+      await tester.pumpAndSettle();
+    } else {
+      Get.toNamed(AppRoutes.inputLink);
+      await tester.pumpAndSettle();
+    }
+
+    expect(Get.currentRoute, AppRoutes.inputLink);
+    expect(find.text('Link or QR code'), findsOneWidget);
+
+    // 3. Test web link inspection
+    final linkController = Get.find<InputLinkController>();
+    linkController.urlTextController.text =
+        'https://example.com/verify?account=12345';
+    await tester.pumpAndSettle();
+
+    final inspectButton = find.widgetWithText(AppButton, 'Inspect link');
+    await tester.ensureVisible(inspectButton);
+    await tester.pumpAndSettle();
+    await tester.tap(inspectButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Destination Review'), findsOneWidget);
+    expect(find.text('example.com'), findsOneWidget);
+    expect(linkController.canOpenExternally, isTrue);
+
+    // 4. Test real device QR decoding via DefaultQrDecoderService
+    final byteData = await rootBundle.load('assets/fixtures/qr_test_card.png');
+    final tempDir = await getTemporaryDirectory();
+    final fixtureFile = File(
+      '${tempDir.path}/qr_integration_fixture_${DateTime.now().microsecondsSinceEpoch}.png',
+    );
+    await fixtureFile.writeAsBytes(
+      byteData.buffer.asUint8List(
+        byteData.offsetInBytes,
+        byteData.lengthInBytes,
+      ),
+      flush: true,
+    );
+
+    final qrDecoder = DefaultQrDecoderService();
+    final qrResult = await qrDecoder.decode(fixtureFile.path);
+
+    expect(qrResult.payloads.isNotEmpty, isTrue);
+    final payload = qrResult.payloads.first;
+    expect(payload.rawValue, contains('trustcue-test'));
+    expect(payload.linkInspection, isNotNull);
+    expect(payload.linkInspection!.host, 'example.com');
+
+    // 5. Clean up temporary fixture
+    if (await fixtureFile.exists()) {
+      await fixtureFile.delete();
+    }
+  }, timeout: const Timeout(Duration(minutes: 2)));
 }

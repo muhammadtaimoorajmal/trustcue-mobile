@@ -39,10 +39,10 @@ void main() {
     expect(find.text('Link or QR code'), findsOneWidget);
     expect(find.text('Preparation available'), findsOneWidget);
     expect(find.text('Text extraction available'), findsOneWidget);
-    expect(find.text('Coming soon'), findsOneWidget);
+    expect(find.text('Inspection available'), findsOneWidget);
     expect(find.text('Enter message'), findsOneWidget);
     expect(find.text('Choose screenshot'), findsOneWidget);
-    expect(find.text('View input options'), findsOneWidget);
+    expect(find.text('Inspect link or QR'), findsOneWidget);
 
     // Verify safety guidance card
     expect(find.text('Pause before you act.'), findsOneWidget);

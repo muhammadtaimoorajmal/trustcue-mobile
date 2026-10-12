@@ -68,7 +68,9 @@ class InputScreenshotController extends GetxController {
   void onInit() {
     super.onInit();
     // Claim any recovered image from coordinator if present
-    final recovered = recoveryCoordinator?.consumeRecoveredImage();
+    final recovered = recoveryCoordinator?.consumeRecoveredImage(
+      PickerPurpose.screenshot,
+    );
     if (recovered != null) {
       selectedImage.value = recovered;
     }
@@ -218,6 +220,7 @@ class InputScreenshotController extends GetxController {
     validationError.value = null;
 
     try {
+      recoveryCoordinator?.lastInitiatedPurpose = PickerPurpose.screenshot;
       final pickedXFile = await _pickerAdapter.pickImage();
       if (pickedXFile == null) {
         // User cancelled picker: normal, no error, preserve current selection

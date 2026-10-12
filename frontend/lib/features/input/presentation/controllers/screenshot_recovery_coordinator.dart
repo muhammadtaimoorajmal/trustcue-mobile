@@ -9,6 +9,9 @@ import '../../domain/contracts/screenshot_storage_service.dart';
 import '../../domain/models/selected_image_descriptor.dart';
 import '../../domain/validation/image_validator.dart';
 
+/// The workflow purpose for which the image picker was opened.
+enum PickerPurpose { screenshot, qrCode }
+
 /// Lightweight coordinator that checks for Android picker results interrupted
 /// by process death once per application startup.
 class ScreenshotRecoveryCoordinator extends GetxController {
@@ -27,6 +30,7 @@ class ScreenshotRecoveryCoordinator extends GetxController {
   final Rxn<SelectedImageDescriptor> pendingRecoveredImage =
       Rxn<SelectedImageDescriptor>();
   final RxBool hasChecked = false.obs;
+  PickerPurpose? lastInitiatedPurpose;
 
   /// Checks for lost picker results exactly once per startup.
   Future<void> checkForLostData() async {
@@ -69,9 +73,15 @@ class ScreenshotRecoveryCoordinator extends GetxController {
   }
 
   /// Consumes and claims the recovered image descriptor for the active screen.
-  SelectedImageDescriptor? consumeRecoveredImage() {
+  SelectedImageDescriptor? consumeRecoveredImage([PickerPurpose? purpose]) {
+    if (purpose != null &&
+        lastInitiatedPurpose != null &&
+        lastInitiatedPurpose != purpose) {
+      return null;
+    }
     final image = pendingRecoveredImage.value;
     pendingRecoveredImage.value = null;
+    lastInitiatedPurpose = null;
     return image;
   }
 

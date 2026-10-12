@@ -69,9 +69,11 @@ class HomeScreen extends GetView<HomeController> {
             const SizedBox(height: AppSpacing.pagePaddingSmall),
             const _InputOptionCard(
               title: 'Link or QR code',
-              description: 'For reviewing a destination before opening it.',
+              description: 'For reviewing a destination before opening it. Link inspection and QR decoding are available; scam analysis is coming soon.',
               icon: Icons.link_outlined,
               route: AppRoutes.inputLink,
+              statusText: 'Inspection available',
+              actionLabel: 'Inspect link or QR',
             ),
             const SizedBox(height: AppSpacing.pagePaddingLarge),
             AppCard(

@@ -262,4 +262,30 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `powershell -File tool/test.ps1 -Suite device -DeviceId "10AC9R1ABF0013A" -TimeoutSeconds 600`: PASS (smoke test, native OCR test, and synthetic review/redaction integration test passed on physical Vivo V2207 device in 23s).
   - Physical device installation & launch: Updated APK installed and launched on Vivo V2207 (`10AC9R1ABF0013A`).
 - **Manual Verification:** Human phone visual checklist provided for inspecting review entry from text and screenshot, editable text corrections, sensitive detail detection, candidate toggling and placeholder preview, confirmation banner, and back-button navigation.
+- **Status:** Complete (Commit `490ff66`). Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.
+
+## Module 20: Link Inspection, QR Decoding, and Explicit Destination Opening
+- **Scope:** Implement local link inspection and QR code decoding on `/input/link` without contacting destinations or issuing network/DNS queries. Support two intake mechanisms: (1) typed/pasted web address entry with offline URL inspection, and (2) on-device QR image selection and barcode decoding via `google_mlkit_barcode_scanning: 0.16.1`. Provide factual, non-judgmental structural observations: IPv4/IPv6 host, uncommon port, excessive subdomain nesting, potential open redirect parameters, percent-encoding in host, userinfo/credentials rejection, and unsupported Unicode/Punycode hostnames. Bounded 4,096-byte input size limit. Handle empty, single, multiple distinct, duplicate, and unsupported non-web QR payloads safely. Provide explicit two-step external browser launching via `UrlLauncherAdapter` (`LaunchMode.externalApplication`) displaying full destination hostname and complete selectable URL. Invalidate launch confirmation on input change. Connect valid inspected links and QR payloads to `/input/review` passing `InputSource.link` or `InputSource.qrCode`. Update Home dashboard Link card status from "Coming soon" to "Inspection available".
+- **Branch:** `frontend`
+- **Domain, Service, & Presentation Components:**
+  - `lib/features/input/domain/models/link_inspection_result.dart`: Typed models for scheme, host, port, path, query, fragment, factual observations, and rejection codes (`LinkRejectionCode`).
+  - `lib/features/input/domain/models/qr_payload.dart`: Payload categorization (`webUrl`, `plainText`, `unsupported`) with safe sanitization and length bounding (4,096 UTF-8 bytes).
+  - `lib/features/input/domain/models/qr_decode_result.dart`: Typed decode result handling single, multiple distinct, duplicate identical deduplication, and empty detections.
+  - `lib/features/input/domain/contracts/url_launcher_adapter.dart`: Adapter contract for external browser launching.
+  - `lib/features/input/domain/contracts/qr_decoder_service.dart`: Adapter contract for QR image decoding.
+  - `lib/features/input/domain/services/url_inspection_service.dart`: Pure-Dart offline parser and structural inspector with IPv4/IPv6 RFC 1918 loopback/private IP detection, port checking, subdomain counting, open redirect parameter flagging, and rejection rules.
+  - `lib/features/input/data/services/default_url_launcher_adapter.dart`: Production implementation wrapping `url_launcher: 6.3.3` with `LaunchMode.externalApplication`.
+  - `lib/features/input/data/services/default_qr_decoder_service.dart`: Production implementation wrapping `google_mlkit_barcode_scanning: 0.16.1` for `BarcodeFormat.qrCode` with payload categorization and deduplication.
+  - `lib/features/input/presentation/controllers/input_link_controller.dart`: GetX controller managing mode toggle (`web address` vs `QR image`), URL validation, QR image picking/decoding/cleanup, confirmation modal state, launch execution, and review navigation.
+  - `lib/features/input/presentation/bindings/input_link_binding.dart`: Route dependency injection binding.
+  - `lib/features/input/presentation/screens/input_link_screen.dart`: Complete screen layout with segmented mode selector, web address input with inspection trigger, QR image selector with interactive pan/zoom preview, destination review card, multi-payload selector, safety reminder, and two-step external launch confirmation modal.
+  - `lib/features/input/presentation/controllers/screenshot_recovery_coordinator.dart`: Updated with `PickerPurpose` (`screenshot` vs `qrCode`) for disambiguating image picker callbacks.
+  - `frontend/android/app/src/main/AndroidManifest.xml`: Added `<queries>` intent declarations for `https` and `http` schemes.
+  - `assets/fixtures/qr_test_card.png`: Bundled test fixture asset containing QR code encoding `https://example.com/trustcue-test`.
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (109 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (273/273 tests passed across 25 suites, adding 46 new tests for Module 20).
+  - `git diff --check`: PASS (clean whitespace).
+- **Manual Verification:** Human phone visual checklist provided for inspecting typed URL inspection, observation chips, QR image selection and decoding, multiple code selector, confirmation modal with complete hostname and destination URL, external browser opening, and safe-use review navigation.
 - **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.

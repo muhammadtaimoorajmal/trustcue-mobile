@@ -232,7 +232,56 @@ abstract class Result<T> {
 
 ---
 
-## 8. Future Extension Points
+## 8. Link Inspection, QR Decoding, and Destination Opening Contracts (Module 20)
 
-- **Module 20–21:** URL parsing, QR decoding, and Android incoming-share handling.
+### 8.1 Link Inspection Models & Boundaries
+- **`LinkInspectionResult`**: Complete immutable outcome of local URI parsing:
+  - `originalInput` (`String`): Exact raw string entered or extracted.
+  - `parsedUri` (`Uri?`): Standard parsed Dart URI when valid.
+  - `scheme` (`String?`): Lowercase scheme (`http` or `https` permitted for opening).
+  - `host` (`String?`): Hostname, IPv4, or IPv6 literal.
+  - `port` (`int?`): Explicit port number if specified.
+  - `path` (`String?`): Normalized hierarchical path.
+  - `queryParameters` (`Map<String, String>`): Unmodifiable key-value pairs.
+  - `fragment` (`String?`): Anchor or fragment identifier.
+  - `observations` (`List<LinkStructuralObservation>`): Factual structural characteristics.
+  - `rejectionCode` (`LinkRejectionCode?`): Specific rejection reason when invalid.
+  - `isValid` (`bool`): True if and only if `rejectionCode == null`.
+  - `canOpenExternally` (`bool`): True if valid and scheme is strictly `http` or `https`.
+- **`LinkStructuralObservation`**: Non-judgmental observations:
+  - `ipAddressHost`: Host is an explicit IPv4 or IPv6 literal.
+  - `unusualPort`: Non-standard port specified (not 80 or 443).
+  - `excessiveSubdomains`: Host contains more than 3 subdomain labels.
+  - `potentialOpenRedirect`: Query parameters contain redirect targets (e.g., `url=`, `redirect=`, `dest=`).
+  - `percentEncodedHost`: Host contains `%` escaped byte sequences.
+  - `containsFragment`: URL contains an explicit `#` fragment.
+- **`LinkRejectionCode`**: Rejection reasons:
+  - `empty`: Blank or whitespace-only input.
+  - `tooLong`: Input exceeds 4,096 UTF-8 bytes.
+  - `unsupportedScheme`: Scheme is not supported (only `http`/`https` eligible for web destination review).
+  - `userinfoPresent`: URL contains embedded credentials (`user:pass@host`).
+  - `malformedHost`: Hostname is missing or structurally invalid.
+  - `unicodeHostUnsupported`: Internationalized/Punycode non-ASCII hostnames.
+  - `localOrPrivateHost`: Localhost, RFC 1918 private IPs, loopback, link-local, or broadcast addresses.
+  - `unsupportedCharacters`: Backslashes, control characters, or bidi override marks present.
+
+### 8.2 QR Decoding Contracts
+- **`QrPayloadType`**: Categorization enum:
+  - `webUrl`: Valid `http` or `https` link; inspected via `UrlInspectionService`.
+  - `plainText`: Non-URL text or text exceeding URL constraints.
+  - `unsupported`: Non-web payloads (Wi-Fi, vCard, mailto, tel, SMS, payment/UPI, app intents). Never executed.
+- **`QrPayload`**: Immutable payload descriptor containing `type`, sanitized `rawValue` (<= 4,096 bytes), and optional `LinkInspectionResult`.
+- **`QrDecodeResult`**: Result container with `payloads` list, `detectedCount`, `uniqueCount`, and status (`noneFound`, `singlePayload`, `multiplePayloads`).
+
+### 8.3 Safe Opening and Privacy Invariants
+- Zero network requests, DNS queries, or socket connections are initiated during URL inspection or QR decoding.
+- Destination opening strictly delegates to external browser via `UrlLauncherAdapter` with `LaunchMode.externalApplication`.
+- Opening requires explicit two-step confirmation presenting complete destination hostname and exact selectable URL.
+- Confirmed state is cleared immediately if the underlying input or QR payload changes.
+
+---
+
+## 9. Future Extension Points
+
+- **Module 21:** Android incoming-share input and lifecycle handling.
 - **Module 22–26:** Warning taxonomy, rule engine, evidence location mapping, and local assessment aggregation.
