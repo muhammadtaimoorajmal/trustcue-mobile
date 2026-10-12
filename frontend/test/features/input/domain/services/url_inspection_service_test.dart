@@ -337,7 +337,7 @@ void main() {
       );
       expect(res.query, isNotNull);
       expect(
-        res.observations.any((o) => o.contains('query parameters')),
+        res.observations.any((o) => o.contains('query parameter')),
         isTrue,
       );
       expect(res.observations.any((o) => o.contains('redirect')), isTrue);

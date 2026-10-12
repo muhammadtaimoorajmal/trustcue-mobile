@@ -289,3 +289,31 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `git diff --check`: PASS (clean whitespace).
 - **Manual Verification:** Human phone visual checklist provided for inspecting typed URL inspection, observation chips, QR image selection and decoding, multiple code selector, confirmation modal with complete hostname and destination URL, external browser opening, and safe-use review navigation.
 - **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.
+
+## Module 20A: Complete Android Build and Contract Reconciliations
+- **Scope:** Reconcile Module 20 implementation against contract requirements and diagnose Android build failure:
+  1. **Contract Reconciliations:**
+     - **Punycode:** Conventional ASCII punycode hostnames (`xn--...`) are accepted with a factual caution observation (`Destination contains an internationalized punycode label ("$label"), which may visually resemble another domain.`); unencoded non-ASCII Unicode hostnames are rejected as unsupported (`unicodeHostUnsupported`).
+     - **Payload limits:** Decoded payloads exceeding 4,096 UTF-8 bytes are strictly classified as `QrPayloadType.unsupported` (`isOversized: true`, formatDescription: `Oversized Payload`), preventing recategorization as `plainText` or forwarding to `/input/review`.
+     - **Structural observations:** Removed speculative subdomain boundary/counting logic. Factual redirect query parameter observation without concluding open redirect vulnerability (`Destination contains N query parameter(s).` and `Contains query parameter "$key", a parameter name commonly used for destination redirection.`).
+  2. **Editor Warnings & Analysis Reconciliation:** Reconciled 117 editor warnings in IDE problems panel against zero Dart analysis issues. Confirmed that `flutter analyze --no-pub` and `dart analyze` report 0 issues; the 117 markers were external/stale Java/Gradle language server warnings from missing JDK on host, not Dart source problems.
+  3. **Android Build Root Cause Analysis:**
+     - Inspected complete `gradlew.bat` output: failed with code 1 (`ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.`, error code 9009).
+     - Disclosed Flutter config: global `flutter config --jdk-dir` was experimentally set earlier to DBeaver JRE, but DBeaver JRE is a custom stripped `jlink` runtime lacking the `java.instrument` module required by Gradle 9.3.1. Reverted and cleared via `flutter config --jdk-dir=""`.
+     - Verified system environment: `HKCU:\Environment\Path` points to `C:\Program Files\Java\jdk-25\bin`, but `C:\Program Files\Java` does not exist on disk outside the project repository.
+     - Documented precise prerequisite: A full standard OpenJDK runtime (JDK 17, 21, or 25) with `java.instrument` must be installed on the host and configured in `JAVA_HOME` or system PATH for local APK compilation.
+- **Branch:** `frontend`
+- **Reconciled Components:**
+  - `lib/features/input/domain/services/url_inspection_service.dart`: Factual query parameter count, factual redirect parameter name observation without speculative claims, punycode acceptance with caution, unencoded non-ASCII Unicode rejection.
+  - `lib/features/input/data/services/default_qr_decoder_service.dart`: Strict early classification of oversized payloads (>4,096 UTF-8 bytes) as `QrPayloadType.unsupported` (`isOversized: true`, formatDescription: `Oversized Payload`), preventing plainText or URL fallback.
+  - `lib/features/input/presentation/controllers/input_link_controller.dart`: Guarded `reviewText()` to reject oversized payloads, uninspected URLs, or payloads exceeding 4,096 bytes.
+  - `test/features/input/domain/services/url_inspection_service_test.dart`: Updated unit tests verifying factual observations.
+  - `test/features/input/domain/services/default_qr_decoder_service_test.dart`: Updated unit tests verifying oversized payloads classified as `unsupported`.
+  - `test/features/input/presentation/controllers/input_link_controller_test.dart`: Added controller test asserting oversized payload rejection during review navigation.
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (109 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (274/274 tests passed across 25 suites, adding 1 new controller test).
+  - `git diff --check`: PASS (clean whitespace).
+- **Physical Device & Build Status:** Physical device Vivo V2207 (`10AC9R1ABF0013A`) is connected and authorized. Android APK assembly cannot succeed until a standard full JDK is installed on the host machine outside the project boundary. Independent project work and test suite verification are complete.
+- **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending physical device verification once host JDK is installed.

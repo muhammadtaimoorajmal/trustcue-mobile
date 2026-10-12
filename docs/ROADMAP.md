@@ -34,7 +34,7 @@ This roadmap outlines the complete 50-module development plan for TrustCue, repl
 | **17** | Screenshot selection, preview, temporary-file lifecycle | Completed (`1ac80c4`) | `frontend` |
 | **18** | On-device OCR integration, supported scripts, failures, retries | Completed (`f73b920`) | `frontend` |
 | **19** | Extracted-text correction, sensitive-data detection, redaction review | Completed (`490ff66`) | `frontend` |
-| **20** | URL parsing, QR decoding, destination review, safe-opening boundaries | Completed | `frontend` |
+| **20** | URL parsing, QR decoding, destination review, safe-opening boundaries (includes Module 20A contract & build reconciliation) | Completed | `frontend` |
 | **21** | Android incoming-share input and lifecycle handling | Planned | `frontend` |
 | **22** | Warning taxonomy, rule engine, evidence locations, rule contracts | Planned | `frontend` |
 | **23** | Urgency, credentials, verification-code, payment, and account-threat rules | Planned | `frontend` |

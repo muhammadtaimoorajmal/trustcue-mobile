@@ -427,5 +427,24 @@ void main() {
 
       controller.onClose();
     });
+
+    test('reviewText rejects oversized payload without navigating', () async {
+      final controller = createController();
+      controller.onInit();
+      controller.switchMode(LinkIntakeMode.qr);
+
+      controller.selectedPayload.value = const QrPayload(
+        rawValue: 'oversized content',
+        byteCount: 5000,
+        type: QrPayloadType.unsupported,
+        summary: 'Oversized',
+        isOversized: true,
+      );
+
+      await controller.reviewText();
+      expect(controller.isNavigatingAway.value, isFalse);
+
+      controller.onClose();
+    });
   });
 }

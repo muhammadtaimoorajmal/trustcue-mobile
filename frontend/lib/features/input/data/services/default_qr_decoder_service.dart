@@ -62,6 +62,20 @@ class DefaultQrDecoderService implements QrDecoderService {
         final byteCount = utf8.encode(raw).length;
         final isOversized = byteCount > UrlInspectionService.maxUtf8Bytes;
 
+        if (isOversized) {
+          payloads.add(
+            QrPayload(
+              rawValue: raw,
+              byteCount: byteCount,
+              type: QrPayloadType.unsupported,
+              summary: 'Decoded payload exceeds the 4,096-byte limit and cannot be processed.',
+              formatDescription: 'Oversized Payload',
+              isOversized: true,
+            ),
+          );
+          continue;
+        }
+
         final upper = raw.toUpperCase();
         if (upper.startsWith('WIFI:')) {
           payloads.add(

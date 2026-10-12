@@ -159,16 +159,21 @@ void main() {
     expect(res.payloads[2].formatDescription, 'Payment Intent');
   });
 
-  test('flags oversized payloads exceeding 4,096 bytes', () async {
-    final bigText = 'text: ${'a' * 4100}';
-    final service = DefaultQrDecoderService(
-      scannerFactory: () =>
-          _FakeBarcodeScanner(barcodes: [_FakeBarcode(bigText)]),
-    );
+  test(
+    'flags oversized payloads exceeding 4,096 bytes as unsupported',
+    () async {
+      final bigText = 'text: ${'a' * 4100}';
+      final service = DefaultQrDecoderService(
+        scannerFactory: () =>
+            _FakeBarcodeScanner(barcodes: [_FakeBarcode(bigText)]),
+      );
 
-    final res = await service.decode(sampleFile.path);
-    expect(res.payloads.first.isOversized, isTrue);
-  });
+      final res = await service.decode(sampleFile.path);
+      expect(res.payloads.first.isOversized, isTrue);
+      expect(res.payloads.first.type, QrPayloadType.unsupported);
+      expect(res.payloads.first.formatDescription, 'Oversized Payload');
+    },
+  );
 
   test('handles scanner exception gracefully and closes scanner', () async {
     late _FakeBarcodeScanner scanner;

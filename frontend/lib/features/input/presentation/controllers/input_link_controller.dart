@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -344,16 +345,22 @@ class InputLinkController extends GetxController {
     final String? imagePath;
 
     if (currentMode.value == LinkIntakeMode.text) {
+      if (textInspectionResult.value?.isValid != true) return;
       textToReview = urlTextController.text;
       source = InputSource.link;
       imagePath = null;
     } else {
-      textToReview = selectedPayload.value?.rawValue ?? '';
+      final payload = selectedPayload.value;
+      if (payload == null || payload.isOversized) return;
+      textToReview = payload.rawValue;
       source = InputSource.qrCode;
       imagePath = selectedQrImage.value?.filePath;
     }
 
     if (textToReview.trim().isEmpty) return;
+    if (utf8.encode(textToReview).length > UrlInspectionService.maxUtf8Bytes) {
+      return;
+    }
 
     isNavigatingAway.value = true;
     try {

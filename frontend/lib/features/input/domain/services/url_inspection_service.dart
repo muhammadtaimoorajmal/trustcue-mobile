@@ -408,14 +408,14 @@ class UrlInspectionService {
     // Query parameters & open redirect observations
     if (parsed.hasQuery && parsed.query.isNotEmpty) {
       observations.add(
-        'Destination contains query parameters (${parsed.queryParameters.keys.length} parameter(s)), which may contain session tokens or tracking identifiers.',
+        'Destination contains ${parsed.queryParameters.keys.length} query parameter(s).',
       );
 
       for (final key in parsed.queryParameters.keys) {
         if (_redirectParamKeys.contains(key.toLowerCase())) {
           final paramVal = parsed.queryParameters[key];
           observations.add(
-            'Query parameter "$key${paramVal != null && paramVal.isNotEmpty ? '=$paramVal' : ''}" may indicate an open redirect forwarding to another site.',
+            'Contains query parameter "$key${paramVal != null && paramVal.isNotEmpty ? '=$paramVal' : ''}", a parameter name commonly used for destination redirection.',
           );
           break;
         }
