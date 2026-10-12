@@ -67,11 +67,16 @@ class InputScreenshotController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    final args = Get.arguments;
+    if (args is Map && args['sharedImage'] is SelectedImageDescriptor) {
+      selectedImage.value = args['sharedImage'] as SelectedImageDescriptor;
+    }
+
     // Claim any recovered image from coordinator if present
     final recovered = recoveryCoordinator?.consumeRecoveredImage(
       PickerPurpose.screenshot,
     );
-    if (recovered != null) {
+    if (recovered != null && selectedImage.value == null) {
       selectedImage.value = recovered;
     }
 
@@ -81,6 +86,19 @@ class InputScreenshotController extends GetxController {
           ? {selectedImage.value!.filePath}
           : const {},
     );
+  }
+
+  /// Sets an imported shared image descriptor without triggering OCR.
+  void populateSharedImage(SelectedImageDescriptor newImage) {
+    final old = selectedImage.value;
+    selectedImage.value = newImage;
+    ocrResult.value = null;
+    ocrFailure.value = null;
+    reviewedResult.value = null;
+    validationError.value = null;
+    if (old != null && old.filePath != newImage.filePath) {
+      _safelyDeleteOwnedFile(old.filePath);
+    }
   }
 
   @override

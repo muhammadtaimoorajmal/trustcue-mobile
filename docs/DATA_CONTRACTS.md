@@ -285,7 +285,45 @@ abstract class Result<T> {
 
 ---
 
-## 9. Future Extension Points
+## 9. Android Incoming Share Contracts (Module 21)
 
-- **Module 21:** Android incoming-share input and lifecycle handling.
+### 9.1 Supported Payload Types & Intake Rules
+- **Supported Intents:** Android `ACTION_SEND` with `text/plain`, `image/png`, or `image/jpeg`.
+- **Text Bounds:** Strictly enforced maximum 10,000 code points (runes) and 40,000 UTF-8 bytes. Truncated or oversized text beyond these boundaries is flagged or bounded before consumption.
+- **Image Bounds & Magic-Byte Verification:** Streamed off the main UI thread via `ContentResolver` into private staging cache (`cacheDir/trustcue_incoming_shares/`). Maximum file size 10 MiB (10,485,760 bytes). Streams exceeding 10 MiB are immediately aborted and deleted. Content is validated against authentic magic bytes:
+  - PNG: `89 50 4E 47`
+  - JPEG: `FF D8 FF`
+- **Rejection Policy:** Multiple image shares (`ACTION_SEND_MULTIPLE`), non-content file URIs, unsupported MIME types, corrupt image streams, or oversized images are rejected with user-visible errors and never crash the application.
+- **Mixed Content:** Intents with both text and an image present both components in the review presentation; users deliberately choose which item to examine. Payloads are never silently merged or dropped.
+
+### 9.2 Domain Models & Platform Interface
+- **`IncomingShareType`**: Enum designating share category:
+  - `text`: Plain text payload.
+  - `image`: Valid staged PNG or JPEG image payload.
+  - `mixed`: Both valid plain text and staged image present.
+  - `unsupported`: Rejected intent, oversized content, or unreadable URI with descriptive `errorMessage`.
+- **`IncomingSharePayload`**: Immutable payload model holding:
+  - `eventId` (`String`): UUID identifying the specific share instance.
+  - `type` (`IncomingShareType`): Payload category.
+  - `text` (`String?`): Validated shared text if present.
+  - `stagedImagePath` (`String?`): Canonical file path to staged image in private cache.
+  - `mimeType` (`String?`): Verified MIME type (`image/png`, `image/jpeg`, `text/plain`).
+  - `errorMessage` (`String?`): Descriptive explanation if rejected.
+- **Platform Channel (`trustcue/incoming_share`)**:
+  - `getInitialShare`: Invoked on cold startup to retrieve any launch intent payload.
+  - `onShareReceived`: Method channel event emitted from native `onNewIntent` when share arrives while running.
+  - `consumeShare(String eventId)`: Acknowledges processing and clears native memory/intent cache.
+  - `cleanStagedFile(String filePath)`: Safely deletes staged image from `trustcue_incoming_shares/`.
+
+### 9.3 Lifecycle, Onboarding, and Draft Protection Invariants
+- **Onboarding Gate:** If the user has not completed onboarding, incoming shares are held in memory as `pendingShare` and only presented after onboarding is fully acknowledged.
+- **Single Pending Share Policy:** At most one incoming share is held pending user decision. Any prior unconsumed pending share is safely replaced and its staged file cleaned up.
+- **Draft Conflict Protection (`DraftConflict`):** If the destination input screen already holds an unsaved draft (text, screenshot, or inspected URL), the user is explicitly warned before replacing it ("Keep current draft" vs "Replace draft with shared content").
+- **Transactional Staging:** Shared images are initially copied to a temporary staging cache. When the user accepts the image for analysis (as screenshot or QR image), it is transactionally imported into the app-owned `ScreenshotStorageService` before the staged file is cleaned up.
+- **Strict Privacy Invariants:** Zero automatic OCR, QR decoding, URL opening, or network analysis is triggered upon share reception. User interaction is strictly required.
+
+---
+
+## 10. Future Extension Points
+
 - **Module 22–26:** Warning taxonomy, rule engine, evidence location mapping, and local assessment aggregation.

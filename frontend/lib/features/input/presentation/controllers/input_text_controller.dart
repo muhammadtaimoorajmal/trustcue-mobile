@@ -40,8 +40,18 @@ class InputTextController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    final args = Get.arguments;
+    if (args is Map && args['sharedText'] is String) {
+      textEditingController.text = args['sharedText'] as String;
+    }
     textEditingController.addListener(_handleTextChanged);
     _syncText(textEditingController.text);
+  }
+
+  /// Populates shared text into the draft without preparing it.
+  void populateSharedText(String sharedText) {
+    textEditingController.text = sharedText;
+    _syncText(sharedText);
   }
 
   @override

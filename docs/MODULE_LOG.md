@@ -320,3 +320,35 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `git diff --check`: PASS (clean whitespace).
 - **Physical Device & Build Status:** Verified on physical Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34) running with Eclipse Adoptium OpenJDK 21.0.12.1 (`Temurin-21.0.12.1+1 LTS, hotspot`). Native QR decoding via Google ML Kit verified against `assets/fixtures/qr_test_card.png` without automatic destination launch. Native OCR and review/redaction integration coverage fully preserved.
 - **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.
+
+
+## Module 21: Android Incoming Shares and Lifecycle Integration
+- **Scope:** Support receiving shared text or one supported image into TrustCue through Android's Sharesheet (`ACTION_SEND`).
+  1. **Sharesheet Declaration & Filtering:** AndroidManifest intent filter for `ACTION_SEND` supporting `text/plain`, `image/png`, and `image/jpeg`. Unsupported `ACTION_SEND_MULTIPLE`, non-content file URIs, and unrecognized MIME types are caught gracefully and surfaced as informative non-fatal errors.
+  2. **Native Payload Extraction & Security Limits (`MainActivity.kt`):** Background thread streaming via `ContentResolver` to app-owned cache directory (`cacheDir/trustcue_incoming_shares/`). Maximum file size bounded to 10 MiB (10,485,760 bytes) with magic-byte verification (PNG `89 50 4E 47`, JPEG `FF D8 FF`). Streams exceeding bounds or containing invalid headers are aborted and staged files removed. Text payloads are bounded to 10,000 code points and 40,000 UTF-8 bytes.
+  3. **Cold & Warm Lifecycle Bridge (`MethodChannel("trustcue/incoming_share")`):** Handles cold launch (`onCreate` / `getInitialShare`) and warm launch while app is already running (`onNewIntent` / `onShareReceived`). Unique UUID event tracking with explicit Dart acknowledgment (`consumeShare`) and staged cleanup (`cleanStagedFile`).
+  4. **Central Coordinator & Onboarding Authority (`IncomingShareCoordinator`):** Holds pending shares until onboarding is completed. Holds at most one pending share awaiting user choice; any prior unconsumed pending share is safely replaced and cleaned up.
+  5. **Non-Destructive Choice Presentation (`IncomingShareDialog`):** Clear user options: text offers "Use as message" and "Inspect as link" (if containing a single valid web link); image offers "Use as screenshot" and "Use as QR image"; mixed text/image offers both; "Dismiss" safely cleans staged files.
+  6. **Draft Conflict Protection (`DraftConflict`):** Detects existing drafts in destination screens (`/input/text`, `/input/screenshot`, `/input/link`) and prompts user ("Keep current draft" vs "Replace draft with shared content"). Transactional image import via `ScreenshotStorageService` before draft replacement.
+  7. **Strict Privacy Invariants:** Zero automatic OCR, QR decoding, link opening, or remote analysis.
+- **Branch:** `frontend`
+- **Domain, Data, and Presentation Components:**
+  - `frontend/android/app/src/main/AndroidManifest.xml`: Added `ACTION_SEND` intent filter for `text/plain`, `image/png`, and `image/jpeg`.
+  - `frontend/android/app/src/main/kotlin/io/github/muhammadtaimoorajmal/trustcue/MainActivity.kt`: Native `MethodChannel("trustcue/incoming_share")`, streaming bounded to 10 MiB, magic bytes verification, staging cache management, cold/warm lifecycle dispatching.
+  - `lib/features/incoming_share/domain/models/incoming_share_payload.dart`: Typed immutable models (`IncomingSharePayload`, `IncomingShareType`).
+  - `lib/features/incoming_share/domain/contracts/incoming_share_adapter.dart`: Adapter contract (`getInitialShare`, `shareStream`, `consumeShare`, `cleanStagedFile`).
+  - `lib/features/incoming_share/data/services/default_incoming_share_adapter.dart`: Production platform channel adapter.
+  - `lib/features/incoming_share/presentation/controllers/incoming_share_coordinator.dart`: GetX coordinator managing pending share, onboarding gating, draft conflicts, navigation, and cleanup.
+  - `lib/features/incoming_share/presentation/widgets/incoming_share_dialog.dart`: Choice presentation dialog with responsive layout, non-interactive previews, dark theme support, and draft replacement confirmation.
+  - Destination controller ingestion: `populateSharedText`, `populateSharedImage`, `populateSharedUrl`, `populateSharedQrImage` in `InputTextController`, `InputScreenshotController`, and `InputLinkController`.
+  - App & route wiring in `TrustCueApp`, `OnboardingController`, and `HomeController`.
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (114 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (307/307 tests passed across 28 suites, adding 33 new tests for Module 21).
+  - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (`build\app\outputs\flutter-apk\app-debug.apk`, 209,077,722 bytes, built in 55.8s).
+  - `powershell -File tool/test.ps1 -Suite device -DeviceId "10AC9R1ABF0013A" -TimeoutSeconds 300`: PASS (5/5 tests passed in 30s on physical Vivo V2207 Android 14 / API 34, including Module 21 native channel & lifecycle test).
+  - Physical device installation & launch: Updated APK installed and launched on Vivo V2207 (`10AC9R1ABF0013A`), verified live `ACTION_SEND` intent dispatching.
+  - `git diff --check`: PASS (clean whitespace).
+- **Physical Device & Build Status:** Verified on physical Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34). Native channel operations, real intent intake, staging lifecycle, draft conflict resolution, and non-destructive presentation verified.
+- **Status:** Complete. Pushed to `frontend`. Stopped before Module 22.

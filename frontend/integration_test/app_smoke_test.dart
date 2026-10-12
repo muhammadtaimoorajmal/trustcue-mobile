@@ -14,6 +14,9 @@ import 'package:trustcue_mobile/features/input/data/services/default_qr_decoder_
 import 'package:trustcue_mobile/features/input/data/services/default_text_recognition_service.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/input/presentation/controllers/input_link_controller.dart';
+import 'package:trustcue_mobile/features/incoming_share/data/services/default_incoming_share_adapter.dart';
+import 'package:trustcue_mobile/features/incoming_share/domain/models/incoming_share_payload.dart';
+import 'package:trustcue_mobile/features/incoming_share/presentation/controllers/incoming_share_coordinator.dart';
 import 'package:trustcue_mobile/features/input/presentation/controllers/input_text_controller.dart';
 import 'package:trustcue_mobile/features/onboarding/data/onboarding_preferences.dart';
 
@@ -57,6 +60,7 @@ void main() {
     app.main();
 
     // Wait for the app to settle
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
 
     expect(find.text('Welcome to TrustCue'), findsOneWidget);
@@ -390,4 +394,70 @@ void main() {
       await fixtureFile.delete();
     }
   }, timeout: const Timeout(Duration(minutes: 2)));
+
+  testWidgets(
+    'Module 21 Android incoming share platform channel and lifecycle integration test',
+    (WidgetTester tester) async {
+      // 0. Ensure application is launched
+      app.main();
+      await tester.pumpAndSettle();
+
+      // 1. Verify default native adapter calls succeed on real Android device
+      final adapter = DefaultIncomingShareAdapter();
+      final initial = await adapter.getInitialShare();
+      // Cold start with no external share should be null
+      expect(initial, isNull);
+
+      // Test native consumeShare acknowledging dummy event ID
+      final consumed = await adapter.consumeShare(
+        'integration-test-event-uuid',
+      );
+      expect(consumed, isTrue);
+
+      // Test native cleanStagedFile
+      final tempDir = await getTemporaryDirectory();
+      final stagingDir = Directory('${tempDir.path}/trustcue_incoming_shares');
+      if (!stagingDir.existsSync()) {
+        stagingDir.createSync(recursive: true);
+      }
+      final stagedTestFile = File('${stagingDir.path}/test_stage_cleanup.tmp');
+      await stagedTestFile.writeAsString('temporary test payload');
+      expect(stagedTestFile.existsSync(), isTrue);
+
+      final cleaned = await adapter.cleanStagedFile(stagedTestFile.path);
+      expect(cleaned, isTrue);
+      expect(stagedTestFile.existsSync(), isFalse);
+
+      // 2. Test Coordinator receiving and presenting shared text in app
+      if (Get.currentRoute != AppRoutes.home) {
+        Get.offNamed(AppRoutes.home);
+        await tester.pumpAndSettle();
+      }
+
+      final coordinator = Get.find<IncomingShareCoordinator>();
+      coordinator.pendingShare.value = IncomingSharePayload.text(
+        eventId: 'integration-share-text',
+        text: 'Suspicious shared message to inspect',
+      );
+      coordinator.presentPendingShare();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Shared message received'), findsOneWidget);
+      expect(find.text('Suspicious shared message to inspect'), findsOneWidget);
+      expect(find.text('Use as message'), findsOneWidget);
+
+      // 3. User taps "Use as message"
+      await tester.tap(find.text('Use as message'));
+      await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, AppRoutes.inputText);
+      final textController = Get.find<InputTextController>();
+      expect(textController.text.value, 'Suspicious shared message to inspect');
+
+      // Return to home
+      Get.offNamed(AppRoutes.home);
+      await tester.pumpAndSettle();
+    },
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
 }

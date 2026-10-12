@@ -106,13 +106,49 @@ class InputLinkController extends GetxController {
 
     urlTextController.addListener(_onUrlTextChanged);
 
+    final args = Get.arguments;
+    if (args is Map) {
+      if (args['sharedUrl'] is String) {
+        urlTextController.text = args['sharedUrl'] as String;
+        currentMode.value = LinkIntakeMode.text;
+      } else if (args['sharedQrImage'] is SelectedImageDescriptor) {
+        selectedQrImage.value =
+            args['sharedQrImage'] as SelectedImageDescriptor;
+        currentMode.value = LinkIntakeMode.qr;
+      }
+    }
+
     // Consume any recovered QR image if present
     final recovered = recoveryCoordinator?.consumeRecoveredImage(
       PickerPurpose.qrCode,
     );
-    if (recovered != null) {
+    if (recovered != null && selectedQrImage.value == null) {
       selectedQrImage.value = recovered;
       currentMode.value = LinkIntakeMode.qr;
+    }
+  }
+
+  /// Populates shared URL text without automatically inspecting or launching it.
+  void populateSharedUrl(String newUrl) {
+    currentMode.value = LinkIntakeMode.text;
+    urlTextController.text = newUrl;
+    textInspectionResult.value = null;
+    showOpenConfirmation.value = false;
+    launchErrorMessage.value = null;
+  }
+
+  /// Sets a shared QR image descriptor without automatically decoding it.
+  void populateSharedQrImage(SelectedImageDescriptor newImage) {
+    final old = selectedQrImage.value;
+    currentMode.value = LinkIntakeMode.qr;
+    selectedQrImage.value = newImage;
+    qrDecodeResult.value = null;
+    selectedPayload.value = null;
+    qrInspectionResult.value = null;
+    showOpenConfirmation.value = false;
+    launchErrorMessage.value = null;
+    if (old != null && old.filePath != newImage.filePath) {
+      _storageService.deleteOwnedFile(old.filePath);
     }
   }
 

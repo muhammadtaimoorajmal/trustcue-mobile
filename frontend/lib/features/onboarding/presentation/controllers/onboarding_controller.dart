@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:trustcue_mobile/app/routes/app_routes.dart';
+import 'package:trustcue_mobile/features/incoming_share/presentation/controllers/incoming_share_coordinator.dart';
 import 'package:trustcue_mobile/features/onboarding/data/onboarding_preferences.dart';
 
 class OnboardingController extends GetxController {
@@ -19,6 +20,9 @@ class OnboardingController extends GetxController {
           .saveVersion(OnboardingPreferences.currentVersion)
           .timeout(const Duration(seconds: 10));
       _completed = true;
+      if (Get.isRegistered<IncomingShareCoordinator>()) {
+        Get.find<IncomingShareCoordinator>().onOnboardingCompleted();
+      }
       if (!isClosed) Get.offNamed(AppRoutes.home);
     } catch (_) {
       if (!isClosed) {
