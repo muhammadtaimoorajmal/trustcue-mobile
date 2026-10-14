@@ -149,6 +149,25 @@ Module 12's original `unknownRoute` configuration did not enforce this policy: G
     - Privacy-safe failure handling: maps rule exceptions or invalid inputs to typed `AnalysisFailure.malformedData` / `.unsupportedInput` without leaking raw user text, credentials, or exceptions to UI or log output.
     - Honest limitation declaration: reports empty findings with explicit caveats stating that absence of detected indicators does not guarantee safety or absence of scam intent.
 
+## Core Local Warning-Indicator Rules Architecture (Module 23)
+
+*   **Pure-Dart Warning Rule Implementations:** Five self-contained local rule classes implementing `LocalRule`:
+    - `UrgencyRule` (`rule.urgency.immediate_action`): Detects explicit immediate demands, short deadlines, or expiring ultimatums while excluding benign scheduling or ordinary uses of "now" or "today".
+    - `CredentialRequestRule` (`rule.credential.disclosure_request`): Detects explicit requests to disclose passwords, PINs, or credentials while excluding benign sign-in instructions via official apps.
+    - `VerificationCodeRequestRule` (`rule.verification_code.disclosure_request`): Detects requests to disclose OTPs, SMS codes, or 2FA tokens. Code delivery messages ("Your code is 123456") are excluded because they lack disclosure action verbs. Supports redaction placeholders (`[VERIFICATION CODE]`).
+    - `PaymentRequestRule` (`rule.payment.solicitation`): Detects explicit requests to wire money, pay via cryptocurrency, purchase gift cards, or pay clearance fees. Completed receipts, invoices, and refund notices are excluded.
+    - `AccountThreatRule` (`rule.account.threat_or_suspension`): Detects assertions that an account is or will be suspended, restricted, or subject to legal action, anchoring strictly to account/legal contexts to avoid false triggers on "suspend download" or "close window".
+*   **Central Factory & Rule Catalog (`CoreWarningRuleCatalog`):** Provides `createRules()` and `createRegistry()`, instantiating populated `LocalRuleRegistry` instances for injection into `LocalRuleEngine`. Easily extensible in Module 24.
+*   **Clause Boundary Segmentation & Negation Protection (`RuleMatcherUtils`):**
+    - Scans directly on original snapshot text using case-insensitive regex patterns, preserving exact UTF-16 offsets without string copying or drift.
+    - Uses clause delimiters (`\r`, `\n`, `!`, `,`, `.`, `:`, `;`, `?`) to constrain context windows and prevent cross-sentence bridging.
+    - Checks clause prefixes for safety advice negation phrases (`never share`, `do not send`, `will never ask`), while isolating adversarial conjunctions (`but`, `however`, `yet`) so safety advice in one clause does not mask an actual request in a subsequent clause.
+*   **Surrogate Safety & Overlapping Range Deduplication:**
+    - Offsets are verified against surrogate pair splitting before finding creation.
+    - Overlapping match spans within a single rule are deterministically deduplicated, selecting the earlier start offset and longer span.
+    - Deterministic finding IDs formatted as `${ruleId}_${startOffset}_${endOffset}` contain zero raw text or credentials.
+*   **Architectural Isolation & UI Gating:** Rules are pure Dart with zero dependencies on Flutter, GetX, platform channels, storage, or network. Production input, review, and onboarding flows do not trigger analysis in this module.
+
 ## Repository Separation
 
 *   `frontend/`: The complete Flutter application and its client-side integrations.

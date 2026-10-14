@@ -379,8 +379,38 @@ abstract class Result<T> {
 
 ---
 
-## 11. Future Extension Points
+## 11. Core Local Warning-Indicator Rules Pack (Module 23)
 
-- **Module 23–24:** Substantive local indicator rule packs (urgency, credentials, impersonation, payment, job/investment).
-- **Module 25:** Local assessment aggregation, uncertainty scoring, evidence trail mapping.
+### 11.1 Catalog and Rule Identifiers
+- **`CoreWarningRuleCatalog`**: Factory providing pure-Dart local rule instances and a pre-populated `LocalRuleRegistry` for dependency injection into `LocalRuleEngine`.
+- **Implemented Rules:**
+  - **`UrgencyRule`** (`rule.urgency.immediate_action`, v1, `urgency_or_pressure`): Identifies explicit urgency demands, short deadlines (e.g. within 24 hours), or time-sensitive ultimatums. Ordinary scheduling and benign uses of "now" or "today" are intentionally excluded.
+  - **`CredentialRequestRule`** (`rule.credential.disclosure_request`, v1, `requests_for_credentials`): Identifies explicit requests to disclose or transmit passwords, PINs, security answers, or login credentials. Standard sign-in instructions via official applications are intentionally excluded.
+  - **`VerificationCodeRequestRule`** (`rule.verification_code.disclosure_request`, v1, `requests_for_verification_codes`): Identifies explicit requests to share, reply with, or disclose OTPs, SMS verification codes, or two-factor tokens. Code delivery messages ("Your code is 123456") and password reset tokens without a disclosure demand are excluded. Supports redacted placeholders (`[VERIFICATION CODE]`).
+  - **`PaymentRequestRule`** (`rule.payment.solicitation`, v1, `requests_for_payment`): Identifies explicit requests to wire money, pay via cryptocurrency, purchase gift cards, or transmit fees. Payment receipts, invoice confirmations, and refund notices are excluded. Payment methods are described factually without labeling them inherently fraudulent.
+  - **`AccountThreatRule`** (`rule.account.threat_or_suspension`, v1, `account_suspension_or_threats`): Identifies explicit claims that an account is or will be suspended, restricted, or subject to legal action. Benign unrelated phrases ("suspend the download", "close this window") are excluded.
+
+### 11.2 Contextual Boundaries, Negation, and Exclusion Policies
+- **Clause Boundaries:** Matching is strictly bounded by clause and sentence delimiters (`\r`, `\n`, `!`, `,`, `.`, `:`, `;`, `?`), preventing unrelated words from bridging distant sentences.
+- **Negation Safety Proximity:** Detects safety advice phrases (`never share`, `do not send`, `will never ask`, `don't disclose`) in the clause prefix. Supports adversarial conjunctions (`but`, `however`, `yet`), ensuring a safety phrase in one clause does not hide an un-negated disclosure request in another clause.
+- **Exclusion Filters:** `requests_for_payment` applies clause-level exclusion for receipts, refunds, and invoices. `requests_for_verification_codes` requires disclosure action verbs, separating delivery from solicitation.
+
+### 11.3 Evidence Integrity, Deduplication, and Determinism
+- **Exact UTF-16 Offsets:** All pattern matches operate directly on `snapshot.text` without string normalization or offset drift.
+- **Surrogate Pair Protection:** Ranges are verified against `EvidenceReference.isSurrogateSplit` before finding creation.
+- **Overlapping Range Deduplication:** Overlapping candidate matches within the same rule are deterministically deduplicated, selecting the earlier start offset and longer span.
+- **Deterministic Finding IDs:** Formatted as `${ruleId}_${startOffset}_${endOffset}`, guaranteeing uniqueness, determinism, and zero leakage of raw text or credentials.
+- **Safety Caps:** Each rule limits candidate collection to 105 matches, preventing unbounded memory consumption on adversarial repetitive text while allowing the engine's `maxFindings = 100` bound to trigger explicit typed failure.
+
+### 11.4 Scope and Status
+- Heuristic rules are English-language only (`['en']`).
+- Findings represent observable indicator signals, never definitive proof of fraud or malice.
+- Production UI and input flows do not invoke or surface analysis results in this module.
+
+---
+
+## 12. Future Extension Points
+
+- **Module 24:** Impersonation, job/recruitment, rewards/prizes, investment, and link structural warning rules.
+- **Module 25:** Local assessment aggregation, uncertainty scoring, evidence validation, safe-action catalog.
 - **Module 26:** Local analysis results and Evidence Trail user interface.

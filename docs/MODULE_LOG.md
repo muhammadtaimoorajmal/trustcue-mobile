@@ -413,5 +413,40 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (`build\app\outputs\flutter-apk\app-debug.apk`, 220,728,022 bytes, built in 41.2s).
   - Physical device installation & launch: Streamed install and normal app execution verified on connected Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34). Live `ACTION_SEND` intent delivery to running activity verified via adb.
   - `git diff --check`: PASS (clean whitespace).
-- **Physical Device & Build Status:** Verified on physical Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34) running with Eclipse Adoptium OpenJDK 21.0.12.1.
-- **Status:** Complete. Pushed to `frontend`. Stopped before Module 23.
+- **Physical Device & Build Status:** Verified debug APK compilation and streamed install on physical Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34). Live `ACTION_SEND` intent delivery to running activity verified via adb. The automated device integration suite (`tool/test.ps1 -Suite device`) was not executed for Module 22 (marked unverified for Module 22; last run in Module 21 where 5/5 tests passed).
+- **Status:** Complete (Commit `19a5300`). Pushed to `frontend`. Stopped before Module 23.
+
+## Module 23: Core Local Warning-Indicator Rules
+- **Scope:** Implement the core local English-language warning indicator rule pack for the five initial categories:
+  1. `urgency_or_pressure` (`UrgencyRule`, `rule.urgency.immediate_action`): Detects explicit immediate action demands, short deadlines (e.g. within 24 hours), or time-sensitive ultimatums. Excludes benign scheduling and ordinary occurrences of "now" or "today".
+  2. `requests_for_credentials` (`CredentialRequestRule`, `rule.credential.disclosure_request`): Detects explicit requests to disclose passwords, PINs, security answers, or credentials. Excludes legitimate sign-in instructions via official apps. Negated safety advice ("Never share your password") is suppressed at the clause level.
+  3. `requests_for_verification_codes` (`VerificationCodeRequestRule`, `rule.verification_code.disclosure_request`): Detects explicit requests to disclose OTPs, SMS codes, or 2FA tokens. Excludes code delivery messages ("Your verification code is 123456") by requiring disclosure action verbs. Supports redacted placeholders (`[VERIFICATION CODE]`).
+  4. `requests_for_payment` (`PaymentRequestRule`, `rule.payment.solicitation`): Detects explicit requests to wire money, pay via cryptocurrency, purchase gift cards, or pay clearance fees. Excludes receipts, invoices, and refund notices. Describes payment requests factually without labeling methods inherently fraudulent.
+  5. `account_suspension_or_threats` (`AccountThreatRule`, `rule.account.threat_or_suspension`): Detects claims of account suspension, restriction, or legal threats. Excludes benign phrases ("suspend download", "close window").
+  6. **Matching & Evidence Infrastructure (`RuleMatcherUtils`):** Pure-Dart utilities using clause delimiters (`[\r\n.!?;,:]`), clause-level negation detection with adversarial conjunction handling (`but`, `however`), surrogate pair safety, and overlapping match deduplication (retaining longer spans and earlier offsets).
+  7. **Central Catalog & Registry Factory (`CoreWarningRuleCatalog`):** Creates rule instances and pre-populated `LocalRuleRegistry` for dependency injection into `LocalRuleEngine`.
+  8. **Zero UI Analysis Invocations:** Production input screens, review screens, OCR, and share handlers remain decoupled and do not trigger analysis.
+- **Branch:** `frontend`
+- **Domain, Rule, and Test Components:**
+  - `lib/features/analysis/domain/rules/rule_matcher_utils.dart`: Pure-Dart clause parsing, negation handling, surrogate protection, and evidence reference generation.
+  - `lib/features/analysis/domain/rules/urgency_rule.dart`: Urgency and pressure rule.
+  - `lib/features/analysis/domain/rules/credential_request_rule.dart`: Credential disclosure request rule.
+  - `lib/features/analysis/domain/rules/verification_code_request_rule.dart`: Verification code disclosure request rule.
+  - `lib/features/analysis/domain/rules/payment_request_rule.dart`: Payment solicitation rule.
+  - `lib/features/analysis/domain/rules/account_threat_rule.dart`: Account suspension and threat rule.
+  - `lib/features/analysis/domain/rules/core_warning_rule_catalog.dart`: Central catalog and registry factory.
+  - `test/features/analysis/domain/rules/urgency_rule_test.dart`: 19 unit tests.
+  - `test/features/analysis/domain/rules/credential_request_rule_test.dart`: 22 unit tests.
+  - `test/features/analysis/domain/rules/verification_code_request_rule_test.dart`: 22 unit tests.
+  - `test/features/analysis/domain/rules/payment_request_rule_test.dart`: 17 unit tests.
+  - `test/features/analysis/domain/rules/account_threat_rule_test.dart`: 17 unit tests.
+  - `test/features/analysis/domain/rules/core_warning_rule_catalog_test.dart`: 3 unit tests.
+  - `test/features/analysis/domain/services/local_rule_engine_module23_test.dart`: 4 engine-level integration tests.
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (141 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (453/453 tests passed across 39 suites, adding 104 tests for Module 23).
+  - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (`build\app\outputs\flutter-apk\app-debug.apk`, 235,426,020 bytes, built in 40.1s).
+  - `git diff --check`: PASS (clean whitespace).
+- **Physical Device & Verification Status:** Pure-Dart on-device heuristic rules; no platform channel or visible UI modifications. In Module 22, APK installation and live `ACTION_SEND` intent delivery via adb were verified, but the automated device integration test suite (`tool/test.ps1 -Suite device`) was not executed for Module 22 (marked unverified for Module 22; last run in Module 21 where 5/5 tests passed). Automated assertions, APK installation, live intent delivery, and manual observations remain recorded distinctly.
+- **Status:** Complete. Pushed to `frontend`. Stopped before Module 24.
