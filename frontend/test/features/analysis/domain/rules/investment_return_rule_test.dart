@@ -83,7 +83,7 @@ void main() {
 
     for (final text in negativeCases) {
       test(
-        'does not match regulated finance or market discussion: "$text"',
+        'does not match standard financial discussion, rate disclosures, or risk warnings: "$text"',
         () {
           final snapshot = createSnapshot(text);
           final findings = rule.evaluate(snapshot);
@@ -91,6 +91,23 @@ void main() {
         },
       );
     }
+
+    test('presence of the word "regulated" does not suppress guaranteed-return match', () {
+      final snapshot = createSnapshot(
+        'Invest in our regulated fund with guaranteed returns of 50% weekly.',
+      );
+      final findings = rule.evaluate(snapshot);
+      expect(findings, hasLength(1));
+      expect(
+        () => EvidenceValidator.validateFinding(
+          findings.first,
+          snapshot,
+          expectedProducerId: rule.id,
+          expectedCategoryId: rule.category.id,
+        ),
+        returnsNormally,
+      );
+    });
   });
 
   group('InvestmentReturnRule unicode and offset integrity', () {

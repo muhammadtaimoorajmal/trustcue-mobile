@@ -174,8 +174,8 @@ Module 12's original `unknownRoute` configuration did not enforce this policy: G
     - `ClaimedIdentityRule` (`rule.impersonation.claimed_authority`): Detects explicit claims to represent an authority, bank, fraud department, or support team coupled with an actionable call. Does not attempt to verify sender identity or brand ownership; excludes news reports and email signatures.
     - `JobOfferRule` (`rule.job.advance_fee_or_guarantee`): Detects contextual combinations of employment/task offers with upfront payment demands, deposits, or minimal-work/high-pay promises. Standard job vacancies, interview invitations, salary figures, and remote work discussions are intentionally excluded.
     - `RewardClaimRule` (`rule.reward.prize_claim`): Detects recipient-facing claims of winning lotteries, prizes, or rewards requiring action, personal information, or advance fees. General competition announcements, contest rules, and loyalty point programs are excluded.
-    - `InvestmentReturnRule` (`rule.investment.guaranteed_return`): Detects explicit claims of guaranteed or risk-free profits, and rapid capital multiplication promises. General financial news, regulated savings rates, and standard investment discussions are excluded.
-    - `LinkStructuralRule` (`rule.link.structural_risk`): Extracts explicit `http://` and `https://` URLs directly from snapshot text and reports factual structural observations: numerical IP hosts, user credentials before host, punycode labels, non-standard network ports, and redirection query parameters. Operates strictly offline without network, DNS, or redirect tracking; trims trailing prose punctuation and unbalanced parentheses.
+    - `InvestmentReturnRule` (`rule.investment.guaranteed_return`): Detects explicit claims of guaranteed or risk-free profits, and rapid capital multiplication promises. General financial news, ordinary savings rate disclosures or risk disclosures, and standard investment discussions are excluded without claiming regulatory verification.
+    - `LinkStructuralRule` (`rule.link.structural_risk`): Extracts explicit `http://` and `https://` URLs directly from snapshot text and reports factual structural observations: numerical IP hosts, user credentials before host, punycode labels, non-standard network ports, and parameters commonly used to specify a destination. Operates strictly offline without network, DNS, or redirect tracking; trims trailing prose punctuation and unbalanced parentheses.
 *   **Unified Local Rule Catalog (`LocalRuleCatalog`):**
     - Single combined factory composing all 10 registered indicator rules across Module 23 and Module 24 with zero duplicate registrations.
     - Retains individual pack factory methods (`createCoreRules()`, `createExtendedRules()`) for test modularity.
@@ -190,6 +190,36 @@ Module 12's original `unknownRoute` configuration did not enforce this policy: G
     - Specific antecedent pattern `[credential] ... but send it to [agent/representative]` supported with documented limitations; general pronoun resolution is explicitly not claimed.
 *   **Architectural Status:**
     - Local rule packs are implemented; the user-facing analysis workflow is not enabled yet.
+
+## Local Assessment Synthesis, Uncertainty, and Educational Guidance Architecture (Module 25)
+
+*   **Pure-Dart Deterministic Synthesizer (`LocalAssessmentSynthesizer`):**
+    - Transforms a completed `AnalysisReport` and explicit `AnalysisExecutionContext` into an immutable `LocalAssessment`.
+    - Implements `AssessmentSynthesizer` contract; pure Dart with zero Flutter, widget, or network dependencies.
+    - Operates with synthesis policy version `'1.0.0'`.
+*   **Honest Outcome States (`AssessmentOutcomeState`):**
+    - `indicatorsDetected`: Local rules matched one or more potential warning indicator patterns. Grouped indicators list is non-empty. Factual summary states observed count and category names.
+    - `noIndicatorsMatched`: Content evaluated with zero matches. Factual summary explicitly states: *"No indicators were matched by these local checks. This does not establish that the message is safe."*
+    - `limitedCoverage`: Explicitly declared when rule catalog is empty or all rules were skipped due to unsupported input scope.
+    - No fraud probabilities, numerical risk scores, confidence percentages, or "safe/verified" verdicts are ever computed or emitted.
+*   **Deterministic Grouping and Sorting:**
+    - Findings are grouped by category identifier, preserving all distinct occurrences and exact evidence references without merging or dropping evidence.
+    - Category groups are sorted deterministically according to canonical enum index (`IndicatorCategory.values`), followed by unknown categories sorted alphabetically.
+    - Actions are deduplicated by stable `id`, merging all supporting finding IDs and category IDs, and sorted by `priority.index` ascending (`immediate`, `recommended`, `conditional`) then `id` alphabetically.
+*   **Educational Catalog (`CategoryEducationalCatalog`):**
+    - Centrally maintains concise, factual guidance for all 10 canonical category families + neutral unknown category fallback.
+    - Each category context specifies: `whatObserved`, `whyAttention`, `whatCannotEstablish`, and `independentVerificationStep`.
+    - Guidance boundaries: strictly avoids claiming knowledge of sender identity, unsolicited status, regulatory standing, URL maliciousness, or account compromise.
+    - Actions never reuse contact information (phones, emails, links) extracted from suspicious content.
+    - Conditional post-actions (e.g. `action.post_credential_disclosure`, `action.post_code_disclosure`) are explicitly labeled.
+*   **Uncertainty and Provenance Propagation:**
+    - Baseline notes: heuristic rule limits, English language matching scope, lack of sender verification, on-device execution without network or AI.
+    - Screenshot provenance: adds explicit OCR inaccuracy notice.
+    - Redaction provenance: reflects exact redactions count when trusted review metadata (`ReviewedTextResult`) is provided; uses conditional phrasing when omitted.
+*   **Service Composition Pipeline (`LocalAnalysisPipeline`):**
+    - Testable service orchestrating: `reviewed snapshot -> local rule engine -> assessment synthesis -> LocalAssessment`.
+    - Dependency injection with typed `Result` propagation. Engine validation or overflow errors propagate directly as typed failures without masking as completed assessments.
+    - UI gating preserved: pipeline is not called automatically from app startup, OCR completion, incoming shares, or text review.
 
 ## Repository Separation
 

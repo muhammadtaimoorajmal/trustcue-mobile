@@ -10,7 +10,7 @@ import 'rule_matcher_utils.dart';
 
 /// Pure-Dart heuristic rule detecting factual structural anomalies in embedded
 /// web addresses (URLs), such as numerical IP hosts, embedded user credentials,
-/// punycode domain labels, non-standard ports, and open redirection parameters.
+/// punycode domain labels, non-standard ports, and parameters commonly used to specify a destination.
 class LinkStructuralRule implements LocalRule {
   @override
   String get id => 'rule.link.structural_risk';
@@ -27,7 +27,7 @@ class LinkStructuralRule implements LocalRule {
   @override
   List<String> get limitations => const [
     'Evaluates explicit http:// and https:// URLs parsed directly from text snapshots. Does not perform DNS resolution, network connections, HTTP redirects, or URL expansion.',
-    'Reports purely factual structural observations: numerical IP hosts, user credentials preceding host, punycode labels, non-standard network ports, and redirection query parameters. Does not evaluate domain reputation or make a determination of fraud.',
+    'Reports purely factual structural observations: numerical IP hosts, user credentials preceding host, punycode labels, non-standard network ports, and parameters commonly used to specify a destination. Does not evaluate domain reputation or make a determination of fraud.',
     'Does not treat HTTPS as proof of safety, nor does it flag standard subdomains, path depth, or ordinary query strings as inherently suspicious.',
     'Displayed-text versus destination-link mismatch is not supported in unformatted text snapshots.',
   ];
@@ -243,14 +243,14 @@ class LinkStructuralRule implements LocalRule {
       }
     }
 
-    // 5. Open destination redirection parameter check
+    // 5. Destination parameter check
     if (parsed.hasQuery && parsed.queryParameters.isNotEmpty) {
       for (final key in parsed.queryParameters.keys) {
         if (_redirectKeys.contains(key.toLowerCase())) {
           final val = parsed.queryParameters[key];
           final valSnippet = val != null && val.isNotEmpty ? '=$val' : '';
           observations.add(
-            'The link contains a query parameter commonly used for destination redirection ("$key$valSnippet").',
+            'The URL contains a parameter commonly used to specify a destination ("$key$valSnippet").',
           );
           break;
         }

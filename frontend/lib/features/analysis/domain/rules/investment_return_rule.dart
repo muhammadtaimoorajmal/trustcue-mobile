@@ -24,7 +24,7 @@ class InvestmentReturnRule implements LocalRule {
   @override
   List<String> get limitations => const [
     'English-language heuristic rule; does not detect investment return promises in other languages.',
-    'Flags explicit claims of guaranteed or risk-free profits, and rapid capital multiplication promises. General financial news, regulated savings rates, cryptocurrency discussion, and standard investment offerings without guaranteed returns are intentionally not flagged.',
+    'Flags explicit claims of guaranteed or risk-free profits, and rapid capital multiplication promises. General financial news, ordinary savings rate disclosures or risk disclosures, cryptocurrency discussion, and standard investment offerings without guaranteed returns are intentionally not flagged.',
     'Does not provide financial advice or evaluate the market viability of any asset.',
   ];
 

@@ -122,7 +122,7 @@ void main() {
       );
     });
 
-    test('detects open destination redirection query parameter', () {
+    test('detects query parameter commonly used to specify destination', () {
       final snapshot = createSnapshot(
         'Sign in: https://legit-site.com/auth?redirect=https://phishing.net/steal.',
       );
@@ -130,7 +130,10 @@ void main() {
 
       expect(findings, hasLength(1));
       final finding = findings.first;
-      expect(finding.explanation, contains('destination redirection'));
+      expect(
+        finding.explanation,
+        contains('commonly used to specify a destination'),
+      );
       expect(finding.explanation, contains('redirect'));
       expect(
         () => EvidenceValidator.validateFinding(finding, snapshot),

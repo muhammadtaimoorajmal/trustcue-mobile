@@ -483,3 +483,40 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `git diff --check`: PASS (clean whitespace).
 - **Physical Device & Verification Status:** Pure-Dart on-device heuristic rules; no platform channel or visible UI modifications. Local rule packs are implemented; the user-facing analysis workflow is not enabled yet. In Module 22, APK installation and live `ACTION_SEND` intent delivery via adb were verified, but the automated device integration test suite (`tool/test.ps1 -Suite device`) was not executed for Module 22 (marked unverified for Module 22; last run in Module 21 where 5/5 tests passed). Automated assertions, APK installation, live intent delivery, and manual observations remain recorded distinctly.
 - **Status:** Complete. Pushed to `frontend`. Stopped before Module 25.
+
+### 2026-10-15 — Module 25: Local Assessment Synthesis, Uncertainty, and Educational Guidance
+- **Scope & Objectives:**
+  - Implemented deterministic on-device assessment synthesizer (`LocalAssessmentSynthesizer`) transforming a completed `AnalysisReport` and explicit `AnalysisExecutionContext` into an immutable `LocalAssessment`.
+  - Defined derived domain models: `LocalAssessment`, `AssessmentIndicatorGroup`, `AssessmentAction`, `AssessmentCoverageInfo`, and `CategoryEducationalContext`.
+  - Implemented honest outcome state representation: `indicatorsDetected`, `noIndicatorsMatched` (*"No indicators were matched by these local checks. This does not establish that the message is safe."*), and `limitedCoverage` (distinguishing empty catalog from executed checks with zero matches or skipped rules).
+  - Implemented deterministic category grouping and sorting: canonical order (`IndicatorCategory.values` index) followed by unknown categories sorted alphabetically; preserved all findings and evidence references without loss or truncation.
+  - Implemented centralized educational context catalog (`CategoryEducationalCatalog`) covering all 10 canonical category families + neutral fallback for unknown categories, stating factual observations, why patterns warrant attention, explicit boundaries on what cannot be established, and safe independent verification steps.
+  - Implemented prioritized safe next actions deduplicated by stable ID, merging supporting finding and category references, with explicit conditional post-actions for credentials and OTPs (*"If you already shared..."*).
+  - Actions strictly avoid reusing phone numbers, emails, or links from evaluated content, and never interpolate raw passwords, verification codes, or user-info credentials.
+  - Composed testable service pipeline (`LocalAnalysisPipeline`) suitable for Module 26 (`reviewed snapshot -> local rule engine -> assessment synthesis -> LocalAssessment`) with dependency injection and typed `Result` propagation.
+  - Corrected Module 24 wording risks: updated destination parameter description to factual phrasing without claiming open redirect vulnerability; updated investment exclusions to describe ordinary rate and risk disclosures without claiming regulatory verification; added regression tests.
+  - Maintained zero UI exposure: local assessment synthesis is implemented, but user-facing analysis remains inactive in production UI until Module 26.
+- **Domain, Service, and Test Components:**
+  - `lib/features/analysis/domain/models/assessment_action.dart`: Action model with priority rankings (`immediate`, `recommended`, `conditional`) and reference merging.
+  - `lib/features/analysis/domain/models/category_educational_context.dart`: Educational context contract with explicit capability boundaries.
+  - `lib/features/analysis/domain/models/assessment_indicator_group.dart`: Indicator grouping model preserving findings and evidence.
+  - `lib/features/analysis/domain/models/assessment_coverage_info.dart`: Scope record distinguishing empty catalog, executed rules, and skipped rules.
+  - `lib/features/analysis/domain/models/local_assessment.dart`: Root immutable assessment model with policy version `'1.0.0'`.
+  - `lib/features/analysis/domain/contracts/analysis_execution_context.dart`: Execution context decoupling coverage determination from findings.
+  - `lib/features/analysis/domain/contracts/assessment_synthesizer.dart`: Synthesis contract interface.
+  - `lib/features/analysis/domain/services/category_educational_catalog.dart`: Central educational and action catalog for all 10 categories + fallback.
+  - `lib/features/analysis/domain/services/local_assessment_synthesizer.dart`: Pure-Dart deterministic synthesis implementation.
+  - `lib/features/analysis/domain/services/local_analysis_pipeline.dart`: Testable end-to-end service composition.
+  - `test/features/analysis/domain/models/local_assessment_test.dart`: 6 invariant, immutability, deduplication, and diagnostic tests.
+  - `test/features/analysis/domain/services/category_educational_catalog_test.dart`: 5 catalog coverage, action, post-action, and fallback tests.
+  - `test/features/analysis/domain/services/local_assessment_synthesizer_test.dart`: 14 synthesis outcome, permutation invariance, deduplication, OCR, and redaction tests.
+  - `test/features/analysis/domain/services/local_analysis_pipeline_test.dart`: 7 end-to-end pipeline, clean input, OCR, review metadata, and failure propagation tests.
+  - Updated `test/features/analysis/domain/rules/investment_return_rule_test.dart` and `link_structural_rule_test.dart` with regression assertions.
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (168 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (574/574 tests passed across 50 suites, adding 36 tests for Module 25).
+  - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (built in 7.6s, `build\app\outputs\flutter-apk\app-debug.apk`).
+  - `git diff --check`: PASS (clean whitespace).
+- **Physical Device & Verification Status:** Pure-Dart on-device contracts and synthesizer; no platform channel or visible UI modifications. Local assessment synthesis is implemented; the user-facing analysis workflow is not enabled yet. In Module 22, APK installation and live `ACTION_SEND` intent delivery via adb were verified, but the automated device integration test suite (`tool/test.ps1 -Suite device`) was not executed for Module 22 (marked unverified for Module 22; last run in Module 21 where 5/5 tests passed). Automated assertions, APK installation, live intent delivery, and manual observations remain recorded distinctly.
+- **Status:** Complete. Pushed to `frontend`. Stopped before Module 26.

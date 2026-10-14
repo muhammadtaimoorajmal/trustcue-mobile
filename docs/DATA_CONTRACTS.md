@@ -422,8 +422,8 @@ abstract class Result<T> {
   - **`ClaimedIdentityRule`** (`rule.impersonation.claimed_authority`, v1, `claimed_identity_or_impersonation`): Identifies explicit claims to represent an authority, bank, fraud department, or support team in an actionable context. Does not verify sender identity or brand ownership; excludes news reports and email signatures.
   - **`JobOfferRule`** (`rule.job.advance_fee_or_guarantee`, v1, `job_or_recruitment_offers`): Identifies contextual combinations of employment/task offers with upfront payment demands, deposits, or minimal-work/high-pay promises. Standard job vacancies, interview invitations, salary figures, and remote work discussions are intentionally excluded.
   - **`RewardClaimRule`** (`rule.reward.prize_claim`, v1, `rewards_or_prizes`): Identifies recipient-facing claims of winning lotteries, prizes, or rewards requiring action, personal information, or advance fees. General competition announcements, contest rules, and loyalty point programs are excluded.
-  - **`InvestmentReturnRule`** (`rule.investment.guaranteed_return`, v1, `investment_or_return_promises`): Identifies explicit claims of guaranteed or risk-free profits, and rapid capital multiplication promises. General financial news, regulated savings rates, and standard investment discussions are excluded.
-  - **`LinkStructuralRule`** (`rule.link.structural_risk`, v1, `link_structural_indicators`): Identifies purely factual structural anomalies in embedded web addresses (`http://`, `https://`): numerical IP hosts, user-info credentials preceding host, punycode labels, non-standard network ports, and redirection query parameters.
+  - **`InvestmentReturnRule`** (`rule.investment.guaranteed_return`, v1, `investment_or_return_promises`): Identifies explicit claims of guaranteed or risk-free profits, and rapid capital multiplication promises. General financial news, ordinary savings rate disclosures or risk disclosures, and standard investment discussions are excluded without claiming regulatory verification.
+  - **`LinkStructuralRule`** (`rule.link.structural_risk`, v1, `link_structural_indicators`): Identifies purely factual structural anomalies in embedded web addresses (`http://`, `https://`): numerical IP hosts, user-info credentials preceding host, punycode labels, non-standard network ports, and query parameters commonly used to specify a destination.
 
 ### 12.2 Focused Module 23 Contract Corrections and False-Positive Regression Protections
 - **Bounded Collection and Overflow Propagation:**
@@ -453,7 +453,65 @@ abstract class Result<T> {
 
 ---
 
-## 13. Future Extension Points
+## 13. Local Assessment Synthesis, Uncertainty, and Educational Guidance (Module 25)
 
-- **Module 25:** Local assessment aggregation, uncertainty scoring, evidence validation, safe-action catalog.
-- **Module 26:** Local analysis results and Evidence Trail user interface.
+### 13.1 Assessment Contracts and Models
+- **`LocalAssessment`**: Derived immutable assessment object associating a completed `AnalysisReport` with synthesized educational guidance and prioritized actions.
+  - `reportId` (`String`): Identifier of the originating `AnalysisReport`.
+  - `snapshotId` (`String`): Identifier of the evaluated `TextSnapshot`.
+  - `snapshotSource` (`InputSource`): Intake vector (`messageText`, `screenshot`, `link`, `qrCode`).
+  - `synthesisPolicyVersion` (`String`): Synthesis algorithm version (`'1.0.0'`).
+  - `outcomeState` (`AssessmentOutcomeState`): High-level factual outcome: `indicatorsDetected`, `noIndicatorsMatched`, or `limitedCoverage`.
+  - `factualSummary` (`String`): Objective summary stating what local rules observed without generating a safety verdict or fraud probability.
+  - `groupedIndicators` (`List<AssessmentIndicatorGroup>`): Unmodifiable list of findings grouped deterministically by category with attached educational context.
+  - `coverageInfo` (`AssessmentCoverageInfo`): Explicit record of executed rules, evaluated categories, and skipped rules.
+  - `uncertaintyNotes` (`List<String>`): Explicit limitations including heuristic constraints, English language scope, OCR accuracy boundaries, and redaction context.
+  - `actionableSteps` (`List<AssessmentAction>`): Unmodifiable, deduplicated list of prioritized safety and independent verification steps.
+  - `createdAt` (`DateTime`): UTC timestamp of assessment synthesis.
+  - **Diagnostic Representation:** Privacy-safe `toString()` reporting counts and identifiers without leaking message text, credentials, or excerpts.
+- **`AssessmentIndicatorGroup`**: Groups all findings for a category family. Retains distinct occurrences and evidence without loss or merging.
+- **`AssessmentAction`**: Deduplicated actionable guidance step with priority (`immediate`, `recommended`, `conditional`), merging all supporting finding IDs and category IDs.
+- **`CategoryEducationalContext`**: Objective explanations defining what was observed, why it warrants attention, explicit boundaries on what cannot be established, and practical independent verification steps.
+
+### 13.2 Execution Context Contract (`AnalysisExecutionContext`)
+- Provides explicit runtime and configuration metadata to synthesis, decoupling coverage determination from findings:
+  - `executedRuleIds` (`List<String>`): Sorted list of rule IDs evaluated by the engine.
+  - `evaluatedCategories` (`List<IndicatorCategory>`): Categories covered by active rules.
+  - `skippedRuleIds` (`List<String>`): Rule IDs skipped due to unsupported scope.
+  - `trustedReviewMetadata` (`ReviewedTextResult?`): Provenance and redaction count metadata from user review.
+  - Enables distinguishing an empty catalog from executed checks with zero matches.
+
+### 13.3 Outcome and Coverage Semantics
+- **`AssessmentOutcomeState.indicatorsDetected`**: Local rules matched one or more potential warning indicator patterns. Grouped indicators list is non-empty. Factual summary states observed count and category names.
+- **`AssessmentOutcomeState.noIndicatorsMatched`**: Local rules evaluated the content and matched zero patterns. Factual summary explicitly states: *"No indicators were matched by these local checks. This does not establish that the message is safe."*
+- **`AssessmentOutcomeState.limitedCoverage`**: Rule catalog was empty or all rules were skipped. Factual summary explicitly identifies scope constraints.
+- **Failures and Unsupported Inputs:** Engine failures (e.g. input limit violation, rule limit overflow) are propagated directly as typed failures; they are NEVER synthesized into a reassuring no-match assessment.
+
+### 13.4 Grouping, Ordering, and Deduplication Policies
+- **Indicator Grouping:** Findings grouped by category identifier. Groups are sorted deterministically in canonical enum order (`IndicatorCategory.values` index), followed by unknown categories sorted alphabetically. Findings within groups retain deterministic engine order.
+- **Action Deduplication:** Actions are deduplicated by stable `id`. Supporting finding IDs and category IDs are merged and sorted deterministically.
+- **Action Ordering:** Ordered primarily by `priority.index` ascending (`immediate` first, `recommended` second, `conditional` third), and secondarily by `id` alphabetically.
+- **Unknown Category Fallback:** Uncataloged category IDs produce a neutral educational fallback and generic independent verification action without crashing or dropping findings.
+
+### 13.5 Safe Verification Actions and Contact Boundary
+- Actions provide practical verification steps via independent, trusted channels (e.g., official apps, manually typed URLs, physical card back).
+- Actions NEVER reuse phone numbers, emails, or links extracted from the evaluated content.
+- Actions NEVER interpolate raw passwords, verification codes, or user-info credentials.
+- Post-action advice is explicitly conditional: *"If you already shared..."*
+
+### 13.6 Uncertainty and Provenance
+- Baseline limitations state heuristic nature, English-language pattern design, lack of sender verification, and absence of network/AI lookups.
+- For screenshot intake (`InputSource.screenshot`), notes explicitly acknowledge that OCR may contain errors or omissions.
+- For redacted input with trusted review metadata, notes state the exact redaction count and potential reduced context. Without metadata, notes use conditional phrasing without asserting a known transformation.
+
+### 13.7 Service Composition (`LocalAnalysisPipeline`)
+- Testable pure-Dart pipeline orchestrating: `reviewed snapshot -> local rule engine -> assessment synthesis -> LocalAssessment`.
+- Uses dependency injection and typed `Result`.
+- Decoupled from UI triggers; not invoked from app startup, OCR completion, incoming shares, or text review.
+
+---
+
+## 14. Future Extension Points
+
+- **Module 26:** Working local-analysis results and Evidence Trail user interface.
+- **Module 27:** Backend/AI/hosting feasibility, privacy decisions, deployment and API contracts.

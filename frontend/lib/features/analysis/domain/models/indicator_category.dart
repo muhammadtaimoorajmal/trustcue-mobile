@@ -79,7 +79,7 @@ enum IndicatorCategory {
   linkStructuralIndicators(
     id: 'link_structural_indicators',
     label: 'Link-related structural indicators',
-    description: 'Structural link characteristics such as IP-based hosts, non-standard ports, open redirect parameters, or disguised addresses.',
+    description: 'Structural link characteristics such as IP-based hosts, non-standard ports, destination query parameters, or disguised addresses.',
   );
 
   const IndicatorCategory({
