@@ -394,8 +394,7 @@ class _IncomingShareDialogState extends State<IncomingShareDialog> {
       if (imported == null) {
         setState(() {
           _isProcessing = false;
-          _errorMessage =
-              'The shared image could not be verified or imported. It may exceed size/dimension bounds.';
+          _errorMessage = 'The shared image could not be verified or imported. It may exceed size/dimension bounds.';
         });
         return;
       }
@@ -432,8 +431,7 @@ class _IncomingShareDialogState extends State<IncomingShareDialog> {
       if (imported == null) {
         setState(() {
           _isProcessing = false;
-          _errorMessage =
-              'The shared image could not be verified or imported. It may exceed size/dimension bounds.';
+          _errorMessage = 'The shared image could not be verified or imported. It may exceed size/dimension bounds.';
         });
         return;
       }

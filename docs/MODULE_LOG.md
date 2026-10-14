@@ -352,3 +352,66 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `git diff --check`: PASS (clean whitespace).
 - **Physical Device & Build Status:** Verified on physical Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34). Native channel operations, real intent intake, staging lifecycle, draft conflict resolution, and non-destructive presentation verified.
 - **Status:** Complete. Pushed to `frontend`. Stopped before Module 22.
+
+## Module 21 Follow-Up: Pending Share Preservation and Staged Cleanup Correction
+- **Scope:** Address closeout findings on incoming share retention:
+  1. **Bounded Pending Share Retention:** When a share is pending in `IncomingShareCoordinator`, subsequent incoming shares are rejected with user feedback (`onShareRejected` / snackbar), preserving the existing pending share instead of overwriting it.
+  2. **Isolated Staged File Cleanup:** When a subsequent incoming share is rejected, only its staged temporary file is deleted natively (`cleanStagedFile`); the retained share's staged file remains intact.
+  3. **Stale Callback Protection:** Added `expectedEventId` guarding to `dismissPendingShare` and `applySharedMessage` to prevent late/stale callbacks from clearing or applying newer incoming share events.
+  4. **Draft Replacement Abort Cleanup:** In `IncomingShareDialog`, if candidate image import occurs but the user subsequently cancels the draft replacement confirmation dialog, the imported candidate file in `ScreenshotStorageService` is cleaned up safely.
+- **Branch:** `frontend`
+- **Commit:** `ebe33d9` (`fix(frontend): enforce bounded pending-share retention and rejected share cleanup`)
+- **Checks Performed:**
+  - `dart format lib test integration_test`: PASS
+  - `flutter analyze --no-pub`: PASS (0 issues found)
+  - Unit tests: Added tests in `incoming_share_coordinator_test.dart` verifying bounded retention, single staged file deletion, re-delivery handling, and stale callback protection.
+
+## Module 22: Local Scam-Indicator Taxonomy, Rule Engine, and Evidence Integrity
+- **Scope:** Implement the foundational local rule evaluation pipeline for on-device scam indicator analysis:
+  1. **Stable Indicator Taxonomy (`IndicatorCategory`):** Define 10 stable indicator category families with plain-language observation descriptions and stable string IDs decoupled from presentation labels:
+     - `urgency_or_pressure`: Demands for immediate action, artificial deadlines, or urgency tactics.
+     - `requests_for_credentials`: Requests for passwords, PINs, security questions, or login credentials.
+     - `requests_for_verification_codes`: Requests to disclose OTPs, SMS codes, or two-factor authentication tokens.
+     - `requests_for_payment`: Solicitations for wire transfers, gift cards, cryptocurrency, or unconventional payment.
+     - `account_suspension_or_threats`: Claims of compromised accounts, legal threats, or impending service termination.
+     - `claimed_identity_or_impersonation`: Claims of representing banks, government agencies, tech support, or trusted brands.
+     - `rewards_or_prizes`: Unsolicited claims of winnings, unexpected lotteries, gifts, or inheritance.
+     - `job_or_recruitment_offers`: Unsolicited employment offers, high pay for minimal work, or upfront fee requests.
+     - `investment_or_return_promises`: Guarantees of unrealistic returns, risk-free investments, or crypto schemes.
+     - `link_structural_indicators`: Deceptive URL patterns, mismatched text/destinations, or obfuscated hyperlinks.
+     Categories state observable patterns rather than definitive verdicts of malice.
+  2. **Pure-Dart Rule Contracts (`LocalRule`, `RuleRegistry`, `LocalRuleRegistry`):**
+     - `LocalRule`: Abstract interface defining `id`, `version`, `category`, `supportedLanguages`, `limitations`, and asynchronous `evaluate(snapshot)`.
+     - `RuleRegistry`: Contract for querying and managing registered rules.
+     - `LocalRuleRegistry`: In-memory implementation with duplicate ID rejection (`ArgumentError`) and unmodifiable collections (`List.unmodifiable`).
+  3. **Strict Evidence Integrity Validator (`EvidenceValidator`):**
+     - Pure-Dart validator checking that each finding's `EvidenceReference` is strictly grounded in the target `TextSnapshot`.
+     - Verifies `snapshotId` equality.
+     - Verifies character offsets `[startOffset, endOffset]` are non-negative, bounded within text length, and non-empty (`startOffset < endOffset`).
+     - Verifies offsets do not split UTF-16 surrogate pairs (e.g., emojis or astral plane characters).
+     - Verifies the quoted `excerpt` string equals `text.substring(startOffset, endOffset)` with byte-for-byte exactness.
+     - Verifies `FindingOrigin.localRule` and exact `producerId` equality with the evaluating rule's ID.
+  4. **Deterministic Local Rule Engine (`LocalRuleEngine`):**
+     - Implements `AnalysisService` contract.
+     - Reuses `MessageTextValidator` for input normalization and boundary checks (rejecting empty or oversized texts).
+     - Caps total findings to `maxFindings = 100` to prevent unbounded memory growth.
+     - Applies deterministic 5-tier sorting: Severity descending (`high` > `medium` > `low` > `informational`), Category ID ascending, Rule ID ascending, Start offset ascending, and Finding ID ascending.
+     - Handles rule exceptions gracefully, mapping errors to typed `AnalysisFailure.malformedData` / `.unsupportedInput` without leaking raw user text.
+     - Honest limitation declaration: reports empty findings with explicit caveats stating that absence of detected indicators does not guarantee safety.
+- **Branch:** `frontend`
+- **Domain and Service Components:**
+  - `lib/features/analysis/domain/models/indicator_category.dart`: 10 indicator category definitions with stable IDs and plain-language descriptions.
+  - `lib/features/analysis/domain/contracts/local_rule.dart`: Pure-Dart rule interface.
+  - `lib/features/analysis/domain/contracts/rule_registry.dart`: Rule registry interface.
+  - `lib/features/analysis/domain/services/local_rule_registry.dart`: In-memory rule registry with duplicate ID rejection.
+  - `lib/features/analysis/domain/services/evidence_validator.dart`: Evidence integrity validator enforcing UTF-16 code-unit bounds, surrogate pair protection, exact substring matching, and producer/origin validation.
+  - `lib/features/analysis/domain/services/local_rule_engine.dart`: Deterministic rule engine implementing `AnalysisService`.
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (127 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (349/349 tests passed across 32 suites, adding 42 new unit tests).
+  - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (`build\app\outputs\flutter-apk\app-debug.apk`, 220,728,022 bytes, built in 41.2s).
+  - Physical device installation & launch: Streamed install and normal app execution verified on connected Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34). Live `ACTION_SEND` intent delivery to running activity verified via adb.
+  - `git diff --check`: PASS (clean whitespace).
+- **Physical Device & Build Status:** Verified on physical Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34) running with Eclipse Adoptium OpenJDK 21.0.12.1.
+- **Status:** Complete. Pushed to `frontend`. Stopped before Module 23.

@@ -36,7 +36,7 @@ This roadmap outlines the complete 50-module development plan for TrustCue, repl
 | **19** | Extracted-text correction, sensitive-data detection, redaction review | Completed (`490ff66`) | `frontend` |
 | **20** | URL parsing, QR decoding, destination review, safe-opening boundaries (includes Module 20A contract & build reconciliation) | Completed | `frontend` |
 | **21** | Android incoming-share input and lifecycle handling | Completed | `frontend` |
-| **22** | Warning taxonomy, rule engine, evidence locations, rule contracts | Planned | `frontend` |
+| **22** | Warning taxonomy, rule engine, evidence locations, rule contracts | Completed | `frontend` |
 | **23** | Urgency, credentials, verification-code, payment, and account-threat rules | Planned | `frontend` |
 | **24** | Impersonation, job/reward/investment, URL heuristics, false-positive safeguards | Planned | `frontend` |
 | **25** | Local assessment aggregation, uncertainty, evidence validation, safe-action catalog | Planned | `frontend` |

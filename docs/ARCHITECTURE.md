@@ -130,6 +130,25 @@ Module 12's original `unknownRoute` configuration did not enforce this policy: G
 *   **Draft Conflict Protection (`DraftConflict`):** Detects existing in-progress drafts on the target destination screen (`/input/text`, `/input/screenshot`, `/input/link`). Prompts the user with an explicit choice ("Keep current draft" vs "Replace draft with shared content"). Replacing a draft is transactional: images are imported into `ScreenshotStorageService` before replacing the active draft.
 *   **Zero Automatic Processing:** Shares are strictly held for user review. No automatic OCR, QR decoding, URL opening, or network analysis is ever executed on incoming shares.
 
+## Local Scam-Indicator Taxonomy, Rule Engine, and Evidence Integrity (Module 22)
+
+*   **Stable Indicator Taxonomy (`IndicatorCategory`):** Establishes 10 plain-language observation categories decoupled from UI labels: `urgency_or_pressure`, `requests_for_credentials`, `requests_for_verification_codes`, `requests_for_payment`, `account_suspension_or_threats`, `claimed_identity_or_impersonation`, `rewards_or_prizes`, `job_or_recruitment_offers`, `investment_or_return_promises`, and `link_structural_indicators`. Categories describe observable patterns in digital messages rather than asserting definitive verdicts of malice.
+*   **Pure-Dart Rule Contracts (`LocalRule`, `RuleRegistry`):** `LocalRule` defines an immutable interface for local pattern detection containing a stable string identifier, semantic version integer, target `IndicatorCategory`, supported language tags (e.g. `['en']`), human-readable limitation descriptions, and an asynchronous `evaluate(snapshot)` method.
+*   **In-Memory Rule Registry (`LocalRuleRegistry`):** Provides synchronous rule registration and querying. Disallows duplicate rule identifiers via `ArgumentError`, enforces unmodifiable collection exposures (`List.unmodifiable`), and filters registered rules by category or language.
+*   **Strict Evidence Integrity Validation (`EvidenceValidator`):** Pure-Dart validator checking that every finding's `EvidenceReference` strictly grounds findings in the provided `TextSnapshot`:
+    - Referenced `snapshotId` must match target snapshot `id`.
+    - Character offsets `[startOffset, endOffset]` are strictly bounded within `[0, text.length]`.
+    - Character spans must not bisect UTF-16 surrogate pairs (e.g., emojis or extended astral symbols).
+    - Quoted `excerpt` must match `text.substring(startOffset, endOffset)` with byte-for-byte exactness.
+    - Findings must declare `FindingOrigin.localRule` and specify `producerId` matching the evaluating rule's identifier.
+*   **Deterministic Local Rule Engine (`LocalRuleEngine`):** Production implementation of `AnalysisService`:
+    - Reuses `MessageTextValidator` for input normalization and boundary verification (rejecting empty or oversized texts).
+    - Evaluates registered rules, validates findings via `EvidenceValidator`, and discards invalid findings.
+    - Caps total findings to `maxFindings = 100` to prevent memory exhaustion from runaway rules.
+    - Applies a deterministic 5-tier sorting order: Severity descending (`high` > `medium` > `low` > `informational`), Category identifier ascending, Rule identifier ascending, Start offset ascending, and Finding identifier ascending.
+    - Privacy-safe failure handling: maps rule exceptions or invalid inputs to typed `AnalysisFailure.malformedData` / `.unsupportedInput` without leaking raw user text, credentials, or exceptions to UI or log output.
+    - Honest limitation declaration: reports empty findings with explicit caveats stating that absence of detected indicators does not guarantee safety or absence of scam intent.
+
 ## Repository Separation
 
 *   `frontend/`: The complete Flutter application and its client-side integrations.

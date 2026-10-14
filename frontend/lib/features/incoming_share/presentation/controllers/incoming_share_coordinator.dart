@@ -215,7 +215,10 @@ class IncomingShareCoordinator extends GetxController {
   }
 
   /// Applies shared text as message text input.
-  Future<void> applySharedMessage(String text, {String? expectedEventId}) async {
+  Future<void> applySharedMessage(
+    String text, {
+    String? expectedEventId,
+  }) async {
     final current = pendingShare.value;
     if (current == null) return;
     if (expectedEventId != null && current.eventId != expectedEventId) {

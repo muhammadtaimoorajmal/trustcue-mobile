@@ -218,52 +218,49 @@ void main() {
       expect(coordinator.pendingShare.value, isNull);
     });
 
-    test(
-      'Bounded pending share preserves existing item and rejects additional share with cleanup',
-      () async {
-        String? rejectionMessage;
-        coordinator = IncomingShareCoordinator(
-          adapter: fakeAdapter,
-          preferences: fakePreferences,
-          storageService: fakeStorageService,
-          idGenerator: () => 'fixed-id-1',
-          onShareRejected: (msg) => rejectionMessage = msg,
-        );
+    test('Bounded pending share preserves existing item and rejects additional share with cleanup', () async {
+      String? rejectionMessage;
+      coordinator = IncomingShareCoordinator(
+        adapter: fakeAdapter,
+        preferences: fakePreferences,
+        storageService: fakeStorageService,
+        idGenerator: () => 'fixed-id-1',
+        onShareRejected: (msg) => rejectionMessage = msg,
+      );
 
-        await coordinator.init();
+      await coordinator.init();
 
-        fakeAdapter.emitShare(
-          IncomingSharePayload.image(
-            eventId: 'img-1',
-            stagedImagePath: '/cache/image1.png',
-            mimeType: 'image/png',
-          ),
-        );
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-        expect(coordinator.pendingShare.value?.eventId, 'img-1');
-        expect(fakeAdapter.cleanedFiles, isEmpty);
+      fakeAdapter.emitShare(
+        IncomingSharePayload.image(
+          eventId: 'img-1',
+          stagedImagePath: '/cache/image1.png',
+          mimeType: 'image/png',
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(coordinator.pendingShare.value?.eventId, 'img-1');
+      expect(fakeAdapter.cleanedFiles, isEmpty);
 
-        // Second share arrives while first is pending
-        fakeAdapter.emitShare(
-          IncomingSharePayload.image(
-            eventId: 'img-2',
-            stagedImagePath: '/cache/image2.png',
-            mimeType: 'image/png',
-          ),
-        );
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+      // Second share arrives while first is pending
+      fakeAdapter.emitShare(
+        IncomingSharePayload.image(
+          eventId: 'img-2',
+          stagedImagePath: '/cache/image2.png',
+          mimeType: 'image/png',
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
 
-        // Existing item is preserved
-        expect(coordinator.pendingShare.value?.eventId, 'img-1');
-        // Only the rejected item's staged file is cleaned up
-        expect(fakeAdapter.cleanedFiles, contains('/cache/image2.png'));
-        expect(fakeAdapter.cleanedFiles, isNot(contains('/cache/image1.png')));
-        // Rejected item is consumed natively
-        expect(fakeAdapter.consumedIds, contains('img-2'));
-        // Rejection notification was delivered
-        expect(rejectionMessage, contains('Another shared item'));
-      },
-    );
+      // Existing item is preserved
+      expect(coordinator.pendingShare.value?.eventId, 'img-1');
+      // Only the rejected item's staged file is cleaned up
+      expect(fakeAdapter.cleanedFiles, contains('/cache/image2.png'));
+      expect(fakeAdapter.cleanedFiles, isNot(contains('/cache/image1.png')));
+      // Rejected item is consumed natively
+      expect(fakeAdapter.consumedIds, contains('img-2'));
+      // Rejection notification was delivered
+      expect(rejectionMessage, contains('Another shared item'));
+    });
 
     test(
       'Re-delivery of same event does not delete retained item staged file',
@@ -296,28 +293,25 @@ void main() {
       },
     );
 
-    test(
-      'Late callback with stale expectedEventId does not dismiss newer pending share',
-      () async {
-        await coordinator.init();
+    test('Late callback with stale expectedEventId does not dismiss newer pending share', () async {
+      await coordinator.init();
 
-        fakeAdapter.emitShare(
-          IncomingSharePayload.text(
-            eventId: 'newer-event',
-            text: 'Newer pending text',
-          ),
-        );
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-        expect(coordinator.pendingShare.value?.eventId, 'newer-event');
+      fakeAdapter.emitShare(
+        IncomingSharePayload.text(
+          eventId: 'newer-event',
+          text: 'Newer pending text',
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(coordinator.pendingShare.value?.eventId, 'newer-event');
 
-        // Late dismiss callback arrives from an older, already consumed event
-        await coordinator.dismissPendingShare(expectedEventId: 'stale-event');
+      // Late dismiss callback arrives from an older, already consumed event
+      await coordinator.dismissPendingShare(expectedEventId: 'stale-event');
 
-        // Newer pending share is untouched
-        expect(coordinator.pendingShare.value?.eventId, 'newer-event');
-        expect(coordinator.pendingShare.value?.text, 'Newer pending text');
-      },
-    );
+      // Newer pending share is untouched
+      expect(coordinator.pendingShare.value?.eventId, 'newer-event');
+      expect(coordinator.pendingShare.value?.text, 'Newer pending text');
+    });
 
     test(
       'Dismiss pending share cleans staged file and marks consumed',

@@ -317,13 +317,70 @@ abstract class Result<T> {
 
 ### 9.3 Lifecycle, Onboarding, and Draft Protection Invariants
 - **Onboarding Gate:** If the user has not completed onboarding, incoming shares are held in memory as `pendingShare` and only presented after onboarding is fully acknowledged.
-- **Single Pending Share Policy:** At most one incoming share is held pending user decision. Any prior unconsumed pending share is safely replaced and its staged file cleaned up.
+- **Single Pending Share Policy:** At most one incoming share is held pending user decision. If a new share arrives while one is already pending, the existing pending share is preserved, the additional share is rejected with user feedback, and only the rejected item's temporary file is cleaned up.
 - **Draft Conflict Protection (`DraftConflict`):** If the destination input screen already holds an unsaved draft (text, screenshot, or inspected URL), the user is explicitly warned before replacing it ("Keep current draft" vs "Replace draft with shared content").
 - **Transactional Staging:** Shared images are initially copied to a temporary staging cache. When the user accepts the image for analysis (as screenshot or QR image), it is transactionally imported into the app-owned `ScreenshotStorageService` before the staged file is cleaned up.
 - **Strict Privacy Invariants:** Zero automatic OCR, QR decoding, URL opening, or network analysis is triggered upon share reception. User interaction is strictly required.
 
 ---
 
-## 10. Future Extension Points
+## 10. Local Scam-Indicator Taxonomy and Rule Engine Contracts (Module 22)
 
-- **Module 22–26:** Warning taxonomy, rule engine, evidence location mapping, and local assessment aggregation.
+### 10.1 Indicator Taxonomy (`IndicatorCategory`)
+- **Category Model:** `IndicatorCategory` defines 10 stable indicator families:
+  - `urgency_or_pressure`: Language creating immediate panic, manufactured deadlines, or pressure to act.
+  - `requests_for_credentials`: Solicitation of passwords, PINs, usernames, or sign-in credentials.
+  - `requests_for_verification_codes`: Solicitation of one-time passcodes, MFA tokens, or verification codes.
+  - `requests_for_payment`: Demands or instructions for immediate transfers, gift cards, or crypto.
+  - `account_suspension_or_threats`: Claims that an account, service, or legal status will be frozen/penalized.
+  - `claimed_identity_or_impersonation`: Cues claiming representation of official authorities or tech support.
+  - `rewards_or_prizes`: Unsolicited announcements of lottery wins, giveaways, or unclaimed funds.
+  - `job_or_recruitment_offers`: Unsolicited high-paying job opportunities or work-from-home offers.
+  - `investment_or_return_promises`: Promises of guaranteed high-yield returns or risk-free profit schemes.
+  - `link_structural_indicators`: Structural link anomalies (IP hosts, uncommon ports, redirect params).
+- **Observation vs. Verdict Principle:** Categories represent observable patterns and contextual signals, NEVER definitive proof of fraud or malice. Legitimate communications often exhibit these signals.
+- **Localization Decoupling:** Stable machine-readable `id` strings are strictly separated from user-facing English `label` and `description` strings.
+
+### 10.2 Local Rule Contract (`LocalRule`)
+- **Pure-Dart Contract:** Evaluates an immutable `TextSnapshot` and returns `List<AnalysisFinding>`.
+- **Invariants:**
+  - `id` (`String`): Unique, stable, lowercase dot-separated identifier (e.g. `rule.urgency.act_now`).
+  - `version` (`int`): Semantic version of the rule implementation.
+  - `category` (`IndicatorCategory`): Indicator category family observed.
+  - `supportedLanguages` (`List<String>`): Declared language scope.
+  - `limitations` (`List<String>`): Declared scope constraints or methodological assumptions.
+  - `evaluate(TextSnapshot snapshot)`: Pure, deterministic function with zero side effects, I/O, or framework dependencies.
+
+### 10.3 Rule Registry (`RuleRegistry` & `LocalRuleRegistry`)
+- **Registration Contract:** In-memory registry enforcing unique rule identifiers. Attempting to register duplicate rule IDs throws `ArgumentError`.
+- **Immutability:** The exposed `rules` list is unmodifiable.
+
+### 10.4 Evidence Validator (`EvidenceValidator`)
+- **Strict Evidence Integrity:** Validates every `EvidenceReference` and `AnalysisFinding`:
+  - Matching `snapshotId`.
+  - 0-based UTF-16 code-unit offsets within snapshot length.
+  - End-exclusive spans (`startOffset < endOffset <= text.length`).
+  - Strict substring match between `snapshot.text.substring(start, end)` and `exactExcerpt`.
+  - Prohibits splitting UTF-16 surrogate pairs (e.g., emoji high/low surrogates).
+  - Enforces `FindingOrigin.localRule` and matching `producerId` / `category`.
+
+### 10.5 Deterministic Local Rule Engine (`LocalRuleEngine`)
+- **Engine Implementation:** Implements `AnalysisService` pure Dart foundation.
+- **Validation Reuse:** Enforces `MessageTextValidator` input bounds (10,000 code points, 40,000 UTF-8 bytes, valid Unicode) before rule execution.
+- **Finding Bound:** Enforces upper bound (`maxFindings = 100` by default), returning typed `AnalysisFailure.unsupportedInput` if exceeded.
+- **Error Handling:** Rule exceptions or invalid evidence produce typed, privacy-safe `AnalysisFailure.malformedData` without leaking user text.
+- **Deterministic Ordering:** Findings are sorted deterministically:
+  1. Start offset ascending (earlier in text first).
+  2. End offset descending (longer match span first).
+  3. Category ID alphabetically.
+  4. Producer ID alphabetically.
+  5. Finding ID alphabetically.
+- **Honest Limitations:** Empty findings reports explicitly state that no rules matched and that this is never a guarantee of safety.
+
+---
+
+## 11. Future Extension Points
+
+- **Module 23–24:** Substantive local indicator rule packs (urgency, credentials, impersonation, payment, job/investment).
+- **Module 25:** Local assessment aggregation, uncertainty scoring, evidence trail mapping.
+- **Module 26:** Local analysis results and Evidence Trail user interface.
