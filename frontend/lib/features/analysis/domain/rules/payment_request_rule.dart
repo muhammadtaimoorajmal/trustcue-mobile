@@ -33,27 +33,27 @@ class PaymentRequestRule implements LocalRule {
   static final List<RegExp> _patterns = [
     // Money transmission via specific or unconventional rails (e.g. "wire money via Western Union", "send payment through Bitcoin")
     RegExp(
-      r'\b(?:wire|transfer|send|pay)\b[^\r\n.!?]{0,30}\b(?:money|funds|cash|payment|deposit|fee|balance)\b[^\r\n.!?]{0,35}\b(?:via|through|using)?\s*(?:western union|moneygram|wire transfer|bank transfer|cryptocurrency|crypto|bitcoin|btc|usdt|eth|ethereum|cash app|venmo|zelle)\b',
+      r'\b(?:wire|transfer|send|pay)\b[^\r\n!?]{0,30}\b(?:money|funds|cash|payment|deposit|fee|balance)\b[^\r\n!?]{0,35}\b(?:via|through|using)?\s*(?:western union|moneygram|wire transfer|bank transfer|cryptocurrency|crypto|bitcoin|btc|usdt|eth|ethereum|cash app|venmo|zelle)\b',
       caseSensitive: false,
     ),
-    // Direct rail payment demand with amount (e.g. "wire $500 via MoneyGram")
+    // Direct rail payment demand with amount, supporting decimal amounts (e.g. "wire $10.50 via MoneyGram")
     RegExp(
-      r'\b(?:wire|send|transfer)\s+(?:\$|usd|eur|gbp)?\s*\d+[^\r\n.!?]{0,30}\b(?:via|through|using)?\s*(?:western union|moneygram|wire transfer|cryptocurrency|crypto|bitcoin|btc|usdt|cash app|venmo|zelle)\b',
+      r'\b(?:wire|send|transfer)\s+(?:\$|usd|eur|gbp)?\s*\d+(?:\.\d+)?[^\r\n!?]{0,35}\b(?:via|through|using)?\s*(?:western union|moneygram|wire transfer|cryptocurrency|crypto|bitcoin|btc|usdt|cash app|venmo|zelle)\b',
       caseSensitive: false,
     ),
     // Fee / fine / penalty payment request (e.g. "pay the clearance fee", "send the advance fee")
     RegExp(
-      r'\b(?:send|pay|transfer)\b[^\r\n.!?]{0,25}\b(?:the|a)?\s*(?:processing fee|clearance fee|advance fee|delivery fee|release fee|activation fee|fine|penalty)\b',
+      r'\b(?:send|pay|transfer)\b[^\r\n!?]{0,25}\b(?:the|a)?\s*(?:processing fee|clearance fee|advance fee|delivery fee|release fee|activation fee|fine|penalty)\b',
       caseSensitive: false,
     ),
     // Gift card purchase / payment request (e.g. "purchase a $100 Google Play gift card", "pay with Apple gift card")
     RegExp(
-      r'\b(?:buy|purchase|send|pay with|pay using)\b[^\r\n.!?]{0,30}\b(?:gift cards?|apple gift cards?|google play cards?|steam cards?|itunes cards?|amazon gift cards?)\b',
+      r'\b(?:buy|purchase|send|pay with|pay using)\b[^\r\n!?]{0,30}\b(?:gift cards?|apple gift cards?|google play cards?|steam cards?|itunes cards?|amazon gift cards?)\b',
       caseSensitive: false,
     ),
-    // Payment required to claim / release (e.g. "pay $50 to release your package")
+    // Payment required to claim / release (e.g. "pay $10.50 to release your package")
     RegExp(
-      r'\b(?:pay|send)\s+(?:\$|usd|eur|gbp)?\s*\d+[^\r\n.!?]{0,30}\b(?:to claim|to release|to receive|to unlock)\b',
+      r'\b(?:pay|send)\s+(?:\$|usd|eur|gbp)?\s*\d+(?:\.\d+)?[^\r\n!?]{0,35}\b(?:to claim|to release|to receive|to unlock)\b',
       caseSensitive: false,
     ),
   ];

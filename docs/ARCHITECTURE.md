@@ -168,6 +168,29 @@ Module 12's original `unknownRoute` configuration did not enforce this policy: G
     - Deterministic finding IDs formatted as `${ruleId}_${startOffset}_${endOffset}` contain zero raw text or credentials.
 *   **Architectural Isolation & UI Gating:** Rules are pure Dart with zero dependencies on Flutter, GetX, platform channels, storage, or network. Production input, review, and onboarding flows do not trigger analysis in this module.
 
+## Extended Local Indicator Rules Architecture (Module 24)
+
+*   **Extended Pure-Dart Rule Implementations:** Five additional local rule classes completing coverage of all 10 [IndicatorCategory] taxonomy families:
+    - `ClaimedIdentityRule` (`rule.impersonation.claimed_authority`): Detects explicit claims to represent an authority, bank, fraud department, or support team coupled with an actionable call. Does not attempt to verify sender identity or brand ownership; excludes news reports and email signatures.
+    - `JobOfferRule` (`rule.job.advance_fee_or_guarantee`): Detects contextual combinations of employment/task offers with upfront payment demands, deposits, or minimal-work/high-pay promises. Standard job vacancies, interview invitations, salary figures, and remote work discussions are intentionally excluded.
+    - `RewardClaimRule` (`rule.reward.prize_claim`): Detects recipient-facing claims of winning lotteries, prizes, or rewards requiring action, personal information, or advance fees. General competition announcements, contest rules, and loyalty point programs are excluded.
+    - `InvestmentReturnRule` (`rule.investment.guaranteed_return`): Detects explicit claims of guaranteed or risk-free profits, and rapid capital multiplication promises. General financial news, regulated savings rates, and standard investment discussions are excluded.
+    - `LinkStructuralRule` (`rule.link.structural_risk`): Extracts explicit `http://` and `https://` URLs directly from snapshot text and reports factual structural observations: numerical IP hosts, user credentials before host, punycode labels, non-standard network ports, and redirection query parameters. Operates strictly offline without network, DNS, or redirect tracking; trims trailing prose punctuation and unbalanced parentheses.
+*   **Unified Local Rule Catalog (`LocalRuleCatalog`):**
+    - Single combined factory composing all 10 registered indicator rules across Module 23 and Module 24 with zero duplicate registrations.
+    - Retains individual pack factory methods (`createCoreRules()`, `createExtendedRules()`) for test modularity.
+*   **Bounded Match Collection and Typed Overflow Propagation:**
+    - Capped at `maxMatchesPerRule = 100`, aligned with `LocalRuleEngine.defaultMaxFindings = 100`.
+    - If distinct non-overlapping matches exceed 100 or raw candidates exceed 500, `RuleLimitExceededException` is thrown.
+    - `LocalRuleEngine` catches `RuleLimitExceededException` and returns typed `AnalysisFailure.unsupportedInput('Maximum finding limit ($maxFindings) exceeded during rule evaluation.', 'max_findings_exceeded')`.
+    - Eliminates silent truncation and ensures partial reports are never returned as complete.
+*   **Context-Aware Delimiter Detection:**
+    - `RuleMatcherUtils.isDelimiterAtIndex` avoids breaking clauses on decimal periods (`$10.50`, `0.05 BTC`), times (`10:30`), or URL schemes (`https://`), preserving evidence integrity for numbers and colon-separated requests.
+*   **Narrow Antecedent Pronoun Support:**
+    - Specific antecedent pattern `[credential] ... but send it to [agent/representative]` supported with documented limitations; general pronoun resolution is explicitly not claimed.
+*   **Architectural Status:**
+    - Local rule packs are implemented; the user-facing analysis workflow is not enabled yet.
+
 ## Repository Separation
 
 *   `frontend/`: The complete Flutter application and its client-side integrations.

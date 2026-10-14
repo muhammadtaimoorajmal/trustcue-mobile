@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/finding_origin.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/indicator_category.dart';
+import 'package:trustcue_mobile/features/analysis/domain/rules/rule_matcher_utils.dart';
 import 'package:trustcue_mobile/features/analysis/domain/rules/urgency_rule.dart';
 import 'package:trustcue_mobile/features/analysis/domain/services/evidence_validator.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
@@ -169,13 +170,13 @@ void main() {
       );
     });
 
-    test('bounds match allocations on adversarial repeated text', () {
+    test('bounds match allocations and throws RuleLimitExceededException on adversarial overflow', () {
       final repetitive = 'Please act right now! ' * 200;
       final snapshot = createSnapshot(repetitive);
-      final findings = rule.evaluate(snapshot);
-
-      // Must be safely capped and not infinite
-      expect(findings.length, lessThanOrEqualTo(105));
+      expect(
+        () => rule.evaluate(snapshot),
+        throwsA(isA<RuleLimitExceededException>()),
+      );
     });
   });
 }

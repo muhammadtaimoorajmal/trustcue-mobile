@@ -409,8 +409,51 @@ abstract class Result<T> {
 
 ---
 
-## 12. Future Extension Points
+## 12. Extended Local Indicator Rules Pack and False-Positive Safeguards (Module 24)
 
-- **Module 24:** Impersonation, job/recruitment, rewards/prizes, investment, and link structural warning rules.
+### 12.1 Catalog and Extended Rule Identifiers
+- **`LocalRuleCatalog`**: Central factory and catalog composing all 10 on-device indicator rules across Module 23 and Module 24 without duplication.
+  - `createCoreRules()`: Returns the 5 Module 23 rules.
+  - `createExtendedRules()`: Returns the 5 Module 24 rules.
+  - `createAllRules()`: Returns all 10 registered rules.
+  - `createRegistry()`: Returns a pre-populated `LocalRuleRegistry` with all 10 rules.
+  - `createExtendedRegistry()`: Returns a pre-populated `LocalRuleRegistry` with the 5 extended rules.
+- **Implemented Rules:**
+  - **`ClaimedIdentityRule`** (`rule.impersonation.claimed_authority`, v1, `claimed_identity_or_impersonation`): Identifies explicit claims to represent an authority, bank, fraud department, or support team in an actionable context. Does not verify sender identity or brand ownership; excludes news reports and email signatures.
+  - **`JobOfferRule`** (`rule.job.advance_fee_or_guarantee`, v1, `job_or_recruitment_offers`): Identifies contextual combinations of employment/task offers with upfront payment demands, deposits, or minimal-work/high-pay promises. Standard job vacancies, interview invitations, salary figures, and remote work discussions are intentionally excluded.
+  - **`RewardClaimRule`** (`rule.reward.prize_claim`, v1, `rewards_or_prizes`): Identifies recipient-facing claims of winning lotteries, prizes, or rewards requiring action, personal information, or advance fees. General competition announcements, contest rules, and loyalty point programs are excluded.
+  - **`InvestmentReturnRule`** (`rule.investment.guaranteed_return`, v1, `investment_or_return_promises`): Identifies explicit claims of guaranteed or risk-free profits, and rapid capital multiplication promises. General financial news, regulated savings rates, and standard investment discussions are excluded.
+  - **`LinkStructuralRule`** (`rule.link.structural_risk`, v1, `link_structural_indicators`): Identifies purely factual structural anomalies in embedded web addresses (`http://`, `https://`): numerical IP hosts, user-info credentials preceding host, punycode labels, non-standard network ports, and redirection query parameters.
+
+### 12.2 Focused Module 23 Contract Corrections and False-Positive Regression Protections
+- **Bounded Collection and Overflow Propagation:**
+  - `maxMatchesPerRule = 100` strictly aligned with `LocalRuleEngine.defaultMaxFindings = 100`.
+  - When candidate or deduplicated findings exceed the limit, rules throw `RuleLimitExceededException`.
+  - `LocalRuleEngine` catches `RuleLimitExceededException` and returns typed `AnalysisFailure.unsupportedInput(..., 'max_findings_exceeded')`.
+  - Prevents silent truncation and ensures partial reports are never returned as complete.
+- **Context-Aware Punctuation and Clause Segmentation:**
+  - `isDelimiterAtIndex(text, i)` checks context around punctuation:
+    - Decimal periods (e.g. `$10.50`, `0.05 BTC`) are preserved without clause splitting.
+    - Colons in times (`10:30`) and URL schemes (`https://`) are preserved.
+    - Colon-separated demands (`Send the following: your password.`) are fully evaluated without evidence loss.
+- **Broad Exclusion Isolation:**
+  - Invoice and receipt exclusions apply only to completed payment receipts, never suppressing actionable credential or payment solicitations elsewhere in the message.
+- **Narrow Antecedent Pronoun Pattern:**
+  - Specific antecedent pronoun pattern `[credential] ... but send it to [agent/representative]` supported with documented limitations; general pronoun resolution is explicitly not claimed.
+- **Pure-Dart Structural Link Inspection:**
+  - Candidates extracted directly from snapshot text with trailing prose punctuation and unbalanced parentheses trimmed.
+  - Factual structural observations reported without making a determination of fraud.
+  - Zero external network requests, DNS queries, or redirect following.
+  - User-info credentials before host are identified without echoing passwords or usernames.
+
+### 12.3 Scope and Status
+- Local rule packs are implemented; the user-facing analysis workflow is not enabled yet.
+- English-language heuristic rules (`['en']`), with language-neutral URL structure inspection (`['*']`).
+- No aggregate risk scores, probabilities, or percentage metrics.
+
+---
+
+## 13. Future Extension Points
+
 - **Module 25:** Local assessment aggregation, uncertainty scoring, evidence validation, safe-action catalog.
 - **Module 26:** Local analysis results and Evidence Trail user interface.

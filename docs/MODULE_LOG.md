@@ -450,3 +450,36 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `git diff --check`: PASS (clean whitespace).
 - **Physical Device & Verification Status:** Pure-Dart on-device heuristic rules; no platform channel or visible UI modifications. In Module 22, APK installation and live `ACTION_SEND` intent delivery via adb were verified, but the automated device integration test suite (`tool/test.ps1 -Suite device`) was not executed for Module 22 (marked unverified for Module 22; last run in Module 21 where 5/5 tests passed). Automated assertions, APK installation, live intent delivery, and manual observations remain recorded distinctly.
 - **Status:** Complete. Pushed to `frontend`. Stopped before Module 24.
+
+### 2026-10-14 — Module 24: Extended Local Indicator Rules and False-Positive Regression Coverage
+- **Scope & Objectives:**
+  - Implemented the second local warning-indicator rule pack, extending coverage to all 10 `IndicatorCategory` taxonomy families.
+  - Implemented 5 extended rule classes: `ClaimedIdentityRule`, `JobOfferRule`, `RewardClaimRule`, `InvestmentReturnRule`, and `LinkStructuralRule`.
+  - Created unified `LocalRuleCatalog` factory composing all 10 registered indicator rules without duplicate registrations.
+  - Resolved Module 23 contract checks: bounded collection overflow with `RuleLimitExceededException` mapped by `LocalRuleEngine` to typed failure (`max_findings_exceeded`) preventing silent truncation; context-aware punctuation and clause segmentation preserving decimal amounts (`$10.50`) and colon-separated requests; broad exclusions isolating completed payment receipts from active solicitations; narrow antecedent pronoun detection (`[credential] ... but send it to`).
+  - Implemented pure-Dart structural link inspection with trailing prose punctuation trimming, balanced parenthesis handling, and factual structural observation reporting (IP host, credentials before host, punycode labels, non-standard network ports, open redirection parameters) with zero network requests or DNS lookups.
+  - Verified that local rule packs are implemented while user-facing analysis remains disabled in UI.
+- **Domain, Rule, and Test Components:**
+  - `lib/features/analysis/domain/rules/claimed_identity_rule.dart`: Claimed identity and authority impersonation cues rule.
+  - `lib/features/analysis/domain/rules/job_offer_rule.dart`: Suspicious job and task recruitment offers rule.
+  - `lib/features/analysis/domain/rules/reward_claim_rule.dart`: Prize and lottery winning claims rule.
+  - `lib/features/analysis/domain/rules/investment_return_rule.dart`: Guaranteed returns and rapid multiplication promises rule.
+  - `lib/features/analysis/domain/rules/link_structural_rule.dart`: Structural link inspection rule.
+  - `lib/features/analysis/domain/rules/local_rule_catalog.dart`: Unified 10-rule catalog and registry factory.
+  - `lib/features/analysis/domain/rules/rule_matcher_utils.dart`: Contextual delimiters, bounded collection, and `RuleLimitExceededException`.
+  - `lib/features/analysis/domain/services/local_rule_engine.dart`: Typed failure handling for `RuleLimitExceededException`.
+  - `test/features/analysis/domain/rules/claimed_identity_rule_test.dart`: 14 unit tests.
+  - `test/features/analysis/domain/rules/job_offer_rule_test.dart`: 14 unit tests.
+  - `test/features/analysis/domain/rules/reward_claim_rule_test.dart`: 14 unit tests.
+  - `test/features/analysis/domain/rules/investment_return_rule_test.dart`: 14 unit tests.
+  - `test/features/analysis/domain/rules/link_structural_rule_test.dart`: 12 unit tests.
+  - `test/features/analysis/domain/rules/local_rule_catalog_test.dart`: 5 unit tests.
+  - `test/features/analysis/domain/services/local_rule_engine_module24_test.dart`: 10 integration and regression tests.
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (154 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (538/538 tests passed across 46 suites, adding 85 tests for Module 24).
+  - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (built in 14.4s).
+  - `git diff --check`: PASS (clean whitespace).
+- **Physical Device & Verification Status:** Pure-Dart on-device heuristic rules; no platform channel or visible UI modifications. Local rule packs are implemented; the user-facing analysis workflow is not enabled yet. In Module 22, APK installation and live `ACTION_SEND` intent delivery via adb were verified, but the automated device integration test suite (`tool/test.ps1 -Suite device`) was not executed for Module 22 (marked unverified for Module 22; last run in Module 21 where 5/5 tests passed). Automated assertions, APK installation, live intent delivery, and manual observations remain recorded distinctly.
+- **Status:** Complete. Pushed to `frontend`. Stopped before Module 25.

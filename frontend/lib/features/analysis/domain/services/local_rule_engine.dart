@@ -5,6 +5,7 @@ import 'package:trustcue_mobile/features/analysis/domain/contracts/rule_registry
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_finding.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_report.dart';
 import 'package:trustcue_mobile/features/analysis/domain/services/evidence_validator.dart';
+import 'package:trustcue_mobile/features/analysis/domain/rules/rule_matcher_utils.dart';
 import 'package:trustcue_mobile/features/input/domain/models/text_snapshot.dart';
 import 'package:trustcue_mobile/features/input/domain/validation/message_text_validator.dart';
 
@@ -63,6 +64,13 @@ class LocalRuleEngine implements AnalysisService {
       List<AnalysisFinding> ruleFindings;
       try {
         ruleFindings = rule.evaluate(snapshot);
+      } on RuleLimitExceededException catch (_) {
+        return Result.failure(
+          AnalysisFailure.unsupportedInput(
+            'Maximum finding limit ($maxFindings) exceeded during rule evaluation.',
+            'max_findings_exceeded',
+          ),
+        );
       } catch (_) {
         return Result.failure(
           AnalysisFailure.malformedData(

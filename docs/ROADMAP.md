@@ -38,7 +38,7 @@ This roadmap outlines the complete 50-module development plan for TrustCue, repl
 | **21** | Android incoming-share input and lifecycle handling | Completed | `frontend` |
 | **22** | Warning taxonomy, rule engine, evidence locations, rule contracts | Completed | `frontend` |
 | **23** | Urgency, credentials, verification-code, payment, and account-threat rules | Completed | `frontend` |
-| **24** | Impersonation, job/reward/investment, URL heuristics, false-positive safeguards | Planned | `frontend` |
+| **24** | Impersonation, job/reward/investment, URL heuristics, false-positive safeguards | Completed | `frontend` |
 
 | **25** | Local assessment aggregation, uncertainty, evidence validation, safe-action catalog | Planned | `frontend` |
 | **26** | Working local-analysis results and Evidence Trail interface | Planned | `frontend` |

@@ -25,6 +25,7 @@ class CredentialRequestRule implements LocalRule {
     'English-language heuristic rule; does not detect credential requests in other languages.',
     'Flags explicit requests to disclose, send, or submit passwords, PINs, or credentials; standard instructions to sign in via official applications are intentionally not flagged.',
     'Does not detect credential solicitation obscured by heavy typosquatting or embedded images.',
+    'Does not perform general pronoun resolution; only narrow antecedent patterns such as "[credential] ... but send it to [agent/representative]" are detected.',
   ];
 
   static const String _explanation =
@@ -44,6 +45,11 @@ class CredentialRequestRule implements LocalRule {
     // Input / enter credentials via link or form (e.g. "enter your password at the link")
     RegExp(
       r'\b(?:enter|type|input|submit)\s+(?:your|the)?\s*(?:password|passcode|pin|credentials)\s+(?:here|below|at the link|via the link|in this form)\b',
+      caseSensitive: false,
+    ),
+    // Narrow antecedent pronoun pattern (e.g. "Never share your password, but send it to our agent")
+    RegExp(
+      r'\b(?:password|passcode|pin|credentials)\b[^\r\n.!?]{0,30}\b(?:but|however|yet)\b[^\r\n.!?]{0,30}\b(?:send|give|forward|provide)\s+it\s+to\b[^\r\n.!?]{0,30}\b(?:us|our|me|the|an?)\s*(?:agent|representative|team|staff|support|number|email)\b',
       caseSensitive: false,
     ),
   ];

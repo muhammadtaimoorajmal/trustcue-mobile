@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/finding_origin.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/indicator_category.dart';
+import 'package:trustcue_mobile/features/analysis/domain/rules/rule_matcher_utils.dart';
 import 'package:trustcue_mobile/features/analysis/domain/rules/verification_code_request_rule.dart';
 import 'package:trustcue_mobile/features/analysis/domain/services/evidence_validator.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
@@ -164,12 +165,13 @@ void main() {
       expect(findings.length, 2);
     });
 
-    test('bounds findings on adversarial repeated text', () {
+    test('bounds findings and throws RuleLimitExceededException on adversarial repeated text', () {
       final repetitive = 'Send me the OTP now! ' * 180;
       final snapshot = createSnapshot(repetitive);
-      final findings = rule.evaluate(snapshot);
-
-      expect(findings.length, lessThanOrEqualTo(105));
+      expect(
+        () => rule.evaluate(snapshot),
+        throwsA(isA<RuleLimitExceededException>()),
+      );
     });
   });
 }

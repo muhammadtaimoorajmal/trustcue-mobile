@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/finding_origin.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/indicator_category.dart';
 import 'package:trustcue_mobile/features/analysis/domain/rules/credential_request_rule.dart';
+import 'package:trustcue_mobile/features/analysis/domain/rules/rule_matcher_utils.dart';
 import 'package:trustcue_mobile/features/analysis/domain/services/evidence_validator.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/input/domain/models/text_snapshot.dart';
@@ -166,12 +167,13 @@ void main() {
       expect(findings[1].evidence.first.exactExcerpt, contains('PIN'));
     });
 
-    test('bounds findings on adversarial repeated text', () {
+    test('bounds findings and throws RuleLimitExceededException on adversarial repeated text', () {
       final repetitive = 'Send your password now! ' * 180;
       final snapshot = createSnapshot(repetitive);
-      final findings = rule.evaluate(snapshot);
-
-      expect(findings.length, lessThanOrEqualTo(105));
+      expect(
+        () => rule.evaluate(snapshot),
+        throwsA(isA<RuleLimitExceededException>()),
+      );
     });
   });
 }
