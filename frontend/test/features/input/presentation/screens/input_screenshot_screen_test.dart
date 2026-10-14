@@ -220,7 +220,7 @@ void main() {
     );
     expect(
       find.text(
-        'Image preview is available. Text extraction and scam analysis are not available yet.',
+        'Image preview, text extraction, and local checks are available. Results are indicators, not a verdict.',
       ),
       findsOneWidget,
     );

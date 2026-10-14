@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:trustcue_mobile/app/routes/app_routes.dart';
+import 'package:trustcue_mobile/features/analysis/presentation/models/analysis_results_args.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/input/domain/models/review_input.dart';
 import 'package:trustcue_mobile/features/input/domain/models/reviewed_text_result.dart';
@@ -57,6 +58,7 @@ class InputReviewController extends GetxController {
 
   final RxBool showComparisonImage = false.obs;
   final RxBool isNavigatingAway = false.obs;
+  final RxBool isNavigatingToAnalysis = false.obs;
 
   bool get isScreenshotSource =>
       reviewInput?.snapshot.source == InputSource.screenshot;
@@ -233,6 +235,23 @@ class InputReviewController extends GetxController {
     confirmedResult.value = result;
     isConfirmed.value = true;
     validationError.value = null;
+  }
+
+  /// Navigates to `/analysis/results` passing the confirmed [ReviewedTextResult] in-memory.
+  Future<void> analyzeOnThisDevice() async {
+    if (!isConfirmed.value || confirmedResult.value == null) return;
+    if (isNavigatingToAnalysis.value) return;
+
+    isNavigatingToAnalysis.value = true;
+    try {
+      final reviewed = confirmedResult.value!;
+      await Get.toNamed(
+        AppRoutes.analysisResults,
+        arguments: AnalysisResultsArgs(reviewResult: reviewed),
+      );
+    } finally {
+      isNavigatingToAnalysis.value = false;
+    }
   }
 
   /// Navigates to `/safe-use` with duplicate route protection, preserving draft state.

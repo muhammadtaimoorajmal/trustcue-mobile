@@ -74,7 +74,7 @@ class InputLinkScreen extends GetView<InputLinkController> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Link inspection is available. Scam analysis is not available in this build yet.',
+                  'Link inspection and local checks are available. Results are indicators, not a verdict.',
                   style: theme.textTheme.bodyMedium,
                 ),
               ),

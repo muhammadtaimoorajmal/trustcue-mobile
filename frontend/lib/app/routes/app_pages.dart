@@ -18,6 +18,8 @@ import 'package:trustcue_mobile/features/input/presentation/screens/input_link_s
 import 'package:trustcue_mobile/features/input/presentation/screens/input_review_screen.dart';
 import 'package:trustcue_mobile/features/input/presentation/screens/input_screenshot_screen.dart';
 import 'package:trustcue_mobile/features/input/presentation/screens/input_text_screen.dart';
+import 'package:trustcue_mobile/features/analysis/presentation/bindings/analysis_results_binding.dart';
+import 'package:trustcue_mobile/features/analysis/presentation/screens/analysis_results_screen.dart';
 
 class AppPages {
   AppPages(this.preferences, {this.requestedRoute});
@@ -65,6 +67,11 @@ class AppPages {
       name: AppRoutes.inputLink,
       page: () => const InputLinkScreen(),
       binding: InputLinkBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.analysisResults,
+      page: () => const AnalysisResultsScreen(),
+      binding: AnalysisResultsBinding(),
     ),
     unknownRoute,
   ];

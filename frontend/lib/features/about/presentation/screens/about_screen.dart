@@ -50,7 +50,7 @@ class AboutScreen extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Analysis features are not available in this development build yet.',
+                            'Local checks are available. Results are indicators, not a verdict. Cloud analysis, history, and report storage are not available.',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),

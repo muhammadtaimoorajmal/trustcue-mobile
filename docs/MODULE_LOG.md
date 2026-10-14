@@ -520,3 +520,48 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `git diff --check`: PASS (clean whitespace).
 - **Physical Device & Verification Status:** Pure-Dart on-device contracts and synthesizer; no platform channel or visible UI modifications. Local assessment synthesis is implemented; the user-facing analysis workflow is not enabled yet. In Module 22, APK installation and live `ACTION_SEND` intent delivery via adb were verified, but the automated device integration test suite (`tool/test.ps1 -Suite device`) was not executed for Module 22 (marked unverified for Module 22; last run in Module 21 where 5/5 tests passed). Automated assertions, APK installation, live intent delivery, and manual observations remain recorded distinctly.
 - **Status:** Complete. Pushed to `frontend`. Stopped before Module 26.
+
+### 2026-10-15 — Module 26: Working Local-Analysis Results and Evidence Trail Interface
+- **Scope & Objectives:**
+  - Implemented the user-facing local-analysis results and evidence trail presentation interface on route `/analysis/results` (`AppRoutes.analysisResults`), wired via `AppPages` with `AnalysisResultsBinding`.
+  - Connected confirmed text review (`/input/review`) to `LocalAnalysisPipeline` via explicit user action: primary button *"Analyze on this device"* with subtitle *"Checks the reviewed text using local rules. Nothing is uploaded."*
+  - Enforced strict confirmation preconditions: analysis is allowed only when `isConfirmed == true` with an immutable `ReviewedTextResult`. Any text edit, redaction selection change, or reset invalidates confirmation and immediately disables the button. Double-tap debouncing prevents duplicate route pushes.
+  - Implemented strictly volatile in-memory argument passing (`AnalysisResultsArgs`); no sensitive user text or results are placed in query parameters, persistent preferences, or global singletons.
+  - Managed controller lifecycle with stale operation isolation (`AnalysisResultsController`): unique incremental operation IDs ensure results arriving after screen pop or controller disposal are safely discarded.
+  - Built comprehensive, honest results hierarchy (`AnalysisResultsScreen`):
+    - On-device header banner: *"Local on-device analysis"*, *"Evaluated on this device using local rules. Nothing was uploaded."*
+    - Outcome summary card: truthful state representation for detected indicators, neutral notice for zero matches (*"No indicators were matched by these local checks. This does not establish that the message is safe."* — strictly NO green shield or safe verdict), coverage limits, or typed failure.
+    - Coverage & Limitations section: highlights evaluated categories, heuristic constraints, English-only rule scope, OCR inaccuracy caveats, and redaction impact. Expandable full uncertainty notes.
+    - Evidence Trail: deterministically grouped findings with category badges, rule limitations, exact quoted excerpts, and *"View in analyzed text"* modal action.
+    - Suggested Next Steps: deduplicated, prioritized actions (`immediate` > `recommended` > `conditional`) referencing supporting finding IDs and categories.
+    - Safe Navigation: primary action to return to review and edit text (`Get.back()`); secondary action linking to safe-use guidance (`/safe-use`).
+  - Implemented accessible plain-text evidence viewer (`AnalyzedTextEvidenceViewer`):
+    - Uses exact UTF-16 code-unit offsets `[startOffset, endOffset]`.
+    - Merges overlapping or adjacent evidence spans into unified highlight ranges.
+    - Accessible styling with amber background, dark border, and underline decoration (never relies on color alone).
+    - Plain selectable text (`SelectableText.rich`) with raw styling; no Markdown, HTML, or clickable hyperlinks.
+    - Redacted placeholders (`[CARD NUMBER]`, `[VERIFICATION CODE]`, etc.) remain strictly redacted.
+  - Performed product copy audit: updated outdated "Analysis is not available / Coming soon" copy to clarify that local checks are available while distinguishing that remote AI and cloud analysis remain unavailable.
+- **Presentation, Binding, and Test Components:**
+  - `lib/features/analysis/presentation/models/analysis_results_args.dart`: Immutable in-memory argument container.
+  - `lib/features/analysis/presentation/controllers/analysis_results_controller.dart`: GetX controller managing `AnalysisState`, stale protection, retry, and viewer dialog.
+  - `lib/features/analysis/presentation/bindings/analysis_results_binding.dart`: Dependency injection binding for local pipeline.
+  - `lib/features/analysis/presentation/widgets/analyzed_text_evidence_viewer.dart`: Plain-text UTF-16 evidence viewer.
+  - `lib/features/analysis/presentation/screens/analysis_results_screen.dart`: Complete responsive results screen.
+  - `lib/app/routes/app_routes.dart` & `lib/app/routes/app_pages.dart`: Added `/analysis/results` route and binding.
+  - `lib/features/input/presentation/controllers/input_review_controller.dart`: Added `analyzeOnThisDevice()` and navigation debouncing.
+  - `lib/features/input/presentation/screens/input_review_screen.dart`: Added "Analyze on this device" action button and subtitle.
+  - `test/features/analysis/presentation/controllers/analysis_results_controller_test.dart`: 7 unit tests.
+  - `test/features/analysis/presentation/screens/analysis_results_screen_test.dart`: 4 widget tests (hierarchy, zero-matches without green shield, failure recovery, dark theme / 200% text scale).
+  - `test/features/analysis/presentation/widgets/analyzed_text_evidence_viewer_test.dart`: 5 widget tests (UTF-16 slicing, emoji offsets, overlapping spans, malformed offsets, redacted placeholders).
+  - `test/features/input/presentation/screens/input_review_to_analysis_flow_test.dart`: 4 integration flow tests (unconfirmed gating, edit invalidation, end-to-end review -> analysis -> results -> back, double-tap protection).
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (177 files checked, 0 changed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `powershell -File tool/test.ps1 -Suite all -TimeoutSeconds 180`: PASS (594/594 tests passed across 54 suites, adding 20 new tests for Module 26).
+  - `flutter build apk --debug --no-pub -t lib/main.dart`: PASS (built in 18.8s, `build/app/outputs/flutter-apk/app-debug.apk`).
+  - `powershell -File tool/test.ps1 -Suite device -DeviceId "10AC9R1ABF0013A" -TimeoutSeconds 600`: PASS (5/5 device integration tests passed on Vivo V2207 in 31s).
+  - Debug APK installed via streamed install on physical device and launched cleanly via adb.
+  - `git diff --check`: PASS (clean whitespace).
+- **Physical Device & Verification Status:** Full device integration test suite executed on physical Vivo V2207 device (`10AC9R1ABF0013A`) via `tool/test.ps1 -Suite device` with 5/5 tests passing in 31s (smoke test, real native Google ML Kit Latin OCR, Module 19 text review & redaction, Module 20 offline link & QR decoding, Module 21 Android incoming shares platform channel & lifecycle). Debug APK installed via streamed install and launched cleanly via adb (`Starting: Intent { cmp=io.github.muhammadtaimoorajmal.trustcue/.MainActivity }`).
+- **Status:** Complete. Pushed to `frontend`. Stopped before Module 27.

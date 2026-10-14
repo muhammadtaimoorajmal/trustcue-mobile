@@ -127,7 +127,7 @@ void main() {
     expect(find.text('Link or QR code'), findsOneWidget);
     expect(
       find.text(
-        'Link inspection is available. Scam analysis is not available in this build yet.',
+        'Link inspection and local checks are available. Results are indicators, not a verdict.',
       ),
       findsOneWidget,
     );

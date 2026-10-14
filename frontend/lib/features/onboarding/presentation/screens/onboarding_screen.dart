@@ -65,12 +65,12 @@ class OnboardingScreen extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.pagePaddingLarge),
             Text(
-              'Analysis features are not available in this development build yet.',
+              'Local checks are available. Results are indicators, not a verdict.',
               style: theme.textTheme.bodyLarge,
             ),
             const SizedBox(height: AppSpacing.pagePaddingSmall),
             Text(
-              'Completing this introduction does not authorize uploading your messages or screenshots.',
+              'Completing this introduction does not authorize uploading your messages or screenshots. Nothing is uploaded by this local workflow.',
               style: theme.textTheme.bodyLarge,
             ),
             const SizedBox(height: AppSpacing.pagePaddingLarge),

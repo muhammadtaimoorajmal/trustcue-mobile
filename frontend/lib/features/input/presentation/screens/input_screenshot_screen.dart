@@ -73,7 +73,7 @@ class InputScreenshotScreen extends GetView<InputScreenshotController> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Image preview is available. Text extraction and scam analysis are not available yet.',
+                            'Image preview, text extraction, and local checks are available. Results are indicators, not a verdict.',
                             style: theme.textTheme.bodyMedium,
                           ),
                         ),

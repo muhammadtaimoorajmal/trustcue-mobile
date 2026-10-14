@@ -221,6 +221,25 @@ Module 12's original `unknownRoute` configuration did not enforce this policy: G
     - Dependency injection with typed `Result` propagation. Engine validation or overflow errors propagate directly as typed failures without masking as completed assessments.
     - UI gating preserved: pipeline is not called automatically from app startup, OCR completion, incoming shares, or text review.
 
+## Working Local-Analysis Results and Evidence Trail Architecture (Module 26)
+
+*   **Deliberate User Trigger & Preconditions:** Analysis is explicitly initiated from `/input/review` via "Analyze on this device" (with explanatory subtitle "Checks the reviewed text using local rules. Nothing is uploaded."). Only confirmed, valid `ReviewedTextResult` inputs can be analyzed. Edits, redaction changes, or resets immediately invalidate confirmation and disable the button.
+*   **Exact Path Routing & Volatile In-Memory Arguments:** Registered under `AppRoutes.analysisResults = '/analysis/results'` with `AnalysisResultsBinding`. Arguments are held in an immutable `AnalysisResultsArgs` record passed exclusively through GetX memory (`Get.arguments`). Arguments are never persisted to storage, URLs, or query parameters.
+*   **Controller Lifecycle & Stale Operation Isolation:** `AnalysisResultsController` tracks executions with monotonic operation IDs (`_currentOperationId`). If the screen is dismissed or the controller is disposed (`onClose()`), subsequent results are ignored. In-memory assessment and failure objects are safely cleared upon disposal.
+*   **Transparent Results Presentation Hierarchy:**
+    - **Header Banner:** Clarifies on-device execution: *"Local on-device analysis"*, *"Evaluated on this device using local rules. Nothing was uploaded."*
+    - **Outcome Summary:** Factual statement of detected indicators or explicit neutral notice for zero matches. Never presents a green shield, safety checkmark, or claims that unflagged content is safe or verified.
+    - **Coverage & Limitations:** Displays evaluated categories and explicit boundaries (heuristic scope, English-only rules, OCR error possibility, redaction impact). Expandable full uncertainty notes.
+    - **Evidence Trail:** Categorized findings ordered deterministically. Each finding card presents severity badge, rule limitation, exact quoted excerpt, and "View in analyzed text" action.
+    - **Suggested Next Steps:** Deduplicated, prioritized verification actions (`immediate` > `recommended` > `conditional`) with clear category and finding associations.
+    - **Safe Navigation Actions:** Primary action allows returning to review and edit text (`Get.back()`); secondary action links to safe-use guidance (`/safe-use`).
+*   **Safe Evidence Viewer (`AnalyzedTextEvidenceViewer`):**
+    - Slices text strictly by UTF-16 code units matching Dart string indices.
+    - Merges overlapping or adjacent evidence spans gracefully.
+    - Renders as plain selectable text (`SelectableText.rich`) with raw styling; no Markdown or HTML parsing, and no clickable links.
+    - Visual distinctness is provided by borders and underline styling in addition to amber background tint to ensure accessibility without color-alone dependency.
+    - Preserves redacted placeholders (`[CARD NUMBER]`, `[VERIFICATION CODE]`, etc.) exactly as redacted during review.
+
 ## Repository Separation
 
 *   `frontend/`: The complete Flutter application and its client-side integrations.

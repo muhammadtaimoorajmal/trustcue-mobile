@@ -29,7 +29,9 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.text('Analysis is not available in this development build yet.'),
+      find.text(
+        'Local checks are available. Results are indicators, not a verdict.',
+      ),
       findsOneWidget,
     );
 
@@ -37,9 +39,9 @@ void main() {
     expect(find.text('Message text'), findsOneWidget);
     expect(find.text('Screenshot'), findsOneWidget);
     expect(find.text('Link or QR code'), findsOneWidget);
-    expect(find.text('Preparation available'), findsOneWidget);
-    expect(find.text('Text extraction available'), findsOneWidget);
-    expect(find.text('Inspection available'), findsOneWidget);
+    expect(find.text('Local checks available'), findsOneWidget);
+    expect(find.text('OCR & local checks available'), findsOneWidget);
+    expect(find.text('Inspection & local checks available'), findsOneWidget);
     expect(find.text('Enter message'), findsOneWidget);
     expect(find.text('Choose screenshot'), findsOneWidget);
     expect(find.text('Inspect link or QR'), findsOneWidget);

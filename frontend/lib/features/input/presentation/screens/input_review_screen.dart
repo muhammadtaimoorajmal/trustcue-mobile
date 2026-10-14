@@ -192,7 +192,7 @@ class InputReviewScreen extends GetView<InputReviewController> {
         ),
         const SizedBox(height: AppSpacing.pagePaddingSmall),
 
-        // Confirmed Success Banner
+        // Confirmed Success Banner & Analyze Action
         if (controller.isConfirmed.value) ...[
           AppCard(
             child: Row(
@@ -211,6 +211,17 @@ class InputReviewScreen extends GetView<InputReviewController> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: AppSpacing.pagePaddingSmall),
+          AppButton.primary(
+            label: 'Analyze on this device',
+            onPressed: controller.analyzeOnThisDevice,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Checks the reviewed text using local rules. Nothing is uploaded.',
+            style: theme.textTheme.bodySmall,
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.pagePaddingSmall),
         ],

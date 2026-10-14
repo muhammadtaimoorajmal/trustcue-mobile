@@ -67,7 +67,7 @@ void main() {
     );
     expect(
       find.text(
-        'Text preparation is available. Scam analysis is not available in this build yet.',
+        'Text preparation and local checks are available. Results are indicators, not a verdict.',
       ),
       findsOneWidget,
     );

@@ -511,7 +511,40 @@ abstract class Result<T> {
 
 ---
 
-## 14. Future Extension Points
+## 14. Local-Analysis Results Presentation and Evidence Trail Interface (Module 26)
 
-- **Module 26:** Working local-analysis results and Evidence Trail user interface.
+### 14.1 Route and Lifecycle Contracts
+- **Route Identifier:** `AppRoutes.analysisResults = '/analysis/results'`. Registered in `AppPages` with lazy-injected `AnalysisResultsBinding`.
+- **Navigation Vector:** Reached from `/input/review` via explicit user action: primary button *"Analyze on this device"* with subtitle *"Checks the reviewed text using local rules. Nothing is uploaded."*
+- **Preconditions:** Navigation is permitted only when `InputReviewController.isConfirmed.value == true` with an immutable `ReviewedTextResult`. Any text edit, redaction modification, or reset invalidates confirmation and immediately disables the button. Double-tap debouncing ensures only a single navigation transition occurs.
+- **In-Memory Argument Contract (`AnalysisResultsArgs`):**
+  - Held strictly in volatile memory passed through GetX route arguments (`Get.toNamed(AppRoutes.analysisResults, arguments: AnalysisResultsArgs(...))`).
+  - Contains `reviewedResult` (`ReviewedTextResult`) and optional `imagePath` (`String?`).
+  - Never serialized to query strings, persistent storage, or shared preferences.
+- **Lifecycle & Stale Operation Protection:**
+  - `AnalysisResultsController` tracks active evaluation using an incremental operation identifier (`_currentOperationId`).
+  - Analysis is initiated asynchronously during `onInit()`.
+  - If the user pops the route or the controller is closed prior to pipeline completion, subsequent result arrivals are ignored.
+  - Upon controller disposal (`onClose()`), in-memory references (`assessment`, `failure`, `args`) are released.
+
+### 14.2 Presentation States (`AnalysisState`)
+- **`initial` / `running`:** Pipeline execution in progress; displays accessible `CircularProgressIndicator` with informative caption: *"Checking text against local rules on this device..."*
+- **`completedWithIndicators`:** Local rules matched one or more potential scam patterns. Renders complete results hierarchy: Header banner, Outcome summary card (with count and category tags), Coverage & Limitations section, Evidence Trail, Suggested Next Steps, and Navigation actions.
+- **`completedWithNoMatches`:** Local rules evaluated content and matched zero patterns. Explicit neutral styling (warm/neutral surface, info icon; strictly NO green shields, checkmarks, or "safe/verified" declarations). Displays mandatory uncertainty caveat: *"No indicators were matched by these local checks. This does not establish that the message is safe."*
+- **`limitedCoverage`:** Empty rule catalog or skipped rules. Displays honest coverage limitations without emitting false reassurance.
+- **`failedOrUnsupported`:** Missing arguments, malformed input, input limits exceeded, or rule overflow. Displays clear user-friendly explanation with *"Retry analysis"* and *"Return to review and edit text"* recovery actions.
+
+### 14.3 Evidence Presentation & UTF-16 Code-Unit Highlighting
+- **Modal Viewer (`AnalyzedTextEvidenceViewer`):** Opened via *"View in analyzed text"* action for any finding.
+- **Strict UTF-16 Slicing:** Uses exact `EvidenceReference.startOffset` and `endOffset` code-unit indices matching Dart string indexing.
+- **Surrogate-Pair Safety & Range Validation:** Bounds-checked against `text.length`. Overlapping or contiguous spans are merged into unified highlight intervals before rendering.
+- **Accessible Indicators:** Highlights use amber background tint, dark borders, and underline decoration so distinction is never conveyed by color alone.
+- **Plain-Text Rendering:** Evaluated text is displayed in a selectable container (`SelectableText.rich`) with raw character rendering. No Markdown formatting, HTML parsing, or clickable hyperlink execution.
+- **Redaction Preservation:** Any redactions applied during review (`[CARD NUMBER]`, `[VERIFICATION CODE]`, `[PHONE]`, `[EMAIL]`) remain strictly redacted in the evidence viewer and assessment cards.
+
+---
+
+## 15. Future Extension Points
+
 - **Module 27:** Backend/AI/hosting feasibility, privacy decisions, deployment and API contracts.
+- **Module 28:** Backend foundation, configuration, health checks, contract tests.

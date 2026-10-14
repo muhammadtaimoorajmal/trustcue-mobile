@@ -229,19 +229,19 @@ void main() {
       title: 'Message text',
       route: AppRoutes.inputText,
       buttonLabel: 'Enter message',
-      noticeText: 'Text preparation is available. Scam analysis is not available in this build yet.',
+      noticeText: 'Text preparation and local checks are available. Results are indicators, not a verdict.',
     ),
     (
       title: 'Screenshot',
       route: AppRoutes.inputScreenshot,
       buttonLabel: 'Choose screenshot',
-      noticeText: 'Image preview is available. Text extraction and scam analysis are not available yet.',
+      noticeText: 'Image preview, text extraction, and local checks are available. Results are indicators, not a verdict.',
     ),
     (
       title: 'Link or QR code',
       route: AppRoutes.inputLink,
       buttonLabel: 'Inspect link or QR',
-      noticeText: 'Link inspection is available. Scam analysis is not available in this build yet.',
+      noticeText: 'Link inspection and local checks are available. Results are indicators, not a verdict.',
     ),
   ]) {
     testWidgets(

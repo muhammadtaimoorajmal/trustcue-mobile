@@ -41,7 +41,7 @@ This roadmap outlines the complete 50-module development plan for TrustCue, repl
 | **24** | Impersonation, job/reward/investment, URL heuristics, false-positive safeguards | Completed | `frontend` |
 
 | **25** | Local assessment aggregation, uncertainty, evidence validation, safe-action catalog | Completed | `frontend` |
-| **26** | Working local-analysis results and Evidence Trail interface | Planned | `frontend` |
+| **26** | Working local-analysis results and Evidence Trail interface | Completed | `frontend` |
 | **27** | Backend/AI/hosting feasibility, privacy decisions, deployment and API contracts | Planned | `backend` |
 | **28** | Backend foundation, configuration, health checks, contract tests | Planned | `backend` |
 | **29** | Backend validation, limits, abuse controls, sensitive-log protection | Planned | `backend` |

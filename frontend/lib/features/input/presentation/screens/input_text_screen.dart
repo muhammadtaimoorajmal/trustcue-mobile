@@ -82,7 +82,7 @@ class InputTextScreen extends GetView<InputTextController> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Text preparation is available. Scam analysis is not available in this build yet.',
+                          'Text preparation and local checks are available. Results are indicators, not a verdict.',
                           style: theme.textTheme.bodyMedium,
                         ),
                       ),
