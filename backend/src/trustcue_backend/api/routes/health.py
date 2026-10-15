@@ -8,7 +8,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from trustcue_backend import __version__
-from trustcue_backend.api.dependencies import get_app_state
+from trustcue_backend.api.dependencies import get_app_settings, get_app_state
+from trustcue_backend.core.config import Settings
 from trustcue_backend.core.state import AppState
 
 router = APIRouter(tags=["Health & Readiness"])
@@ -71,9 +72,10 @@ async def get_health(
 async def get_readiness(
     response: Response,
     app_state: Annotated[AppState, Depends(get_app_state)],
+    settings: Annotated[Settings, Depends(get_app_settings)],
 ) -> ReadinessResponse | JSONResponse:
     """Evaluate service readiness."""
-    status_str, dep_dict = app_state.get_readiness_status()
+    status_str, dep_dict = app_state.get_readiness_status(settings=settings)
     now = datetime.now(UTC)
 
     dependencies = ReadinessDependencies(

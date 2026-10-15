@@ -36,10 +36,16 @@ class Settings(BaseSettings):
     ENABLE_CLOUD_AUTH: bool = False
     ENABLE_CLOUD_SYNC: bool = False
 
-    # --- Cloud Credentials (Optional / None in Module 28 foundation) ---
+    # --- Cloud Credentials & Authentication ---
     SUPABASE_URL: str | None = None
     SUPABASE_ANON_KEY: str | None = None
     SUPABASE_SERVICE_ROLE_KEY: str | None = None
+    SUPABASE_JWT_SECRET: str | None = None
+    SUPABASE_JWT_ALGORITHMS: list[str] = Field(default_factory=lambda: ["HS256"])
+    SUPABASE_JWT_AUDIENCE: str = "authenticated"
+    SUPABASE_JWT_ISSUER: str | None = None
+    SUPABASE_JWKS_URL: str | None = None
+    DEFAULT_DAILY_AI_QUOTA: int = 15
 
     GROQ_API_KEY: str | None = None
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
@@ -103,6 +109,17 @@ class Settings(BaseSettings):
                     "Cloud Auth feature is enabled, but SUPABASE_URL or SUPABASE_ANON_KEY "
                     "is missing. Both are required when ENABLE_CLOUD_AUTH is true."
                 )
+
+        # Enforce production security constraints against test keys or weak secrets
+        if self.ENVIRONMENT == "production":
+            insecure_secret_needles = ["test", "demo", "sample", "example", "secret", "change-me"]
+            if self.SUPABASE_JWT_SECRET:
+                secret_lower = self.SUPABASE_JWT_SECRET.lower()
+                if any(needle == secret_lower or secret_lower.startswith("test-") for needle in insecure_secret_needles):
+                    raise ValueError(
+                        "Insecure or test SUPABASE_JWT_SECRET detected in production environment. "
+                        "A cryptographically strong secret from the live Supabase project is required."
+                    )
 
         return self
 

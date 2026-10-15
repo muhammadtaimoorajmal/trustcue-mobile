@@ -157,3 +157,17 @@ sequenceDiagram
 ```
 
 No orphan records, soft-deleted user content, or cached auth sessions remain after deletion.
+
+---
+
+## 6. Backend Session Validation Architecture (Module 30)
+
+The backend service validates Supabase session tokens statelessly using cryptographic signature verification without requiring synchronous round-trips to the Supabase Auth server on every request:
+
+1. **Algorithm & Key Support:** Supports HMAC-SHA256 (`HS256`) shared secret verification via `SUPABASE_JWT_SECRET` and RSA/ECDSA public key validation via `SUPABASE_JWKS_URL`.
+2. **Subject UUID Enforcement:** Extracts `sub` claim and strictly validates that it conforms to RFC 4122 UUID format. Non-UUID subjects are rejected with HTTP 401.
+3. **Role Discrimination:** Rejects public anonymous tokens (`role: "anon"` or `aud: "anon"`). Protected endpoints strictly require `role: "authenticated"` or higher privilege.
+4. **Temporal Bounds:** Enforces token expiration (`exp`) and not-before (`nbf`) claims. Expired tokens return HTTP 401 with standard code `"token_expired"`.
+5. **Audience & Issuer Enforcement:** Validates `aud: "authenticated"` and optional project-specific issuer (`iss`). Mismatched issuers return HTTP 401 with code `"invalid_issuer"`.
+6. **Privacy-Preserving Rejection:** Token validation failures return sanitized `ErrorEnvelope` payloads. Cryptographic secrets, signing key fingerprints, and internal stack traces are never exposed in error responses.
+7. **Production Integrity Guard:** Synthetic test keys (`test-jwt-secret-key-...`) and bypass modes are strictly prohibited and actively rejected when `ENVIRONMENT="production"`.

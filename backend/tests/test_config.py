@@ -82,3 +82,33 @@ def test_cloud_auth_feature_validation() -> None:
         SUPABASE_ANON_KEY="mock_anon_key",
     )
     assert valid_auth.ENABLE_CLOUD_AUTH is True
+
+
+def test_jwt_configuration_defaults() -> None:
+    """Ensure default JWT settings match safe local-first defaults."""
+    settings = Settings()
+    assert settings.SUPABASE_JWT_SECRET is None
+    assert settings.SUPABASE_JWT_ALGORITHMS == ["HS256"]
+    assert settings.SUPABASE_JWT_AUDIENCE == "authenticated"
+    assert settings.SUPABASE_JWT_ISSUER is None
+    assert settings.DEFAULT_DAILY_AI_QUOTA == 15
+
+
+def test_production_rejects_insecure_jwt_secret() -> None:
+    """Ensure production environment prohibits test or weak JWT secrets."""
+    insecure_keys = [
+        "test",
+        "secret",
+        "test-secret",
+        "test-jwt-secret-key-32-chars-long!",
+        "demo",
+        "example",
+    ]
+
+    for bad_key in insecure_keys:
+        with pytest.raises(ValidationError) as exc_info:
+            Settings(
+                ENVIRONMENT="production",
+                SUPABASE_JWT_SECRET=bad_key,
+            )
+        assert "Insecure or test SUPABASE_JWT_SECRET detected in production" in str(exc_info.value)

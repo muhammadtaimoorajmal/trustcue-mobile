@@ -30,6 +30,23 @@ class TrustCueError(Exception):
         self.details = details
 
 
+class AuthenticationError(TrustCueError):
+    """Exception raised when authentication fails, token is expired, or credentials are invalid."""
+
+    def __init__(
+        self,
+        code: str = "unauthorized",
+        message: str = "Authentication token is invalid, expired, or issued by an unrecognized authority.",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(
+            code=code,
+            message=message,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            details=details,
+        )
+
+
 def get_request_id(request: Request) -> str:
     """Extract or generate a validated server-controlled request ID."""
     req_id = getattr(request.state, "request_id", None)
@@ -127,6 +144,22 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
             message="The HTTP method is not allowed for this endpoint.",
             request_id=req_id,
             status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+
+    if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+        return build_error_envelope(
+            code="unauthorized",
+            message=str(exc.detail) if exc.detail else "Authentication token is missing or invalid.",
+            request_id=req_id,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    if exc.status_code == status.HTTP_403_FORBIDDEN:
+        return build_error_envelope(
+            code="forbidden",
+            message=str(exc.detail) if exc.detail else "Access is forbidden.",
+            request_id=req_id,
+            status_code=status.HTTP_403_FORBIDDEN,
         )
 
     # Generic HTTP exception code

@@ -1,7 +1,10 @@
 """Application lifecycle and operational readiness state management."""
 
 import time
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from trustcue_backend.core.config import Settings
 
 
 class AppState:
@@ -31,17 +34,24 @@ class AppState:
         self.is_shutting_down = True
         self.is_ready = False
 
-    def get_readiness_status(self) -> tuple[Literal["ready", "degraded"], dict[str, str]]:
+    def get_readiness_status(
+        self, settings: "Settings | None" = None
+    ) -> tuple[Literal["ready", "degraded"], dict[str, str]]:
         """
         Evaluate readiness for implemented foundation capabilities.
 
         Does not invent fake database or AI connections. Clearly reports
-        foundation status and indicates that future subsystems remain unconfigured.
+        foundation status and indicates configured/unconfigured state.
         """
         if self.is_operational():
+            auth_status = (
+                "ok"
+                if (settings and (settings.SUPABASE_JWT_SECRET or settings.SUPABASE_JWKS_URL))
+                else "unconfigured"
+            )
             return "ready", {
                 "foundation": "ok",
-                "authProvider": "unconfigured",
+                "authProvider": auth_status,
                 "database": "unconfigured",
                 "aiProvider": "unconfigured",
             }

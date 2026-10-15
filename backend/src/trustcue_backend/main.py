@@ -11,7 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import Response
 
 from trustcue_backend import __version__
-from trustcue_backend.api.routes import health
+from trustcue_backend.api.routes import account, health
 from trustcue_backend.core.config import Settings, get_settings
 from trustcue_backend.core.errors import (
     TrustCueError,
@@ -122,6 +122,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # Mount Implemented Route Handlers
     app.include_router(health.router)
+    app.include_router(account.router)
 
     return app
 

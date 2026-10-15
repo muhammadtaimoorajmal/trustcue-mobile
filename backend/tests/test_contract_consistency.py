@@ -40,22 +40,22 @@ def test_full_design_contract_is_valid_openapi_3_1() -> None:
 
 def test_runtime_schema_implements_exact_foundation_subset() -> None:
     """
-    Verify that runtime FastAPI schema exposes ONLY implemented routes (/health, /ready)
-    and that planned routes remain strictly unmounted.
+    Verify that runtime FastAPI schema exposes implemented routes (/health, /ready, /api/v1/account/profile, /api/v1/account)
+    and that planned future routes remain strictly unmounted.
     """
     app = create_app()
     runtime_schema = app.openapi()
 
     runtime_paths = set(runtime_schema.get("paths", {}).keys())
 
-    # Implemented routes must be present
+    # Implemented routes in Module 30 must be present
     assert "/health" in runtime_paths
     assert "/ready" in runtime_paths
+    assert "/api/v1/account/profile" in runtime_paths
+    assert "/api/v1/account" in runtime_paths
 
-    # Planned routes must NOT be registered in the runtime application
+    # Planned routes must NOT be registered in the runtime application yet
     assert "/api/v1/analysis/ai" not in runtime_paths
-    assert "/api/v1/account/profile" not in runtime_paths
-    assert "/api/v1/account" not in runtime_paths
     assert "/api/v1/sync/reports" not in runtime_paths
 
 
@@ -68,20 +68,27 @@ def test_runtime_endpoints_match_design_contract_definitions() -> None:
     app = create_app()
     runtime_schema = app.openapi()
 
-    for path in ["/health", "/ready"]:
+    expected_endpoints = {
+        "/health": "get",
+        "/ready": "get",
+        "/api/v1/account/profile": "get",
+        "/api/v1/account": "delete",
+    }
+
+    for path, method in expected_endpoints.items():
         assert path in runtime_schema["paths"], f"{path} missing from runtime schema"
         assert path in design_spec["paths"], f"{path} missing from design contract"
 
         runtime_methods = set(runtime_schema["paths"][path].keys())
         design_methods = set(design_spec["paths"][path].keys())
 
-        # Verify HTTP GET is supported in both
-        assert "get" in runtime_methods
-        assert "get" in design_methods
+        # Verify HTTP method is supported in both
+        assert method in runtime_methods, f"Method {method} missing from runtime schema for {path}"
+        assert method in design_methods, f"Method {method} missing from design spec for {path}"
 
         # Verify 200 response is defined for both
-        runtime_responses = runtime_schema["paths"][path]["get"]["responses"]
-        design_responses = design_spec["paths"][path]["get"]["responses"]
+        runtime_responses = runtime_schema["paths"][path][method]["responses"]
+        design_responses = design_spec["paths"][path][method]["responses"]
 
         assert "200" in runtime_responses
         assert "200" in design_responses

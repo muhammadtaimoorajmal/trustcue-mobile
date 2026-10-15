@@ -138,5 +138,12 @@ MAX_DAILY_QUOTA_PER_USER=20
 > Module 28 focuses entirely on the core Python/FastAPI service architecture, loopback execution, configuration typing, health and readiness probes, privacy-safe logging/error envelopes, and automated CI validation.
 > **No Supabase, Render, Groq, or Gemini accounts or API keys are required to build, test, or run this foundation.**
 >
-> **Module 29 Planning:**
-> Module 29 covers PostgreSQL schema definitions, migrations, and repository structures. Schema definitions and migration scripts can be developed and validated locally using standard PostgreSQL / Supabase CLI without requiring an immediate cloud-hosted project. Manual account creation will only be requested when live remote deployment or cloud persistence is genuinely ready to be connected.
+> **Module 29 Planning & Closeout:**
+> Module 29 covers PostgreSQL schema definitions, migrations, and repository structures. Schema definitions and migration scripts were validated locally and via CI service containers (`postgres:16-alpine`) without requiring external hosted services.
+>
+> **Module 30 Authentication Integration & Local Verification:**
+> Module 30 implements JWT verification middleware and account contracts (`/api/v1/account/profile`, `DELETE /api/v1/account`).
+> All endpoints are verified offline using cryptographically signed synthetic JWTs and test keys (`test-jwt-secret-key-32-chars-long!`).
+> Zero cloud credentials are required for local development and test execution.
+> When connecting a live Supabase project in subsequent integration stages, obtain the JWT Secret from `Supabase Studio -> Project Settings -> API -> JWT Settings -> JWT Secret` and configure `SUPABASE_JWT_SECRET` in `.env`.
+> Test keys and mock auth are strictly forbidden in `production` environment configuration.

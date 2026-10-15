@@ -47,6 +47,21 @@ def test_readiness_probe_operational_state(client: TestClient) -> None:
     assert "key" not in text_content
 
 
+def test_readiness_probe_with_configured_auth() -> None:
+    """Test /ready reports authProvider as 'ok' when SUPABASE_JWT_SECRET is configured."""
+    settings = Settings(SUPABASE_JWT_SECRET="mock-configured-test-secret-key-32ch!")
+    app = create_app(settings=settings)
+    with TestClient(app) as test_client:
+        response = test_client.get("/ready")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ready"
+        assert data["dependencies"]["foundation"] == "ok"
+        assert data["dependencies"]["authProvider"] == "ok"
+        assert data["dependencies"]["database"] == "unconfigured"
+        assert data["dependencies"]["aiProvider"] == "unconfigured"
+
+
 def test_readiness_probe_draining_degraded_state(default_settings: Settings) -> None:
     """Test /ready returns 503 when the application transitions to draining/shutdown state."""
     app = create_app(settings=default_settings)
