@@ -253,6 +253,9 @@ class AnalysisResultsController extends GetxController {
       if (result.isSuccess) {
         aiReport.value = result.valueOrNull;
         aiState.value = AiAnalysisState.completed;
+        if (saveStatus.value == ReportSaveStatus.saved) {
+          saveStatus.value = ReportSaveStatus.notSaved;
+        }
       } else {
         final failure = result.failureOrNull!;
         aiState.value = AiAnalysisState.failed;

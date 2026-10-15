@@ -20,6 +20,7 @@ import 'package:trustcue_mobile/features/incoming_share/domain/models/incoming_s
 import 'package:trustcue_mobile/features/incoming_share/presentation/controllers/incoming_share_coordinator.dart';
 import 'package:trustcue_mobile/features/input/presentation/controllers/input_text_controller.dart';
 import 'package:trustcue_mobile/features/onboarding/data/onboarding_preferences.dart';
+import 'package:trustcue_mobile/features/reports/presentation/widgets/history_report_card.dart';
 
 import 'package:trustcue_mobile/main.dart' as app;
 
@@ -613,10 +614,128 @@ void main() {
       expect(Get.currentRoute, AppRoutes.inputReview);
       expect(find.textContaining('[PHONE]'), findsWidgets);
 
-      // Clean up to Home
+      // Re-run local analysis to test Module 37 persistence and history
+      await tester.ensureVisible(analyzeButton);
+      await tester.pumpAndSettle();
+      await tester.tap(analyzeButton);
+      await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, AppRoutes.analysisResults);
+
+      // 7. Module 37: Save analyzed report to local SQLite storage
+      final saveReportBtn = find.widgetWithText(
+        AppButton,
+        'Save on this device',
+      );
+      await tester.ensureVisible(saveReportBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(saveReportBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Saved on this device'), findsOneWidget);
+      final viewInHistoryBtn = find.widgetWithText(
+        AppButton,
+        'View in History',
+      );
+      expect(viewInHistoryBtn, findsOneWidget);
+
+      // 8. Navigate to History via results button
+      await tester.tap(viewInHistoryBtn);
+      await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, AppRoutes.history);
+      expect(find.text('Saved Reports'), findsOneWidget);
+      expect(find.text('[On-device heuristic]'), findsWidgets);
+      expect(find.text('Indicators detected'), findsWidgets);
+      expect(find.textContaining('suspended within 24 hours'), findsOneWidget);
+
+      // 9. Open details and verify exact evidence viewer grounding
+      final reportCardFinder = find.byType(HistoryReportCard).first;
+      await tester.tap(reportCardFinder);
+      await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, AppRoutes.historyDetail);
+      expect(find.text('Saved Report Details'), findsOneWidget);
+      expect(find.text('Analyzed text snapshot'), findsOneWidget);
+      expect(find.textContaining('[PHONE]'), findsWidgets);
+      final excerptFinder = find.text('Exact supporting excerpt(s):');
+      await tester.ensureVisible(excerptFinder.first);
+      await tester.pumpAndSettle();
+      expect(excerptFinder, findsWidgets);
+
+      // 10. Return to History
+      final detailBackBtn = find.byType(BackButton);
+      await tester.tap(detailBackBtn);
+      await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, AppRoutes.history);
+
+      // 11. Search query filtering
+      final searchField = find.byType(TextField);
+      await tester.enterText(searchField, 'suspended');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('suspended within 24 hours'), findsOneWidget);
+
+      // Search non-matching keyword
+      await tester.enterText(searchField, 'xyzunknownterm999');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      expect(find.text('No matching reports found'), findsOneWidget);
+      expect(find.textContaining('suspended within 24 hours'), findsNothing);
+
+      // Clear search
+      final clearSearchBtn = find.byTooltip('Clear search');
+      if (clearSearchBtn.evaluate().isNotEmpty) {
+        await tester.tap(clearSearchBtn);
+      } else {
+        await tester.enterText(searchField, '');
+      }
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('suspended within 24 hours'), findsOneWidget);
+
+      // 12. Transactional deletion: Cancel deletion preserves report
+      final deleteBtn = find.byTooltip('Delete report from device').first;
+      await tester.tap(deleteBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete saved report?'), findsOneWidget);
+      expect(
+        find.textContaining('This removes the saved report from this device.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Keep report'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete saved report?'), findsNothing);
+      expect(find.textContaining('suspended within 24 hours'), findsOneWidget);
+
+      // 13. Transactional deletion: Confirm deletion removes synthetic report
+      await tester.tap(deleteBtn);
+      await tester.pumpAndSettle();
+      expect(find.text('Delete saved report?'), findsOneWidget);
+      await tester.tap(find.text('Delete from device'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete saved report?'), findsNothing);
+      expect(find.textContaining('suspended within 24 hours'), findsNothing);
+
+      // 14. Navigate to Home and verify Saved Reports AppBar entry
       Get.offAllNamed(AppRoutes.home);
       await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, AppRoutes.home);
+      final historyAppBarBtn = find.byTooltip('Saved Reports');
+      expect(historyAppBarBtn, findsOneWidget);
+      await tester.tap(historyAppBarBtn);
+      await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, AppRoutes.history);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(Get.currentRoute, AppRoutes.home);
     },
-    timeout: const Timeout(Duration(minutes: 3)),
+    timeout: const Timeout(Duration(minutes: 5)),
   );
 }

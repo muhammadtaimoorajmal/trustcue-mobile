@@ -101,16 +101,32 @@ class SqliteReportRepository implements LocalReportRepository {
     }
   }
 
-  @override
-  Future<Result<SavedReport>> saveReport(SavedReport report) async {
-    final db = _db;
-    if (db == null || !db.isOpen) {
+  /// Ensures the database is opened, automatically calling [initialize] if not yet initialized.
+  Future<Result<Database>> _getOpenDatabase() async {
+    if (_db != null && _db!.isOpen) {
+      return Result.success(_db!);
+    }
+    final initResult = await initialize();
+    if (initResult.isFailure) {
+      return Result.failure(initResult.failureOrNull!);
+    }
+    if (_db == null || !_db!.isOpen) {
       return const Result.failure(
         AnalysisFailure.storage(
-          'Database is not initialized. Call initialize() first.',
+          'Database failed to open during initialization.',
         ),
       );
     }
+    return Result.success(_db!);
+  }
+
+  @override
+  Future<Result<SavedReport>> saveReport(SavedReport report) async {
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) {
+      return Result.failure(dbResult.failureOrNull!);
+    }
+    final db = dbResult.valueOrNull!;
 
     // Verify invariants defensively before touching database
     try {
@@ -143,7 +159,33 @@ class SqliteReportRepository implements LocalReportRepository {
           final existingSnapshotId =
               existing.first[DatabaseConstants.colReportSnapshotId] as String?;
           if (existingSnapshotId == report.snapshot.id) {
-            // Idempotent duplicate save: return existing
+            // Idempotent duplicate or enrichment update: update report row
+            final payloadJson = codec.encodeJson(report);
+            await txn.update(
+              DatabaseConstants.tableReports,
+              {
+                DatabaseConstants.colReportSchemaVersion: report.schemaVersion,
+                DatabaseConstants.colReportAccountId: report.accountId,
+                DatabaseConstants.colReportAnalyzedAt: report.analyzedAt
+                    .toIso8601String(),
+                DatabaseConstants.colReportSavedAt: report.savedAt
+                    .toIso8601String(),
+                DatabaseConstants.colReportHasAiAnalysis: report.hasAiAnalysis
+                    ? 1
+                    : 0,
+                DatabaseConstants.colReportAiProvider:
+                    report.aiReport?.provider,
+                DatabaseConstants.colReportAiModel: report.aiReport?.model,
+                DatabaseConstants.colReportFindingsCount:
+                    report.totalFindingsCount,
+                DatabaseConstants.colReportOutcomeState:
+                    report.outcomeState.name,
+                DatabaseConstants.colReportPreviewText: report.previewText,
+                DatabaseConstants.colReportPayload: payloadJson,
+              },
+              where: '${DatabaseConstants.colReportId} = ?',
+              whereArgs: [report.id],
+            );
             return Result.success(report);
           } else {
             return Result.failure(
@@ -209,21 +251,40 @@ class SqliteReportRepository implements LocalReportRepository {
   }
 
   @override
-  Future<Result<SavedReport?>> getReportById(String id) async {
-    final db = _db;
-    if (db == null || !db.isOpen) {
-      return const Result.failure(
-        AnalysisFailure.storage(
-          'Database is not initialized. Call initialize() first.',
-        ),
-      );
+  Future<Result<SavedReport?>> getReportById(
+    String id, {
+    String? accountId,
+    bool enforceAccountScope = false,
+  }) async {
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) {
+      return Result.failure(dbResult.failureOrNull!);
     }
+    final db = dbResult.valueOrNull!;
 
     try {
+      final String whereClause;
+      final List<dynamic> whereArgs;
+
+      if (enforceAccountScope) {
+        if (accountId == null) {
+          whereClause =
+              '${DatabaseConstants.colReportId} = ? AND ${DatabaseConstants.colReportAccountId} IS NULL';
+          whereArgs = [id];
+        } else {
+          whereClause =
+              '${DatabaseConstants.colReportId} = ? AND ${DatabaseConstants.colReportAccountId} = ?';
+          whereArgs = [id, accountId];
+        }
+      } else {
+        whereClause = '${DatabaseConstants.colReportId} = ?';
+        whereArgs = [id];
+      }
+
       final reportRows = await db.query(
         DatabaseConstants.tableReports,
-        where: '${DatabaseConstants.colReportId} = ?',
-        whereArgs: [id],
+        where: whereClause,
+        whereArgs: whereArgs,
       );
 
       if (reportRows.isEmpty) {
@@ -297,14 +358,11 @@ class SqliteReportRepository implements LocalReportRepository {
     int limit = 50,
     int offset = 0,
   }) async {
-    final db = _db;
-    if (db == null || !db.isOpen) {
-      return const Result.failure(
-        AnalysisFailure.storage(
-          'Database is not initialized. Call initialize() first.',
-        ),
-      );
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) {
+      return Result.failure(dbResult.failureOrNull!);
     }
+    final db = dbResult.valueOrNull!;
 
     try {
       final String whereClause;
@@ -387,23 +445,42 @@ class SqliteReportRepository implements LocalReportRepository {
   }
 
   @override
-  Future<Result<bool>> deleteReport(String id) async {
-    final db = _db;
-    if (db == null || !db.isOpen) {
-      return const Result.failure(
-        AnalysisFailure.storage(
-          'Database is not initialized. Call initialize() first.',
-        ),
-      );
+  Future<Result<bool>> deleteReport(
+    String id, {
+    String? accountId,
+    bool enforceAccountScope = false,
+  }) async {
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) {
+      return Result.failure(dbResult.failureOrNull!);
     }
+    final db = dbResult.valueOrNull!;
 
     try {
       return await db.transaction<Result<bool>>((txn) async {
+        final String whereClause;
+        final List<dynamic> whereArgs;
+
+        if (enforceAccountScope) {
+          if (accountId == null) {
+            whereClause =
+                '${DatabaseConstants.colReportId} = ? AND ${DatabaseConstants.colReportAccountId} IS NULL';
+            whereArgs = [id];
+          } else {
+            whereClause =
+                '${DatabaseConstants.colReportId} = ? AND ${DatabaseConstants.colReportAccountId} = ?';
+            whereArgs = [id, accountId];
+          }
+        } else {
+          whereClause = '${DatabaseConstants.colReportId} = ?';
+          whereArgs = [id];
+        }
+
         final existing = await txn.query(
           DatabaseConstants.tableReports,
           columns: [DatabaseConstants.colReportSnapshotId],
-          where: '${DatabaseConstants.colReportId} = ?',
-          whereArgs: [id],
+          where: whereClause,
+          whereArgs: whereArgs,
         );
 
         if (existing.isEmpty) {
@@ -455,37 +532,197 @@ class SqliteReportRepository implements LocalReportRepository {
     }
   }
 
+  /// Sanitizes SQL LIKE wildcards (% and _) and backslash escape characters.
+  ///
+  /// Note on SQLite collation: SQLite `LIKE` operator is case-insensitive only
+  /// for 7-bit ASCII characters. Non-ASCII script matching (e.g. Urdu, accented characters)
+  /// is exact/case-preserving unless an external unicode ICU collation extension is loaded.
+  static String escapeLikePattern(String input) {
+    return input
+        .replaceAll(r'\', r'\\')
+        .replaceAll('%', r'\%')
+        .replaceAll('_', r'\_');
+  }
+
   @override
-  Future<Result<int>> getReportCount({String? accountId}) async {
-    final db = _db;
-    if (db == null || !db.isOpen) {
-      return const Result.failure(
+  Future<Result<List<SavedReportSummary>>> searchReportSummaries({
+    required String query,
+    String? accountId,
+    InputSource? inputSource,
+    bool? hasAiAnalysis,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) {
+      return Result.failure(dbResult.failureOrNull!);
+    }
+    final db = dbResult.valueOrNull!;
+
+    try {
+      final conditions = <String>[];
+      final whereArgs = <dynamic>[];
+
+      // Account scope
+      if (accountId == null) {
+        conditions.add('r.${DatabaseConstants.colReportAccountId} IS NULL');
+      } else {
+        conditions.add('r.${DatabaseConstants.colReportAccountId} = ?');
+        whereArgs.add(accountId);
+      }
+
+      // Input source filter
+      if (inputSource != null) {
+        conditions.add('s.${DatabaseConstants.colSnapshotInputSource} = ?');
+        whereArgs.add(inputSource.name);
+      }
+
+      // Provenance / AI filter
+      if (hasAiAnalysis != null) {
+        conditions.add('r.${DatabaseConstants.colReportHasAiAnalysis} = ?');
+        whereArgs.add(hasAiAnalysis ? 1 : 0);
+      }
+
+      // Search query over text and preview
+      final trimmed = query.trim();
+      if (trimmed.isNotEmpty) {
+        final escaped = escapeLikePattern(trimmed);
+        final pattern = '%$escaped%';
+        conditions.add(
+          '(s.${DatabaseConstants.colSnapshotText} LIKE ? ESCAPE \'\\\' OR r.${DatabaseConstants.colReportPreviewText} LIKE ? ESCAPE \'\\\')',
+        );
+        whereArgs.add(pattern);
+        whereArgs.add(pattern);
+      }
+
+      final whereClause = conditions.join(' AND ');
+
+      final sql =
+          '''
+        SELECT r.${DatabaseConstants.colReportId},
+               r.${DatabaseConstants.colReportSchemaVersion},
+               r.${DatabaseConstants.colReportSnapshotId},
+               r.${DatabaseConstants.colReportAccountId},
+               r.${DatabaseConstants.colReportAnalyzedAt},
+               r.${DatabaseConstants.colReportSavedAt},
+               r.${DatabaseConstants.colReportHasAiAnalysis},
+               r.${DatabaseConstants.colReportAiProvider},
+               r.${DatabaseConstants.colReportAiModel},
+               r.${DatabaseConstants.colReportFindingsCount},
+               r.${DatabaseConstants.colReportOutcomeState},
+               r.${DatabaseConstants.colReportPreviewText},
+               s.${DatabaseConstants.colSnapshotInputSource}
+        FROM ${DatabaseConstants.tableReports} r
+        JOIN ${DatabaseConstants.tableSnapshots} s
+          ON r.${DatabaseConstants.colReportSnapshotId} = s.${DatabaseConstants.colSnapshotId}
+        WHERE $whereClause
+        ORDER BY r.${DatabaseConstants.colReportSavedAt} DESC
+        LIMIT ? OFFSET ?
+      ''';
+
+      final rows = await db.rawQuery(sql, [...whereArgs, limit, offset]);
+
+      final summaries = rows.map((row) {
+        return SavedReportSummary(
+          id: row[DatabaseConstants.colReportId] as String,
+          schemaVersion: row[DatabaseConstants.colReportSchemaVersion] as int,
+          snapshotId: row[DatabaseConstants.colReportSnapshotId] as String,
+          accountId: row[DatabaseConstants.colReportAccountId] as String?,
+          inputSource: InputSource.values.byName(
+            row[DatabaseConstants.colSnapshotInputSource] as String,
+          ),
+          analyzedAt: DateTime.parse(
+            row[DatabaseConstants.colReportAnalyzedAt] as String,
+          ).toUtc(),
+          savedAt: DateTime.parse(
+            row[DatabaseConstants.colReportSavedAt] as String,
+          ).toUtc(),
+          hasAiAnalysis:
+              (row[DatabaseConstants.colReportHasAiAnalysis] as int) == 1,
+          aiProvider: row[DatabaseConstants.colReportAiProvider] as String?,
+          aiModel: row[DatabaseConstants.colReportAiModel] as String?,
+          findingsCount: row[DatabaseConstants.colReportFindingsCount] as int,
+          outcomeState: AssessmentOutcomeState.values.byName(
+            row[DatabaseConstants.colReportOutcomeState] as String,
+          ),
+          previewText: row[DatabaseConstants.colReportPreviewText] as String,
+        );
+      }).toList();
+
+      return Result.success(summaries);
+    } on DatabaseException catch (e) {
+      return Result.failure(
         AnalysisFailure.storage(
-          'Database is not initialized. Call initialize() first.',
+          'Database error while searching report summaries: ${e.toString()}',
+        ),
+      );
+    } catch (e) {
+      return Result.failure(
+        AnalysisFailure.storage(
+          'Unexpected error while searching report summaries: ${e.toString()}',
         ),
       );
     }
+  }
+
+  @override
+  Future<Result<int>> getReportCount({
+    String? accountId,
+    String? query,
+    InputSource? inputSource,
+    bool? hasAiAnalysis,
+  }) async {
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) {
+      return Result.failure(dbResult.failureOrNull!);
+    }
+    final db = dbResult.valueOrNull!;
 
     try {
-      final String whereClause;
-      final List<dynamic> whereArgs;
+      final conditions = <String>[];
+      final whereArgs = <dynamic>[];
 
       if (accountId == null) {
-        whereClause = '${DatabaseConstants.colReportAccountId} IS NULL';
-        whereArgs = [];
+        conditions.add('r.${DatabaseConstants.colReportAccountId} IS NULL');
       } else {
-        whereClause = '${DatabaseConstants.colReportAccountId} = ?';
-        whereArgs = [accountId];
+        conditions.add('r.${DatabaseConstants.colReportAccountId} = ?');
+        whereArgs.add(accountId);
       }
 
-      final count = Sqflite.firstIntValue(
-        await db.query(
-          DatabaseConstants.tableReports,
-          columns: ['COUNT(*)'],
-          where: whereClause,
-          whereArgs: whereArgs,
-        ),
-      );
+      if (inputSource != null) {
+        conditions.add('s.${DatabaseConstants.colSnapshotInputSource} = ?');
+        whereArgs.add(inputSource.name);
+      }
+
+      if (hasAiAnalysis != null) {
+        conditions.add('r.${DatabaseConstants.colReportHasAiAnalysis} = ?');
+        whereArgs.add(hasAiAnalysis ? 1 : 0);
+      }
+
+      final trimmed = query?.trim();
+      if (trimmed != null && trimmed.isNotEmpty) {
+        final escaped = escapeLikePattern(trimmed);
+        final pattern = '%$escaped%';
+        conditions.add(
+          '(s.${DatabaseConstants.colSnapshotText} LIKE ? ESCAPE \'\\\' OR r.${DatabaseConstants.colReportPreviewText} LIKE ? ESCAPE \'\\\')',
+        );
+        whereArgs.add(pattern);
+        whereArgs.add(pattern);
+      }
+
+      final whereClause = conditions.join(' AND ');
+
+      final sql =
+          '''
+        SELECT COUNT(*)
+        FROM ${DatabaseConstants.tableReports} r
+        JOIN ${DatabaseConstants.tableSnapshots} s
+          ON r.${DatabaseConstants.colReportSnapshotId} = s.${DatabaseConstants.colSnapshotId}
+        WHERE $whereClause
+      ''';
+
+      final rows = await db.rawQuery(sql, whereArgs);
+      final count = Sqflite.firstIntValue(rows);
 
       return Result.success(count ?? 0);
     } on DatabaseException catch (e) {

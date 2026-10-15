@@ -38,8 +38,18 @@ class FakeLocalReportRepository implements LocalReportRepository {
   }
 
   @override
-  Future<Result<SavedReport?>> getReportById(String id) async =>
-      Result.success(storage[id]);
+  Future<Result<SavedReport?>> getReportById(
+    String id, {
+    String? accountId,
+    bool enforceAccountScope = false,
+  }) async {
+    final report = storage[id];
+    if (report == null) return const Result.success(null);
+    if (enforceAccountScope && report.accountId != accountId) {
+      return const Result.success(null);
+    }
+    return Result.success(report);
+  }
 
   @override
   Future<Result<List<SavedReportSummary>>> getReportSummaries({
@@ -49,12 +59,37 @@ class FakeLocalReportRepository implements LocalReportRepository {
   }) async => const Result.success([]);
 
   @override
-  Future<Result<bool>> deleteReport(String id) async =>
-      Result.success(storage.remove(id) != null);
+  Future<Result<List<SavedReportSummary>>> searchReportSummaries({
+    required String query,
+    String? accountId,
+    InputSource? inputSource,
+    bool? hasAiAnalysis,
+    int limit = 50,
+    int offset = 0,
+  }) async => const Result.success([]);
 
   @override
-  Future<Result<int>> getReportCount({String? accountId}) async =>
-      Result.success(storage.length);
+  Future<Result<bool>> deleteReport(
+    String id, {
+    String? accountId,
+    bool enforceAccountScope = false,
+  }) async {
+    final report = storage[id];
+    if (report == null) return const Result.success(false);
+    if (enforceAccountScope && report.accountId != accountId) {
+      return const Result.success(false);
+    }
+    storage.remove(id);
+    return const Result.success(true);
+  }
+
+  @override
+  Future<Result<int>> getReportCount({
+    String? accountId,
+    String? query,
+    InputSource? inputSource,
+    bool? hasAiAnalysis,
+  }) async => Result.success(storage.length);
 
   @override
   Future<void> close() async {}

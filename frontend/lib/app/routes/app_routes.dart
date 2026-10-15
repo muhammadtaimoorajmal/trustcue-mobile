@@ -10,6 +10,8 @@ abstract class AppRoutes {
   static const inputLink = '/input/link';
   static const inputReview = '/input/review';
   static const analysisResults = '/analysis/results';
+  static const history = '/history';
+  static const historyDetail = '/history/detail';
   static const account = '/account';
   static const authLogin = '/auth/login';
   static const authRegister = '/auth/register';

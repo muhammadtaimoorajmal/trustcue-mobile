@@ -1019,3 +1019,62 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Whitespace audit: PASS (`git diff --check` clean).
 - **Physical Device & Verification Status:** Device test from Module 32 remains preserved as pending. No phone is required for local report persistence and SQLite database migrations.
 - **Status:** Complete. Pushed to `frontend`. Stopped before Module 37.
+
+## Module 37: History, Search, Report Details, and Deletion
+- **Scope:** Implement discoverable report history list, pagination, metadata filters, sanitized debounced search, detailed historical report inspection with UTF-16 evidence highlighting, single-report confirmation-gated transactional deletion with orphan snapshot pruning, and real-device integration verification.
+- **Branch:** `frontend`
+- **Key Deliverables & Architectural Invariants:**
+  - Extended `LocalReportRepository` & `SqliteReportRepository` (`lib/features/reports/`):
+    - Added `searchReportSummaries` and `getReportCount` supporting parameterized SQL queries with sanitized `LIKE ? ESCAPE '\'` wildcard escaping (`\`, `%`, `_`).
+    - Added account scoping (`enforceAccountScope: true`) isolating guest reports (`accountId = null`) from authenticated user accounts (`accountId = <UUID>`).
+    - Implemented self-healing auto-initialization (`_getOpenDatabase()`) ensuring SQLite database is opened cleanly across lazy GetX resolution.
+    - Transactional cascade cleanup: `deleteReport` deletes report row, checks if any other report references the snapshot ID, and automatically prunes unreferenced orphan snapshots.
+    - Saved report enrichment update: Re-saving an existing report with identical snapshot ID updates report row with latest AI findings and sets `hasAiAnalysis = 1`.
+  - Implemented History Presentation Layer (`lib/features/reports/presentation/`):
+    - `HistoryController`: Manages lazy pagination (`_pageSize = 20`), 300ms debounced search, monotonic operation tracking (`_operationId`) preventing stale asynchronous updates, pull-to-refresh, filter state, and transactional deletion.
+    - `HistoryScreen`: Responsive layout with privacy banner, search input, `InputSource` filter chips, provenance filter chips, empty state handling distinguishing empty database from zero-match queries, and scrollable report list.
+    - `HistoryReportCard`: Displays non-sensitive metadata (source badge, provenance badge `[On-device heuristic]` / `[AI-Assisted: Groq]`, outcome state, indicator count, preview text snippet, and formatted timestamp).
+    - `DeleteConfirmationDialog`: Confirmation-gated dialog stating: "Delete saved report? This removes the saved report from this device. Reviewed text and associated indicator findings will be permanently deleted from local storage."
+  - Implemented Saved Report Detail Presentation Layer:
+    - `SavedReportDetailController`: Fetches historical report by ID, maps assessment findings and uncertainty notes, coordinates evidence viewer modal, and handles deletion from AppBar.
+    - `SavedReportDetailScreen`: Scrollable detail inspection displaying exact historical snapshot (`Analyzed text snapshot`) without silently re-running analysis or recalculating rules, outcome badge, findings section with exact UTF-16 code-unit offsets, historical limitations/uncertainty notes, and AppBar delete action.
+  - Route Registration & Home Dashboard Navigation:
+    - Registered `/history` (`AppRoutes.history`) with `HistoryBinding` and `/history/detail` (`AppRoutes.historyDetail`) with `SavedReportDetailBinding` in `app_pages.dart` and `app_routes.dart`.
+    - Added Saved Reports action button (`Icons.history`, tooltip 'Saved Reports') to Home screen AppBar.
+    - Integrated post-save "View in History" navigation button on `AnalysisResultsScreen`.
+  - Real-Device Integration Test & Durability Verification:
+    - Extended `integration_test/app_smoke_test.dart` to verify full on-device pipeline on connected Vivo V2207: text input -> redaction -> analysis -> save report on device -> navigate to history -> view details with evidence grounding -> filter via search keyword -> cancel deletion -> confirm deletion.
+- **Components Created / Updated:**
+  - `lib/features/reports/domain/contracts/local_report_repository.dart`
+  - `lib/features/reports/data/repositories/sqlite_report_repository.dart`
+  - `lib/features/reports/presentation/widgets/history_filter_bar.dart`
+  - `lib/features/reports/presentation/widgets/history_report_card.dart`
+  - `lib/features/reports/presentation/widgets/delete_confirmation_dialog.dart`
+  - `lib/features/reports/presentation/controllers/history_controller.dart`
+  - `lib/features/reports/presentation/bindings/history_binding.dart`
+  - `lib/features/reports/presentation/screens/history_screen.dart`
+  - `lib/features/reports/presentation/controllers/saved_report_detail_controller.dart`
+  - `lib/features/reports/presentation/bindings/saved_report_detail_binding.dart`
+  - `lib/features/reports/presentation/screens/saved_report_detail_screen.dart`
+  - `lib/app/routes/app_routes.dart`
+  - `lib/app/routes/app_pages.dart`
+  - `lib/features/home/presentation/screens/home_screen.dart`
+  - `lib/features/analysis/presentation/controllers/analysis_results_controller.dart`
+  - `lib/features/analysis/presentation/screens/analysis_results_screen.dart`
+  - `integration_test/app_smoke_test.dart`
+  - `test/features/reports/mocks/fake_report_repository.dart`
+  - `test/features/reports/data/repositories/sqlite_report_repository_test.dart`
+  - `test/features/reports/presentation/controllers/history_controller_test.dart`
+  - `test/features/reports/presentation/controllers/saved_report_detail_controller_test.dart`
+  - `test/features/reports/presentation/screens/history_screen_test.dart`
+  - `test/features/reports/presentation/screens/saved_report_detail_screen_test.dart`
+  - `test/features/analysis/presentation/controllers/analysis_results_controller_persistence_test.dart`
+  - `docs/ROADMAP.md`, `docs/PROJECT_STATE.md`, `docs/MODULE_LOG.md`
+- **Checks Performed:**
+  - Full Flutter test suite: 742/742 PASS (32 new unit/widget/flow tests added, 0 failures).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `dart format`: PASS (246 files formatted, 0 changes needed).
+  - `flutter build apk --debug --no-pub`: PASS (`build/app/outputs/flutter-apk/app-debug.apk` built in 84.3s).
+  - Physical Device Integration Test: 6/6 PASS on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34) via `tool/test.ps1 -Suite device`.
+  - Whitespace audit: PASS (`git diff --check` clean).
+- **Status:** Complete. Pushed to `frontend`. Stopped before Module 38.

@@ -94,6 +94,19 @@ void main() {
 
     AiAnalysisReport? aiReport;
     if (includeAi) {
+      final String aiExcerpt;
+      final int aiStart;
+      final int aiEnd;
+      if (snap.text.contains('Verify your banking credentials at')) {
+        aiExcerpt = 'Verify your banking credentials at';
+        aiStart = snap.text.indexOf(aiExcerpt);
+        aiEnd = aiStart + aiExcerpt.length;
+      } else {
+        aiStart = 0;
+        aiEnd = snap.text.length >= 4 ? 4 : snap.text.length;
+        aiExcerpt = snap.text.substring(aiStart, aiEnd);
+      }
+
       aiReport = AiAnalysisReport(
         reportId: 'ai-$id',
         snapshotId: snap.id,
@@ -112,9 +125,9 @@ void main() {
             evidence: [
               EvidenceReference(
                 snapshotId: snap.id,
-                startOffset: 8,
-                endOffset: 42,
-                exactExcerpt: 'Verify your banking credentials at',
+                startOffset: aiStart,
+                endOffset: aiEnd,
+                exactExcerpt: aiExcerpt,
               ),
             ],
           ),
@@ -462,5 +475,273 @@ void main() {
       expect(deleteResult.isSuccess, isTrue);
       expect(deleteResult.valueOrNull, isFalse);
     });
+  });
+
+  group('SqliteReportRepository Enrichment Save Tests', () {
+    test('saving report with AI enrichment updates existing record for same snapshot', () async {
+      final snapshot = createSnapshot(id: 'snap-enrich');
+      final initialLocalReport = createSavedReport(
+        id: 'rep-enrich',
+        snapshot: snapshot,
+        includeAi: false,
+      );
+      await repository.saveReport(initialLocalReport);
+
+      final initialLoaded = (await repository.getReportById('rep-enrich'))
+          .valueOrNull;
+      expect(initialLoaded!.hasAiAnalysis, isFalse);
+      expect(initialLoaded.aiReport, isNull);
+
+      // Enrich with AI
+      final enrichedReport = createSavedReport(
+        id: 'rep-enrich',
+        snapshot: snapshot,
+        includeAi: true,
+      );
+      final enrichResult = await repository.saveReport(enrichedReport);
+      expect(enrichResult.isSuccess, isTrue);
+
+      final updatedLoaded = (await repository.getReportById('rep-enrich'))
+          .valueOrNull;
+      expect(updatedLoaded!.hasAiAnalysis, isTrue);
+      expect(updatedLoaded.aiReport, isNotNull);
+      expect(updatedLoaded.aiReport!.provider, equals('groq-cloud'));
+    });
+  });
+
+  group('SqliteReportRepository Search Tests', () {
+    setUp(() async {
+      // Seed distinct reports
+      final snap1 = createSnapshot(
+        id: 'snap-s1',
+        text: 'Congratulations! You won 100% free lottery prize!',
+      );
+      final snap2 = createSnapshot(
+        id: 'snap-s2',
+        text: 'Urgent security alert: update your bank pin_number now',
+      );
+      final snap3 = TextSnapshot(
+        id: 'snap-s3',
+        text: 'https://secure-login.fakebank.com/portal?verify=1',
+        source: InputSource.link,
+        createdAt: DateTime.utc(2026, 10, 15, 12, 0, 0),
+      );
+      final snap4 = TextSnapshot(
+        id: 'snap-s4',
+        text: 'برائے مہربانی اپنا کوڈ 12345 شیئر نہ کریں',
+        source: InputSource.screenshot,
+        createdAt: DateTime.utc(2026, 10, 15, 12, 0, 0),
+      );
+
+      await repository.saveReport(
+        createSavedReport(id: 'rep-s1', snapshot: snap1, includeAi: false),
+      );
+      await repository.saveReport(
+        createSavedReport(id: 'rep-s2', snapshot: snap2, includeAi: true),
+      );
+      await repository.saveReport(
+        createSavedReport(id: 'rep-s3', snapshot: snap3, includeAi: true),
+      );
+      await repository.saveReport(
+        createSavedReport(id: 'rep-s4', snapshot: snap4, includeAi: false),
+      );
+    });
+
+    test('searches by exact keyword in snapshot text', () async {
+      final results = await repository.searchReportSummaries(query: 'lottery');
+      expect(results.isSuccess, isTrue);
+      expect(results.valueOrNull!.length, equals(1));
+      expect(results.valueOrNull!.first.id, equals('rep-s1'));
+    });
+
+    test('escapes % wildcard so it matches literal % character only', () async {
+      // '100%' should match rep-s1 ('100% free'), NOT all records
+      final results = await repository.searchReportSummaries(query: '100%');
+      expect(results.isSuccess, isTrue);
+      expect(results.valueOrNull!.length, equals(1));
+      expect(results.valueOrNull!.first.id, equals('rep-s1'));
+    });
+
+    test('escapes _ wildcard so it matches literal _ character only', () async {
+      // 'pin_number' should match rep-s2 containing literal '_', not random letters
+      final results = await repository.searchReportSummaries(
+        query: 'pin_number',
+      );
+      expect(results.isSuccess, isTrue);
+      expect(results.valueOrNull!.length, equals(1));
+      expect(results.valueOrNull!.first.id, equals('rep-s2'));
+    });
+
+    test('filters search results by inputSource', () async {
+      final results = await repository.searchReportSummaries(
+        query: '',
+        inputSource: InputSource.link,
+      );
+      expect(results.isSuccess, isTrue);
+      expect(results.valueOrNull!.length, equals(1));
+      expect(results.valueOrNull!.first.id, equals('rep-s3'));
+    });
+
+    test('filters search results by hasAiAnalysis provenance', () async {
+      final aiResults = await repository.searchReportSummaries(
+        query: '',
+        hasAiAnalysis: true,
+      );
+      expect(aiResults.isSuccess, isTrue);
+      expect(aiResults.valueOrNull!.length, equals(2));
+      expect(
+        aiResults.valueOrNull!.map((r) => r.id).toSet(),
+        equals({'rep-s2', 'rep-s3'}),
+      );
+
+      final localResults = await repository.searchReportSummaries(
+        query: '',
+        hasAiAnalysis: false,
+      );
+      expect(localResults.isSuccess, isTrue);
+      expect(localResults.valueOrNull!.length, equals(2));
+      expect(
+        localResults.valueOrNull!.map((r) => r.id).toSet(),
+        equals({'rep-s1', 'rep-s4'}),
+      );
+    });
+
+    test('searches non-ASCII Urdu text accurately', () async {
+      final results = await repository.searchReportSummaries(
+        query: 'برائے مہربانی',
+      );
+      expect(results.isSuccess, isTrue);
+      expect(results.valueOrNull!.length, equals(1));
+      expect(results.valueOrNull!.first.id, equals('rep-s4'));
+    });
+
+    test('pagination limits and offsets search results', () async {
+      final page1 = await repository.searchReportSummaries(
+        query: '',
+        limit: 2,
+        offset: 0,
+      );
+      expect(page1.valueOrNull!.length, equals(2));
+
+      final page2 = await repository.searchReportSummaries(
+        query: '',
+        limit: 2,
+        offset: 2,
+      );
+      expect(page2.valueOrNull!.length, equals(2));
+
+      // Disjoint pages
+      final ids1 = page1.valueOrNull!.map((r) => r.id).toSet();
+      final ids2 = page2.valueOrNull!.map((r) => r.id).toSet();
+      expect(ids1.intersection(ids2), isEmpty);
+    });
+
+    test(
+      'getReportCount with query and filters returns matching count',
+      () async {
+        final totalCount = await repository.getReportCount();
+        expect(totalCount.valueOrNull, equals(4));
+
+        final aiCount = await repository.getReportCount(hasAiAnalysis: true);
+        expect(aiCount.valueOrNull, equals(2));
+
+        final linkCount = await repository.getReportCount(
+          inputSource: InputSource.link,
+        );
+        expect(linkCount.valueOrNull, equals(1));
+
+        final searchCount = await repository.getReportCount(query: 'lottery');
+        expect(searchCount.valueOrNull, equals(1));
+      },
+    );
+  });
+
+  group('SqliteReportRepository Scoped Lookup & Deletion Tests', () {
+    test(
+      'getReportById with enforceAccountScope respects account boundaries',
+      () async {
+        final guestRep = createSavedReport(id: 'rep-g', accountId: null);
+        final userRep = createSavedReport(id: 'rep-u', accountId: 'user-xyz');
+        await repository.saveReport(guestRep);
+        await repository.saveReport(userRep);
+
+        // Guest querying guest rep
+        final gOnG = await repository.getReportById(
+          'rep-g',
+          accountId: null,
+          enforceAccountScope: true,
+        );
+        expect(gOnG.valueOrNull, isNotNull);
+
+        // Guest querying user rep
+        final gOnU = await repository.getReportById(
+          'rep-u',
+          accountId: null,
+          enforceAccountScope: true,
+        );
+        expect(gOnU.valueOrNull, isNull);
+
+        // User querying user rep
+        final uOnU = await repository.getReportById(
+          'rep-u',
+          accountId: 'user-xyz',
+          enforceAccountScope: true,
+        );
+        expect(uOnU.valueOrNull, isNotNull);
+
+        // User querying guest rep
+        final uOnG = await repository.getReportById(
+          'rep-g',
+          accountId: 'user-xyz',
+          enforceAccountScope: true,
+        );
+        expect(uOnG.valueOrNull, isNull);
+
+        // User A querying User B rep
+        final wrongUser = await repository.getReportById(
+          'rep-u',
+          accountId: 'user-other',
+          enforceAccountScope: true,
+        );
+        expect(wrongUser.valueOrNull, isNull);
+      },
+    );
+
+    test(
+      'deleteReport with enforceAccountScope protects cross-account records',
+      () async {
+        final guestRep = createSavedReport(id: 'rep-g2', accountId: null);
+        final userRep = createSavedReport(id: 'rep-u2', accountId: 'user-xyz');
+        await repository.saveReport(guestRep);
+        await repository.saveReport(userRep);
+
+        // User cannot delete guest report
+        final deleteFail = await repository.deleteReport(
+          'rep-g2',
+          accountId: 'user-xyz',
+          enforceAccountScope: true,
+        );
+        expect(deleteFail.valueOrNull, isFalse);
+
+        // Guest cannot delete user report
+        final deleteFail2 = await repository.deleteReport(
+          'rep-u2',
+          accountId: null,
+          enforceAccountScope: true,
+        );
+        expect(deleteFail2.valueOrNull, isFalse);
+
+        // Proper owner can delete
+        final deleteSuccess = await repository.deleteReport(
+          'rep-u2',
+          accountId: 'user-xyz',
+          enforceAccountScope: true,
+        );
+        expect(deleteSuccess.valueOrNull, isTrue);
+
+        final check = await repository.getReportById('rep-u2');
+        expect(check.valueOrNull, isNull);
+      },
+    );
   });
 }

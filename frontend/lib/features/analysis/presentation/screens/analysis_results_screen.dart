@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/core/theme/app_spacing.dart';
 import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/core/widgets/app_card.dart';
@@ -1279,32 +1280,45 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
                 color: theme.colorScheme.primary.withValues(alpha: 0.5),
               ),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(
-                  Icons.check_circle_outline,
-                  color: theme.colorScheme.primary,
-                  size: 22,
+                Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      color: theme.colorScheme.primary,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Saved on this device',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Only reviewed text and findings are stored locally on your device.',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Saved on this device',
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Only reviewed text and findings are stored locally on your device.',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 10),
+                AppButton.secondary(
+                  label: 'View in History',
+                  icon: Icons.history,
+                  onPressed: () {
+                    Get.toNamed(AppRoutes.history);
+                  },
                 ),
               ],
             ),

@@ -27,6 +27,10 @@ import 'package:trustcue_mobile/features/auth/presentation/screens/login_screen.
 import 'package:trustcue_mobile/features/auth/presentation/screens/register_screen.dart';
 import 'package:trustcue_mobile/features/auth/presentation/screens/reset_password_screen.dart';
 import 'package:trustcue_mobile/features/auth/presentation/screens/verify_email_screen.dart';
+import 'package:trustcue_mobile/features/reports/presentation/bindings/history_binding.dart';
+import 'package:trustcue_mobile/features/reports/presentation/bindings/saved_report_detail_binding.dart';
+import 'package:trustcue_mobile/features/reports/presentation/screens/history_screen.dart';
+import 'package:trustcue_mobile/features/reports/presentation/screens/saved_report_detail_screen.dart';
 
 class AppPages {
   AppPages(this.preferences, {this.requestedRoute});
@@ -79,6 +83,16 @@ class AppPages {
       name: AppRoutes.analysisResults,
       page: () => const AnalysisResultsScreen(),
       binding: AnalysisResultsBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.history,
+      page: () => const HistoryScreen(),
+      binding: HistoryBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.historyDetail,
+      page: () => const SavedReportDetailScreen(),
+      binding: SavedReportDetailBinding(),
     ),
     GetPage(
       name: AppRoutes.account,

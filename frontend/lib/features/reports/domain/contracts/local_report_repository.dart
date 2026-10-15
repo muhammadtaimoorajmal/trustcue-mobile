@@ -1,4 +1,5 @@
 import 'package:trustcue_mobile/core/types/result.dart';
+import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report_summary.dart';
 
@@ -18,15 +19,23 @@ abstract class LocalReportRepository {
   /// Persists a validated [report] and its associated reviewed snapshot atomically.
   ///
   /// Repeated calls with identical report ID and snapshot ID are safe and idempotent.
-  /// Overwriting an existing report with a conflicting/different snapshot is strictly rejected.
+  /// If a report is saved with additional AI findings for the same snapshot, it safely updates
+  /// the stored record. Overwriting an existing report with a different snapshot is strictly rejected.
   Future<Result<SavedReport>> saveReport(SavedReport report);
 
   /// Retrieves a full [SavedReport] by its unique [id], including reconstructed findings
   /// and verified reviewed text snapshot.
   ///
-  /// Returns `null` if the report does not exist.
+  /// If [enforceAccountScope] is true:
+  /// - If [accountId] is null, only matches reports with `accountId == null` (guest).
+  /// - If [accountId] is provided, only matches reports with matching `accountId`.
+  /// Returns `null` if the report does not exist or does not match account scope.
   /// Returns a failure if the record is corrupt, unsupported, or fails snapshot validation.
-  Future<Result<SavedReport?>> getReportById(String id);
+  Future<Result<SavedReport?>> getReportById(
+    String id, {
+    String? accountId,
+    bool enforceAccountScope = false,
+  });
 
   /// Retrieves a bounded page of [SavedReportSummary] records ordered by analysis timestamp descending.
   ///
@@ -39,13 +48,45 @@ abstract class LocalReportRepository {
     int offset = 0,
   });
 
+  /// Searches saved report summaries matching [query] over reviewed text snapshots and preview text.
+  ///
+  /// Invariants & Guarantees:
+  /// - Fully local SQLite query with parameterized `LIKE ... ESCAPE '\'`.
+  /// - Wildcards (`%`, `_`, `\`) in [query] are sanitized.
+  /// - Case-insensitive for 7-bit ASCII characters. Non-ASCII script matching (e.g. Urdu)
+  ///   is exact/case-preserving.
+  /// - Optionally filters by [inputSource] and [hasAiAnalysis].
+  /// - Scoped to [accountId] (or guest if `accountId == null`).
+  /// - Bounded by [limit] and [offset] without loading full payloads into memory.
+  Future<Result<List<SavedReportSummary>>> searchReportSummaries({
+    required String query,
+    String? accountId,
+    InputSource? inputSource,
+    bool? hasAiAnalysis,
+    int limit = 50,
+    int offset = 0,
+  });
+
   /// Deletes the report identified by [id] and cleans up its snapshot if unreferenced.
   ///
-  /// Returns `true` if a record was deleted, `false` if not found.
-  Future<Result<bool>> deleteReport(String id);
+  /// If [enforceAccountScope] is true:
+  /// - If [accountId] is null, only deletes reports with `accountId == null` (guest).
+  /// - If [accountId] is provided, only deletes reports with matching `accountId`.
+  /// Returns `true` if a record was deleted, `false` if not found or unauthorized.
+  Future<Result<bool>> deleteReport(
+    String id, {
+    String? accountId,
+    bool enforceAccountScope = false,
+  });
 
-  /// Returns the total count of saved reports, optionally filtered by [accountId].
-  Future<Result<int>> getReportCount({String? accountId});
+  /// Returns the total count of saved reports, optionally filtered by [accountId],
+  /// [query], [inputSource], and [hasAiAnalysis].
+  Future<Result<int>> getReportCount({
+    String? accountId,
+    String? query,
+    InputSource? inputSource,
+    bool? hasAiAnalysis,
+  });
 
   /// Releases database connections and resources cleanly.
   Future<void> close();
