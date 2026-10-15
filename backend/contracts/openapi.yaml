@@ -64,9 +64,10 @@ paths:
                     status: ready
                     timestamp: '2026-10-15T12:00:00Z'
                     dependencies:
-                      authProvider: ok
-                      database: ok
-                      aiProvider: ok
+                      foundation: ok
+                      authProvider: unconfigured
+                      database: unconfigured
+                      aiProvider: unconfigured
         '503':
           description: Service is degraded or initializing; dependencies are unreachable.
           content:
@@ -79,8 +80,9 @@ paths:
                     status: degraded
                     timestamp: '2026-10-15T12:00:00Z'
                     dependencies:
-                      authProvider: ok
-                      database: ok
+                      foundation: degraded
+                      authProvider: error
+                      database: error
                       aiProvider: error
 
   /api/v1/analysis/ai:
@@ -415,19 +417,20 @@ components:
         dependencies:
           type: object
           required:
-            - authProvider
-            - database
-            - aiProvider
+            - foundation
           properties:
+            foundation:
+              type: string
+              enum: [ok, degraded]
             authProvider:
               type: string
-              enum: [ok, error]
+              enum: [ok, error, disabled, unconfigured]
             database:
               type: string
-              enum: [ok, error]
+              enum: [ok, error, disabled, unconfigured]
             aiProvider:
               type: string
-              enum: [ok, error]
+              enum: [ok, error, disabled, unconfigured]
 
     InputSource:
       type: string

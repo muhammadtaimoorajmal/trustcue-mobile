@@ -1,0 +1,8 @@
+# TrustCue Backend Development & Testing Dependencies
+-r requirements.txt
+pytest>=8.3.0,<10.0.0
+pytest-asyncio>=0.24.0,<2.0.0
+httpx>=0.28.0,<1.0.0
+openapi-spec-validator>=0.7.1,<1.0.0
+pyyaml>=6.0.2,<7.0.0
+ruff>=0.8.0,<1.0.0

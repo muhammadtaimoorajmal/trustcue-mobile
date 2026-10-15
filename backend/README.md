@@ -4,13 +4,14 @@ This directory contains the backend architecture, API contracts, database design
 
 ## 1. Overview & Stack
 
-- **Runtime & Language:** Node.js 20+ LTS with TypeScript
-- **Web Framework:** Fastify (lightweight, schema-driven, low memory)
-- **Managed Authentication & Database:** Supabase (Auth + PostgreSQL with Row Level Security)
+- **Runtime & Language:** Python 3.13+ (tested on CPython 3.13.5)
+- **Web Framework:** FastAPI + Pydantic v2 + Pydantic-Settings
+- **ASGI Server:** Uvicorn (running on loopback `127.0.0.1:8000` by default)
+- **Managed Authentication & Database:** Supabase (Auth + PostgreSQL with Row Level Security, planned in Modules 29–30)
 - **AI Inference Engine:**
-  - **Primary:** Groq Cloud API (`llama-3.3-70b-versatile` / `llama-3.1-8b-instant`) — zero data retention, no customer training
+  - **Primary:** Groq Cloud API (`llama-3.3-70b-versatile`) — zero customer data training, bounded diagnostic retention (planned Module 33, disabled in Module 28 foundation)
   - **Secondary:** Google Gemini API (`gemini-1.5-flash`) — synthetic data policy on unpaid tier
-- **Hosting Target:** Render Free Web Service (production/staging) + Local Node runtime (development)
+- **Hosting Target:** Render Free Web Service (production/staging) + Local Python runtime (development)
 
 ---
 
@@ -19,18 +20,68 @@ This directory contains the backend architecture, API contracts, database design
 ```text
 backend/
 ├── contracts/
-│   └── openapi.yaml                 # OpenAPI 3.1.0 versioned API specification
+│   └── openapi.yaml                 # Authoritative OpenAPI 3.1.0 design specification
 ├── docs/
 │   ├── ARCHITECTURE.md              # Technical architecture & feasibility research
 │   ├── PRIVACY_AND_AI_SAFETY.md     # Untrusted input isolation, prompt defense & privacy
 │   ├── DATABASE_AND_AUTH_DESIGN.md  # Entity model, RLS policies & deletion lifecycle
-│   └── SETUP_GUIDE.md               # Beginner-friendly setup guide for free services
+│   └── SETUP_GUIDE.md               # Setup guide for cloud services and configuration
+├── src/
+│   └── trustcue_backend/            # Core FastAPI application package
+│       ├── api/                     # HTTP route handlers and dependencies
+│       ├── core/                    # Config, error envelopes, logging & state management
+│       └── main.py                  # Application factory (create_app) & lifespan
+├── tests/                           # Unit, integration, error, and contract consistency tests
+├── .env.example                     # Safe placeholder environment configuration
+├── pyproject.toml                   # Project tool configuration (ruff, pytest)
+├── requirements.txt                 # Runtime dependencies
+├── requirements-dev.txt             # Development & testing dependencies
 └── README.md                        # This document
 ```
 
 ---
 
-## 3. Documentation Ownership Policy
+## 3. Local Environment Setup & Execution
+
+### Prerequisites
+- Python 3.13+ installed on host.
+- Git.
+
+### 1. Create and Activate Virtual Environment
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+### 2. Install Dependencies
+```powershell
+pip install -r backend/requirements-dev.txt
+```
+
+### 3. Run Development Server (Loopback)
+```powershell
+uvicorn backend.src.trustcue_backend.main:app --host 127.0.0.1 --port 8000
+```
+Interactive OpenAPI documentation is available at `http://127.0.0.1:8000/docs`.
+
+### 4. Run Automated Tests
+```powershell
+pytest backend/tests
+```
+
+### 5. Validate OpenAPI Specification
+```powershell
+python -m openapi_spec_validator backend/contracts/openapi.yaml
+```
+
+### 6. Lint Codebase
+```powershell
+ruff check backend/src backend/tests
+```
+
+---
+
+## 4. Documentation Ownership Policy
 
 To avoid conflicting or divergent roadmaps across branches:
 - **Shared Project Documentation:** The authoritative 50-module roadmap (`docs/ROADMAP.md`), project-wide state (`docs/PROJECT_STATE.md`), and historical log (`docs/MODULE_LOG.md`) are maintained on the **`frontend`** branch.
@@ -38,15 +89,15 @@ To avoid conflicting or divergent roadmaps across branches:
 
 ---
 
-## 4. API Endpoints Summary (Module 27 Baseline)
+## 5. API Endpoints Implementation Status
 
 | Method | Path | Status | Auth Required? | Purpose |
 |---|---|---|---|---|
-| `GET` | `/health` | Defined | No | Liveness probe for hosting orchestrator |
-| `GET` | `/ready` | Defined | No | Readiness probe checking dependencies |
-| `POST` | `/api/v1/analysis/ai` | Defined | **Yes (Bearer JWT)** | Protected AI analysis with evidence verification |
-| `GET` | `/api/v1/account/profile` | Defined | **Yes (Bearer JWT)** | Retrieve authenticated user profile metadata |
-| `DELETE` | `/api/v1/account` | Defined | **Yes (Bearer JWT)** | Cascade delete user account and server data |
+| `GET` | `/health` | **Implemented (Mod 28)** | No | Liveness probe for hosting orchestrator |
+| `GET` | `/ready` | **Implemented (Mod 28)** | No | Readiness probe for active foundation |
+| `POST` | `/api/v1/analysis/ai` | **Planned (Mod 33)** | **Yes (Bearer JWT)** | Protected AI analysis with evidence verification |
+| `GET` | `/api/v1/account/profile` | **Planned (Mod 31)** | **Yes (Bearer JWT)** | Retrieve authenticated user profile metadata |
+| `DELETE` | `/api/v1/account` | **Planned (Mod 31)** | **Yes (Bearer JWT)** | Cascade delete user account and server data |
 | `GET/POST`| `/api/v1/sync/reports` | **Planned (Mod 39)** | **Yes (Bearer JWT)** | Optional encrypted cloud report backup |
 
-Implementation begins in **Module 28** (Backend Foundation and Configuration).
+> **Note on Contract Scope:** The authoritative OpenAPI 3.1 design contract at `backend/contracts/openapi.yaml` defines the full 50-module target specification. The runtime schema generated by FastAPI (`/openapi.json`) dynamically exposes only the currently implemented endpoints (`/health`, `/ready`). Automated tests verify that all active routes strictly match the design contract.

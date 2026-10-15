@@ -20,16 +20,16 @@ A thorough evaluation of cloud hosting, managed authentication, database persist
 
 ### 2.1 Technology Evaluation Matrix
 
-| Category | Candidate A (Recommended) | Candidate B (Fallback) | Candidate C (Rejected) |
+| Category | Primary Selected | Candidate B (Alternative) | Candidate C (Rejected) |
 |---|---|---|---|
-| **Backend Runtime** | **Node.js (TypeScript) + Fastify** | **Python 3.11+ + FastAPI** | **Dart (Dart Frog / Shelf)** |
-| **Official Docs** | [fastify.dev](https://fastify.dev) | [fastapi.tiangolo.com](https://fastapi.tiangolo.com) | [dartfrog.vgv.dev](https://dartfrog.vgv.dev) |
+| **Backend Runtime** | **Python 3.13+ + FastAPI** | **Node.js (TypeScript) + Fastify** | **Dart (Dart Frog / Shelf)** |
+| **Official Docs** | [fastapi.tiangolo.com](https://fastapi.tiangolo.com) | [fastify.dev](https://fastify.dev) | [dartfrog.vgv.dev](https://dartfrog.vgv.dev) |
 | **Hosting** | **Render (Free Web Service)** | **Hugging Face Spaces (Docker)** | **Railway / Fly.io** |
 | **Official Docs** | [render.com/docs/free](https://render.com/docs/free) | [huggingface.co/docs/spaces](https://huggingface.co/docs/spaces) | [railway.app/pricing](https://railway.app/pricing) |
 | **Managed Auth & DB** | **Supabase (Auth + PostgreSQL)** | **Firebase (Auth + Cloud Firestore)** | **Neon + Auth0** |
 | **Official Docs** | [supabase.com/docs](https://supabase.com/docs) | [firebase.google.com/docs](https://firebase.google.com/docs) | [neon.tech/docs](https://neon.tech/docs) |
-| **AI Inference** | **Groq Cloud API / Google Gemini** | **Cloudflare Workers AI** | **OpenAI API** |
-| **Official Docs** | [groq.com/docs](https://console.groq.com/docs) | [developers.cloudflare.com/workers-ai](https://developers.cloudflare.com/workers-ai) | [platform.openai.com/docs](https://platform.openai.com/docs) |
+| **AI Inference** | **Groq Cloud API (Configurable)** | **Google Gemini (Synthetic only)** | **OpenAI API** |
+| **Official Docs** | [groq.com/docs](https://console.groq.com/docs) | [ai.google.dev/docs](https://ai.google.dev/docs) | [platform.openai.com/docs](https://platform.openai.com/docs) |
 | **Transactional Email** | **Supabase Auth + Resend Free** | **Brevo (formerly Sendinblue)** | **Custom Postfix / AWS SES** |
 | **Official Docs** | [resend.com/docs](https://resend.com/docs) | [brevo.com](https://www.brevo.com) | [aws.amazon.com/ses](https://aws.amazon.com/ses) |
 
@@ -38,20 +38,21 @@ A thorough evaluation of cloud hosting, managed authentication, database persist
 ### 2.2 Deep-Dive Feasibility by Component
 
 #### A. Backend Language & Runtime
-- **Primary Selection: Node.js (TypeScript) + Fastify**
-  - *Rationale:* Lightweight, high-throughput HTTP framework with schema-driven validation (TypeBox/JSON Schema), low memory footprint (<80 MB at idle), and native TypeScript support. The official `@supabase/supabase-js` and AI client SDKs are first-party and mature.
-  - *Cold Start:* Sub-second process initialization, minimizing the cold-start penalty on free container hosting.
-- **Fallback: Python 3.11+ + FastAPI**
-  - *Rationale:* Native Pydantic v2 validation, automatic OpenAPI generation. Slightly higher base memory footprint (~120–150 MB).
+- **Primary Selection: Python 3.13+ + FastAPI**
+  - *Rationale:* Native Pydantic v2 validation schemas, automatic OpenAPI 3.1 generation, non-blocking asynchronous event loop (`asyncio`), and tight alignment with Python data-validation and AI ecosystems. Clear separation between full API design contracts and runtime route subsets.
+  - *Process Execution:* Powered by `uvicorn` on loopback (`127.0.0.1:8000`) for development.
+- **Alternative Evaluated: Node.js (TypeScript) + Fastify**
+  - *Rationale:* Fast startup and low memory footprint, but higher schema-synchronization overhead across independent mobile and backend repositories.
 
 #### B. Hosting Platform
 - **Primary Selection: Render Free Web Service**
   - *Official Source:* [render.com/docs/free](https://render.com/docs/free) (Verified October 2026).
   - *Free Tier Limits:* 512 MB RAM, 0.1 vCPU, 750 free instance hours per month, 100 GB monthly bandwidth.
-  - *Credit Card Requirement:* **None.** No payment card required for free web services or static sites.
-  - *Inactivity Behavior:* Spins down container after **15 minutes of inactivity**. Cold start takes approximately 50 seconds upon receiving a new incoming request.
+  - *Credit Card Requirement:* **None.** No payment card required for free web services.
+  - *Inactivity & Cold Start Policy:* Spins down container after **15 minutes of inactivity**. Cold start takes approximately 50 seconds upon receiving a new incoming request.
+  - *No Artificial Keepalive Traffic:* The backend explicitly does **NOT** run artificial keepalive pings to bypass the hosting sleep policy. Instead, mobile clients implement bounded retries and honest loading UI ("Connecting to service...").
   - *Pakistan Availability:* Fully accessible without geographic blocks.
-  - *Local Development:* Local development executes on `http://localhost:3000`, completely bypassing cold starts during coding and testing.
+  - *Local Development:* Local development executes on loopback `http://127.0.0.1:8000`, completely bypassing cold starts during coding and testing.
 - **Why Alternatives Were Rejected:**
   - *Railway:* Eliminated free tier; requires credit card and min. $5/month billing.
   - *Fly.io:* Requires international credit card upfront for account verification even on the free allowance.
@@ -70,41 +71,35 @@ A thorough evaluation of cloud hosting, managed authentication, database persist
   - *Production/Testing Resolution:* Free custom SMTP via **Resend** ([resend.com](https://resend.com), 100 emails/day, 3,000 emails/month free without credit card for development testing) or Gmail SMTP app password.
 
 #### D. AI Inference Provider & Privacy Feasibility
-- **Crucial Privacy Finding (October 2026 Terms of Service):**
-  - **Google AI Studio / Gemini API Free Tier:** Under Google's unpaid terms, **Google uses submitted prompts and generated responses for machine learning training**, and data may be inspected by human reviewers outside the EEA/UK/Switzerland ([ai.google.dev/terms](https://ai.google.dev/terms)).
-  - **Groq Cloud API Free Tier:** Under Groq's terms, **Groq DOES NOT train on customer inference data by default**, and standard inference requests have **zero default data retention** ([groq.com/privacy-policy](https://groq.com/privacy-policy)).
-- **Dual AI Strategy:**
-  1. **Groq Cloud API (Primary Privacy-Preserving Inference):**
-     - Models: `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`.
-     - Free Tier Quota: 30 Requests Per Minute (RPM), 14,400 Requests Per Day (RPD).
-     - Privacy: Zero default retention; no training on user prompts.
-     - Credit Card: **None.**
-     - Pakistan Availability: Supported and globally reachable.
-  2. **Google Gemini API (Secondary / Fallback with Synthetic Policy):**
-     - Models: `gemini-1.5-flash`.
-     - Free Tier Quota: 15 RPM, 1,500 RPD, 1 million TPM.
-     - **Mandatory Policy:** Under zero financial expenditure (unpaid tier), Gemini API must be used **strictly with synthetic demo scenarios and anonymized test fixtures**. If real personal messages are evaluated, either Groq Cloud must be used or a Google Cloud Billing account must be attached (which activates Paid Service terms prohibiting model training).
+- **Crucial Privacy Audit (October 2026 Terms of Service):**
+  - **Groq Cloud API (Free Tier):**
+    - *Official Source:* [Groq Privacy Policy](https://wow.groq.com/privacy-policy/) and [Groq Rate Limits](https://console.groq.com/docs/rate-limits) (Verified October 2026).
+    - *Model:* `llama-3.3-70b-versatile`.
+    - *Verified Free Tier Limits:* 30 RPM, 1,000 RPD, 12,000 TPM, 100,000 TPD. (Note: Claims of 14,400 RPD apply to smaller 8B models or paid developer tiers, not 70B models on free accounts).
+    - *Retention Exception:* Groq does not train on customer inputs and standard inference is not retained by default, **but** inputs/outputs may be retained for up to 30 days for system reliability, troubleshooting, and abuse investigation.
+    - *Policy Boundary:* Real-user remote analysis remains disabled until explicit user configuration and verifiable end-to-end privacy guarantees are established.
+  - **Google AI Studio / Gemini API (Unpaid Free Tier):**
+    - *Official Source:* [Gemini API Additional Terms](https://ai.google.dev/terms) (Verified October 2026).
+    - *Model:* `gemini-1.5-flash` (unpaid free tier).
+    - *Human Review & Training:* Unpaid tier explicitly allows Google to train models on prompts and responses, with potential human review. Terms explicitly warn: *"Do not submit sensitive, confidential, or personal information."*
+    - *Policy Boundary:* Real user text or OCR transcripts must **NEVER** be submitted to Google AI Studio on the unpaid free tier. Gemini is restricted strictly to synthetic developer fixtures and mock testing.
+- **No Automatic Cross-Provider Fallback:**
+  - System architecture forbids automatic cross-provider fallback. Switching AI providers dynamically redirects user data to a different company under different privacy and review policies without explicit consent. Provider and model selection must be explicit and configurable.
 
 ---
 
-## 3. Recommended vs Fallback Stack Summary
+## 3. Selected Stack Architecture Summary
 
-### Primary Recommended Stack
-- **Backend Language:** TypeScript (Node.js 20+ LTS)
-- **Framework:** Fastify 4.x / 5.x
-- **Hosting:** Render Free Web Service (Production staging) + Local Node runtime (Development)
-- **Authentication:** Supabase Auth (JWT bearer tokens, PKCE mobile flow)
-- **Database:** Supabase Managed PostgreSQL (RLS, schema migrations, cascade deletion)
-- **Primary AI Provider:** Groq Cloud API (`llama-3.3-70b-versatile` / `llama-3.1-8b-instant`) — Zero retention, no training
-- **Secondary AI Provider:** Google Gemini API (`gemini-1.5-flash`) — Synthetic-only data policy on free tier
+### Implemented & Planned Stack Baseline
+- **Backend Language:** Python 3.13+
+- **Framework:** FastAPI + Pydantic v2 + Pydantic-Settings
+- **Server:** Uvicorn ASGI on loopback (`127.0.0.1:8000`)
+- **Hosting:** Render Free Web Service (Production staging) + Local Python runtime (Development)
+- **Authentication:** Supabase Auth (JWT bearer tokens, planned Module 30)
+- **Database:** Supabase Managed PostgreSQL (RLS, planned Module 29)
+- **Primary AI Provider:** Groq Cloud API (`llama-3.3-70b-versatile`) — Configurable, disabled in Module 28 foundation
+- **Secondary AI Provider:** Google Gemini API (`gemini-1.5-flash`) — Synthetic-only data policy on unpaid tier
 - **Email:** Supabase default testing mailer (dev) + Resend SMTP (testing/staging)
-
-### Realistic Fallback Stack
-- **Backend Language:** Python 3.11+
-- **Framework:** FastAPI + Pydantic v2
-- **Hosting:** Hugging Face Spaces (Docker runtime) / Local Docker
-- **Authentication & Database:** Firebase Auth + Cloud Firestore (Blaze free allocation)
-- **AI Provider:** Cloudflare Workers AI (Llama 3 on edge) or Groq Cloud
 
 ---
 
@@ -202,11 +197,20 @@ If all findings fail evidence grounding, the backend returns an outcome indicati
 
 ## 7. Local Development vs Staging Environments
 
-- **Local Development (`NODE_ENV=development`):**
-  - Server listens on `http://localhost:3000`.
-  - Android device / emulator connects via `adb reverse tcp:3000 tcp:3000` or `10.0.2.2:3000`.
+- **Local Development (`ENVIRONMENT=development`):**
+  - Server listens on loopback: `http://127.0.0.1:8000`.
+  - Android device / emulator connects via `adb reverse tcp:8000 tcp:8000` or `10.0.2.2:8000`.
   - Fast feedback loop, zero cold starts, zero network latency.
-- **Hosted Staging (`NODE_ENV=production`):**
+- **Hosted Staging (`ENVIRONMENT=production`):**
   - Hosted on Render free web service.
   - HTTPS enforced automatically via Let's Encrypt certificates.
   - Sleep mode after 15 minutes of inactivity; client displays clear waiting/connecting indicator during cold starts.
+
+---
+
+## 8. API Contract Scope: Design Specification vs Runtime Implementation
+
+- **Complete System Design Contract (`backend/contracts/openapi.yaml`):**
+  The authoritative design contract defines the end-state OpenAPI 3.1.0 specification for all TrustCue endpoints across the 50-module roadmap (including `/health`, `/ready`, `/api/v1/analysis/ai`, `/api/v1/account/profile`, `/api/v1/account`, and `/api/v1/sync/reports`).
+- **Runtime Application Schema (FastAPI `/openapi.json`):**
+  FastAPI dynamically generates the runtime OpenAPI schema reflecting **only currently implemented and mounted routes**. In Module 28, only `/health` and `/ready` are mounted. Planned endpoints are not registered or stubbed with fake success handlers. Automated tests verify that every implemented route strictly conforms to its definition in the design contract.

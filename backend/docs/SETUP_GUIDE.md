@@ -131,9 +131,12 @@ MAX_DAILY_QUOTA_PER_USER=20
 
 ---
 
-## 4. Immediate Action Checklist for Module 28
+## 4. Credentials & Prerequisites Policy
 
-> [!TIP]
-> **Action Required Before/During Module 28:**
-> - **Action:** Create a free **Supabase** project following Section 2, Stage 1 above. Save your `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` locally in your password manager.
-> - **AI Provider Accounts (Groq/Gemini):** **Not needed yet.** Module 28 focuses on backend foundation, health checks, and configuration validation. AI provider accounts will be required in Module 33.
+> [!NOTE]
+> **Module 28 Foundation Prerequisites: ZERO CLOUD ACCOUNTS REQUIRED.**
+> Module 28 focuses entirely on the core Python/FastAPI service architecture, loopback execution, configuration typing, health and readiness probes, privacy-safe logging/error envelopes, and automated CI validation.
+> **No Supabase, Render, Groq, or Gemini accounts or API keys are required to build, test, or run this foundation.**
+>
+> **Module 29 Planning:**
+> Module 29 covers PostgreSQL schema definitions, migrations, and repository structures. Schema definitions and migration scripts can be developed and validated locally using standard PostgreSQL / Supabase CLI without requiring an immediate cloud-hosted project. Manual account creation will only be requested when live remote deployment or cloud persistence is genuinely ready to be connected.
