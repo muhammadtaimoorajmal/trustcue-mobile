@@ -624,3 +624,40 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Whitespace & format audit: PASS (`git diff --cached --check` clean).
   - Git worktree separation: `trustcue-backend` clean, committed, and pushed to `origin/backend` (`766e61a`).
 - **Status:** Complete. Pushed to `backend` (`766e61a`). Reconciled on `frontend`. Stopped before Module 29.
+
+### 2026-10-15 — Module 29: Database Schema, Versioned Migrations, Ownership Policies, and Database Regression Tests
+- **Scope & Objectives:**
+  - Implemented versioned PostgreSQL DDL migrations for TrustCue cloud data storage, strictly adhering to local-first privacy invariants.
+  - Implemented `public.profiles` (`migrations/00001_create_profiles.sql`) bound 1:1 to `auth.users(id)` with cascade deletion, bounded `display_name` (<=64 characters, trimmed), `terms_version` (1-32 characters), and explicit `sync_enabled` boolean opt-in.
+  - Implemented `public.ai_usage_quotas` (`migrations/00002_create_ai_usage_quotas.sql`) for server-side rate-limiting rate controls, unique on `(user_id, quota_date)`, with non-negative constraints on requests and tokens; enforced privacy guarantee with zero storage of prompts, message text, excerpts, or message hashes.
+  - Implemented `public.synced_reports` (`migrations/00003_create_synced_reports.sql`) for optional client report backup, unique on `(user_id, client_report_id)`, strictly bounding payload sizes to 500 KB via `chk_report_payload_size` and enforcing tombstone consistency via `chk_tombstone_consistency`.
+  - Implemented Row Level Security (RLS) and access control (`migrations/00004_create_rls_and_policies.sql`): enabled and forced RLS across all 3 tables; revoked default permissions from `PUBLIC` and `anon`; granted read/write on own profiles and synced reports to `authenticated`; strictly granted **read-only** `SELECT` on `ai_usage_quotas` to `authenticated` (write permissions strictly denied to prevent quota tampering); enforced identical `USING` and `WITH CHECK` clauses on all update policies to prevent cross-account ownership theft.
+  - Implemented automatic user profile provisioning trigger (`migrations/00005_create_auth_trigger.sql`): `public.handle_new_user()` `SECURITY DEFINER` function with pinned `search_path = public, auth, pg_temp` and safe fallback exception handling.
+  - Created synthetic PostgreSQL test environment: test auth compatibility fixture (`tests/fixtures/test_auth_compat.sql`) simulating `auth.users`, `auth.uid()`, and role switching; synthetic seed data (`seeds/001_synthetic_test_seeds.sql`).
+  - Authored 4 transactional SQL regression test suites in `tests/sql/`:
+    - `01_test_profiles_rls.sql`: Anon denial, User A CRUD, User B isolation, cross-account theft rejection, and display name boundary checks.
+    - `02_test_quotas_isolation.sql`: Authenticated client write denial, read-only own usage, backend service_role atomic upsert increment, and non-negative constraint checks.
+    - `03_test_reports_sync_rls.sql`: User A CRUD, User B denial, cross-user insert spoofing rejection, 500 KB payload limit enforcement, and soft-delete tombstone consistency.
+    - `04_test_cascade_deletion.sql`: Deleting parent user in `auth.users` strictly cascades across profiles, quotas, and synced reports leaving 0 orphan rows.
+  - Created standalone Python static schema validation suite (`tests/test_static_schema.py`) and `pyproject.toml` verifying transactional wrappers, column boundaries, absence of prompt/excerpt storage, RLS enforcement, and security definer hygiene.
+  - Created GitHub Actions Database CI workflow (`.github/workflows/database-ci.yml`) spinning up a live `postgres:16-alpine` service container, applying test auth compatibility fixtures and migrations sequentially, loading synthetic seeds, and executing all 4 SQL regression test suites.
+  - Authored comprehensive documentation: `docs/ARCHITECTURE.md` (entity-relationship diagram, permission matrix table, atomic quota enforcement algorithm, cloud sync conflict resolution strategy) and `docs/SETUP_AND_MIGRATION_GUIDE.md` (local Docker and Supabase migration guides).
+- **Database Components Created (Committed on `database` at `521cade`):**
+  - `.github/workflows/database-ci.yml`: PostgreSQL 16 CI workflow.
+  - `migrations/00001_create_profiles.sql` to `00005_create_auth_trigger.sql`: 5 versioned DDL migrations.
+  - `seeds/001_synthetic_test_seeds.sql`: Synthetic test seeds.
+  - `tests/fixtures/test_auth_compat.sql`: Test auth schema compatibility fixture.
+  - `tests/sql/01_test_profiles_rls.sql` to `04_test_cascade_deletion.sql`: 4 SQL regression suites.
+  - `tests/test_static_schema.py`: Standalone offline Python static test suite.
+  - `docs/ARCHITECTURE.md` & `docs/SETUP_AND_MIGRATION_GUIDE.md`: Architectural documentation & setup guide.
+  - `pyproject.toml`, `.gitignore`, `README.md`: Project configurations and repository overview.
+- **Checks Performed:**
+  - `python -m unittest discover tests`: PASS (10/10 tests passed in 0.006s).
+  - Trailing whitespace audit on all database SQL, Python, YAML, and Markdown files: PASS (`git diff --cached --check` clean).
+  - Git worktree separation: `trustcue-database` isolated on `database` branch, committed (`521cade`), and pushed to `origin/database`.
+  - Remote reference verified via `git ls-remote origin refs/heads/database` (`521cadefe19bffff4fe42bb09c88ec765b4bfd64`).
+- **Host Tooling & RLS Verification Disclosure:**
+  - Neither PostgreSQL nor Docker is installed locally on the host machine.
+  - Local verification was performed using the offline Python static schema test suite (`tests/test_static_schema.py`).
+  - Executable PostgreSQL 16 migration application and RLS policy enforcement are wired into GitHub Actions Database CI (`.github/workflows/database-ci.yml`), using a genuine `postgres:16-alpine` service container.
+- **Status:** Complete. Pushed to `database` (`521cade`). Reconciled on `frontend`. Stopped before Module 30.

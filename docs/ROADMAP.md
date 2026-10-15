@@ -52,7 +52,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **26** | Working local-analysis results and Evidence Trail interface | Completed (`027a0cc`) | `frontend` |
 | **27** | Architecture, feasibility, privacy and API contracts | Completed (`60745dc`) | `backend` |
 | **28** | Backend foundation and configuration | Completed (`766e61a`) | `backend` |
-| **29** | Database schema, migrations and ownership policies | Planned | `database` |
+| **29** | Database schema, migrations and ownership policies | Completed (`521cade`) | `database` |
 | **30** | Authentication integration and session-validation contracts | Planned | `backend` |
 | **31** | Flutter signup/login/verification/recovery/logout flows | Planned | `frontend` |
 | **32** | Backend validation, authorization and abuse controls | Planned | `backend` |
@@ -95,10 +95,10 @@ To prevent divergent or conflicting project roadmaps across branches:
 
 ### Module 29: Database Schema, Migrations, and Ownership Policies
 - **Primary Branch:** `database`
-- **Deliverables:** Versioned PostgreSQL DDL migrations for `profiles`, `synced_reports`, and `ai_usage_quotas`; Row Level Security (RLS) policies; synthetic seed fixtures; database documentation.
+- **Deliverables:** Versioned PostgreSQL DDL migrations (`00001`–`00005`), Row Level Security (RLS) policies, synthetic seeds, test auth compatibility fixtures, 4 transactional SQL regression suites, standalone Python static schema validation suite, PostgreSQL 16 GitHub Actions CI workflow, entity relationship architecture (`docs/ARCHITECTURE.md`), and setup guide (`docs/SETUP_AND_MIGRATION_GUIDE.md`).
 - **Dependencies:** Modules 27, 28.
-- **Acceptance Criteria:** Migrations apply idempotently; RLS prevents cross-user access; cascade delete purges all child records on user deletion.
-- **Necessary Human Actions:** None required for local migration authoring/testing. If deploying to cloud Supabase, create free project at supabase.com and apply migration scripts via Supabase SQL Editor.
+- **Acceptance Criteria:** Migrations apply idempotently; RLS enabled and forced across all public tables; authenticated clients denied write access to `ai_usage_quotas`; synced report payload bounded to 500 KB; tombstone consistency enforced; `ON DELETE CASCADE` eliminates all child records on `auth.users` deletion leaving 0 orphan rows; 10 offline static tests passing; PostgreSQL 16 CI workflow configured with `postgres:16-alpine` service container.
+- **Necessary Human Actions:** None for local development or CI. Optional manual step: create free cloud project at supabase.com and apply migration scripts via Supabase SQL Editor when deploying to hosted environment.
 
 ### Module 30: Authentication Integration and Session-Validation Contracts
 - **Primary Branch:** `backend`
