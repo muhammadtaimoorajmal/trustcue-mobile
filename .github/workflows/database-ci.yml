@@ -1,0 +1,90 @@
+name: Database CI
+
+on:
+  push:
+    branches:
+      - database
+  pull_request:
+    branches:
+      - database
+  workflow_dispatch:
+
+jobs:
+  static-checks:
+    name: Static Schema & Policy Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run Static Schema Test Suite
+        run: python -m unittest discover tests
+
+  postgres-rls-tests:
+    name: PostgreSQL 16 Migration & RLS Enforcement
+    runs-on: ubuntu-latest
+    needs: static-checks
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: trustcue_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: trustcue_db
+      PGUSER: postgres
+      PGPASSWORD: postgres_ci_password
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Verify PostgreSQL connection
+        run: psql -c "SELECT version();"
+
+      - name: Apply Test Auth Compatibility Fixtures
+        run: psql -v ON_ERROR_STOP=1 -f tests/fixtures/test_auth_compat.sql
+
+      - name: Apply Migrations Sequentially
+        run: |
+          for migration in migrations/*.sql; do
+            echo "Applying $migration..."
+            psql -v ON_ERROR_STOP=1 -f "$migration"
+          done
+
+      - name: Apply Synthetic Test Seeds
+        run: psql -v ON_ERROR_STOP=1 -f seeds/001_synthetic_test_seeds.sql
+
+      - name: Run SQL Regression Test 01 - Profiles RLS
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/01_test_profiles_rls.sql
+
+      - name: Run SQL Regression Test 02 - Quotas Isolation
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/02_test_quotas_isolation.sql
+
+      - name: Run SQL Regression Test 03 - Synced Reports RLS
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/03_test_reports_sync_rls.sql
+
+      - name: Run SQL Regression Test 04 - Cascade Deletion
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/04_test_cascade_deletion.sql
