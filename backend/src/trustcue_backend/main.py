@@ -24,18 +24,27 @@ from trustcue_backend.core.logging import (
     configure_logging,
 )
 from trustcue_backend.core.state import AppState
+from trustcue_backend.providers.groq import GroqProviderAdapter
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Manage application startup and graceful draining lifecycle."""
+    """Manage application startup, provider initialization, and graceful draining lifecycle."""
+    app_settings: Settings = getattr(app.state, "settings", get_settings())
+
+    ai_provider = None
+    if app_settings.ENABLE_CLOUD_AI and app_settings.GROQ_API_KEY and app_settings.GROQ_API_KEY.strip():
+        ai_provider = GroqProviderAdapter(settings=app_settings)
+
     # Initialize application lifecycle state
-    app_state = AppState()
+    app_state = AppState(ai_provider=ai_provider)
     app_state.mark_ready()
     app.state.app_state = app_state
     yield
     # Transition to draining state on graceful shutdown
     app_state.mark_draining()
+    if app_state.ai_provider:
+        await app_state.ai_provider.close()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:

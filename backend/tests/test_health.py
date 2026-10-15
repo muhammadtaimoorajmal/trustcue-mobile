@@ -29,7 +29,7 @@ def test_health_check_endpoint(client: TestClient) -> None:
 
 
 def test_readiness_probe_operational_state(client: TestClient) -> None:
-    """Test /ready returns 200 and correctly states foundation is ok while subsystems are unconfigured."""
+    """Test /ready returns 200 and correctly states foundation is ok while subsystems are unconfigured/disabled."""
     response = client.get("/ready")
     assert response.status_code == 200
 
@@ -38,7 +38,7 @@ def test_readiness_probe_operational_state(client: TestClient) -> None:
     assert data["dependencies"]["foundation"] == "ok"
     assert data["dependencies"]["authProvider"] == "unconfigured"
     assert data["dependencies"]["database"] == "unconfigured"
-    assert data["dependencies"]["aiProvider"] == "unconfigured"
+    assert data["dependencies"]["aiProvider"] == "disabled"
 
     # Must not leak internal paths or secrets
     text_content = response.text.lower()
@@ -59,7 +59,23 @@ def test_readiness_probe_with_configured_auth() -> None:
         assert data["dependencies"]["foundation"] == "ok"
         assert data["dependencies"]["authProvider"] == "ok"
         assert data["dependencies"]["database"] == "unconfigured"
-        assert data["dependencies"]["aiProvider"] == "unconfigured"
+        assert data["dependencies"]["aiProvider"] == "disabled"
+
+
+def test_readiness_probe_with_configured_ai() -> None:
+    """Test /ready reports aiProvider as 'ok' when ENABLE_CLOUD_AI and GROQ_API_KEY are configured."""
+    settings = Settings(
+        ENABLE_CLOUD_AI=True,
+        GROQ_API_KEY="mock-groq-api-key-test",
+    )
+    app = create_app(settings=settings)
+    with TestClient(app) as test_client:
+        response = test_client.get("/ready")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ready"
+        assert data["dependencies"]["aiProvider"] == "ok"
+
 
 
 def test_readiness_probe_draining_degraded_state(default_settings: Settings) -> None:

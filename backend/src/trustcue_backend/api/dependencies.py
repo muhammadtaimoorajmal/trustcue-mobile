@@ -11,6 +11,8 @@ from trustcue_backend.core.errors import AuthenticationError, TrustCueError
 from trustcue_backend.core.quota import QuotaStore
 from trustcue_backend.core.rate_limit import ConcurrencyLimiter, SlidingWindowRateLimiter
 from trustcue_backend.core.state import AppState
+from trustcue_backend.providers.base import AiProvider
+from trustcue_backend.providers.service import ProtectedAiService
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -44,6 +46,25 @@ def get_quota_store(
 ) -> QuotaStore:
     """Retrieve the user daily quota store singleton."""
     return app_state.quota_store
+
+
+def get_ai_provider(
+    app_state: Annotated[AppState, Depends(get_app_state)],
+) -> AiProvider | None:
+    """Retrieve the active AI provider singleton if initialized."""
+    return app_state.ai_provider
+
+
+def get_protected_ai_service(
+    settings: Annotated[Settings, Depends(get_app_settings)],
+    app_state: Annotated[AppState, Depends(get_app_state)],
+) -> ProtectedAiService:
+    """Retrieve or construct the ProtectedAiService instance."""
+    return ProtectedAiService(
+        settings=settings,
+        provider=app_state.ai_provider,
+        quota_store=app_state.quota_store,
+    )
 
 
 def get_jwt_validator(

@@ -49,6 +49,10 @@ class Settings(BaseSettings):
 
     GROQ_API_KEY: str | None = None
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
+    GROQ_TIMEOUT_SECONDS: float = 15.0
+    GROQ_MAX_TOKENS: int = 1024
+    MAX_PROVIDER_RESPONSE_BYTES: int = 65_536  # 64 KB maximum response size boundary
 
     GEMINI_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-1.5-flash"

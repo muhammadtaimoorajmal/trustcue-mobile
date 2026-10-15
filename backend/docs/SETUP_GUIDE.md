@@ -147,3 +147,33 @@ MAX_DAILY_QUOTA_PER_USER=20
 > Zero cloud credentials are required for local development and test execution.
 > When connecting a live Supabase project in subsequent integration stages, obtain the JWT Secret from `Supabase Studio -> Project Settings -> API -> JWT Settings -> JWT Secret` and configure `SUPABASE_JWT_SECRET` in `.env`.
 > Test keys and mock auth are strictly forbidden in `production` environment configuration.
+>
+> **Module 33 AI Provider Integration & Live Verification Guide:**
+> Module 33 implements server-side provider connectivity (`GroqProviderAdapter`) and the protected execution pipeline (`ProtectedAiService`).
+> All unit and integration tests are verified locally using mocked HTTP transport boundaries with 0 cloud credentials required.
+>
+> **To configure an optional live Groq Cloud API key for developer verification:**
+> 1. Navigate to the official portal: [https://console.groq.com/](https://console.groq.com/)
+> 2. Sign in with Google or GitHub (NO credit card or payment information is required).
+> 3. Go to **API Keys** ([https://console.groq.com/keys](https://console.groq.com/keys)) and click **"Create API Key"**.
+> 4. Name the key `trustcue-backend-dev` and copy the secret token (`gsk_...`).
+> 5. Open your local, git-ignored `backend/.env` file and set:
+>    ```bash
+>    ENABLE_CLOUD_AI=true
+>    GROQ_API_KEY=gsk_your_actual_key_here
+>    GROQ_MODEL=llama-3.3-70b-versatile
+>    ```
+> 6. Free Tier Limits (Verified October 2026):
+>    - Requests: 30 requests/minute (RPM), 1,000 requests/day (RPD).
+>    - Tokens: 12,000 tokens/minute (TPM), 100,000 tokens/day (TPD) for `llama-3.3-70b-versatile`.
+> 7. Restart the backend service:
+>    ```powershell
+>    cd "D:\ALL DATA\PROJECTS\TrustCue\trustcue-backend\backend"
+>    python run.py
+>    ```
+> 8. Run synthetic smoke tests (never use real user personal messages):
+>    ```powershell
+>    pytest tests/test_groq_provider.py tests/test_ai_orchestration.py
+>    ```
+> 9. **Security Rule:** NEVER paste your API key in chat prompts, commit it to git, or embed it in mobile client builds.
+> 10. **Architecture Gate Notice:** The public endpoint `POST /api/v1/analysis/ai` returns HTTP 503 until Module 34 evidence grounding is implemented, preventing raw model outputs from reaching mobile clients.

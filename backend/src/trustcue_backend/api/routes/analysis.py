@@ -9,6 +9,7 @@ from trustcue_backend.api.dependencies import (
     get_app_settings,
     get_concurrency_limiter,
     get_current_user,
+    get_protected_ai_service,
     get_quota_store,
     get_rate_limiter,
 )
@@ -21,6 +22,7 @@ from trustcue_backend.core.config import Settings
 from trustcue_backend.core.errors import TrustCueError
 from trustcue_backend.core.quota import InMemoryQuotaStore, QuotaStore
 from trustcue_backend.core.rate_limit import ConcurrencyLimiter, SlidingWindowRateLimiter
+from trustcue_backend.providers.service import ProtectedAiService
 
 logger = logging.getLogger("trustcue.analysis")
 
@@ -66,12 +68,15 @@ async def analyze_text_with_ai(
     rate_limiter: Annotated[SlidingWindowRateLimiter, Depends(get_rate_limiter)],
     concurrency_limiter: Annotated[ConcurrencyLimiter, Depends(get_concurrency_limiter)],
     quota_store: Annotated[QuotaStore, Depends(get_quota_store)],
+    ai_service: Annotated[ProtectedAiService, Depends(get_protected_ai_service)],
 ) -> AnalysisAiResponse:
     """
     Validate reviewed text snapshot, enforce rate limits, and dispatch to AI provider.
 
-    In Module 32, validates the payload and session abuse controls strictly, returning
-    503 Service Unavailable when cloud AI provider is unconfigured.
+    In Module 33, validates the payload and abuse controls strictly, wiring the
+    internal provider execution path. Preserves the Module 34 evidence-grounding
+    gate: public client responses return 503 until server-side evidence verification
+    is implemented, preventing raw or ungrounded model outputs from reaching mobile clients.
     """
     user_key = f"user:{current_user.user_id}"
 
@@ -93,10 +98,8 @@ async def analyze_text_with_ai(
                 )
 
         try:
-            # 4. In Module 32, Cloud AI is optional and unconfigured by default.
-            # Do NOT fabricate fake AI findings. Return factual 503 if not enabled.
+            # 4. Feature flag gating: Return factual 503 if not enabled
             if not settings.ENABLE_CLOUD_AI:
-                # Release reserved quota unit since analysis was not performed
                 await quota_store.release_quota(current_user.user_id, res_id)
                 raise TrustCueError(
                     code="ai_provider_unavailable",
@@ -104,16 +107,17 @@ async def analyze_text_with_ai(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
-            # Module 33 will implement live provider integration (Gemini / Groq)
-            # For now, release quota and raise 503
+            # 5. Module 34 & 35 Gate: Raw provider output must NOT be returned to clients
+            # without deterministic server-side evidence grounding and mobile consent.
+            # Refund reserved quota unit and return honest 503 indicating grounding status.
             await quota_store.release_quota(current_user.user_id, res_id)
             raise TrustCueError(
                 code="ai_provider_unavailable",
-                message="AI provider integration is pending configuration.",
+                message="Server-assisted AI analysis is temporarily unavailable pending evidence grounding validation (Module 34).",
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception:
             # Re-raise without logging user text
-            logger.info("AI analysis request aborted for user UUID: %s", current_user.user_id)
+            logger.info("AI analysis request completed/aborted for user UUID: %s", current_user.user_id)
             raise
 
