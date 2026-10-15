@@ -804,3 +804,46 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Dart format: PASS (0 changes).
   - Full Flutter test suite: 637/637 PASS.
 - **Status:** Complete. Pushed to `database` (`2660aef`), `backend` (`0714bcd`), and `frontend`. Stopped before Module 33.
+
+### 2026-10-15 — Module 33: Protected AI-Provider Integration
+- **Scope & Objectives:**
+  - Implemented server-side AI provider connectivity and protected execution path adhering strictly to OpenAPI 3.1.0 specifications and local-first privacy invariants.
+  - Selected and integrated primary inference provider: Groq Cloud API using active flagship model `llama-3.3-70b-versatile` (128k context, zero model training on customer inference data, OpenAI-compatible chat completions).
+  - Documented official provider terms and limits (verified 2026-10-15): free tier 30 RPM, 1,000 RPD, 12,000 TPM, 100,000 TPD; default zero-retention with up to 30-day transient diagnostic logging solely for reliability/abuse investigation; strictly prohibited automatic cross-provider fallback.
+  - Implemented replaceable `AiProvider` abstract interface (`providers/base.py`) with `analyze()` and `close()` lifecycle methods.
+  - Implemented production `GroqProviderAdapter` (`providers/groq.py`):
+    - Configured via typed Pydantic `Settings` (`GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_BASE_URL`, `GROQ_TIMEOUT_SECONDS`, `GROQ_MAX_TOKENS`, `MAX_PROVIDER_RESPONSE_BYTES`).
+    - Uses asynchronous `httpx.AsyncClient` with explicit lifecycle management in FastAPI `lifespan`.
+    - Enforces connection timeouts (5.0s), total read timeouts (15.0s), and response size bounds (64 KB).
+    - Maps HTTP status codes to typed exceptions without logging sensitive text, prompts, or API keys (`ProviderAuthenticationError`, `ProviderRateLimitError`, `ProviderTimeoutError`, `ProviderResponseError`, `ProviderNetworkError`).
+  - Implemented versioned system prompt and untrusted data framing (`providers/prompts.py`):
+    - Rigidly encapsulates user reviewed text in `<untrusted_message_content>` XML tags.
+    - Explicit anti-instruction directives commanding model to treat enclosed text as passive linguistic data.
+    - Strictly forbids numerical fraud percentages, risk scores, or safe/verified claims.
+    - Confines findings to the 10 canonical indicator taxonomy categories and requires verbatim quoted excerpts.
+  - Implemented `ProtectedAiService` orchestration engine (`providers/service.py`):
+    - Enforces exact approved-text preservation (no trimming or modification).
+    - Manages atomic quota settlement: commits quota on successful analysis, refunds on connect/unconfigured/upstream failures.
+    - Enforces documented ambiguous timeout policy: does NOT blind-refund ambiguous read timeouts where provider resources may have been consumed.
+  - Preserved Module 34 & 35 Architecture Gates:
+    - Public client route `POST /api/v1/analysis/ai` returns honest HTTP 503 `ai_provider_unavailable` ("Server-assisted AI analysis is temporarily unavailable pending evidence grounding validation (Module 34)"), releasing quota.
+    - Never returns raw or ungrounded model outputs to mobile clients.
+    - Gating ensures public cloud AI is not enabled until deterministic server-side evidence grounding and mobile upload consent exist.
+  - Updated readiness probe in `core/state.py` to evaluate `aiProvider` (`disabled` when feature flag is false, `ok` when configured without paid network probes, `unconfigured` when missing key).
+  - Authored comprehensive backend test suites (`tests/test_groq_provider.py`, `tests/test_ai_orchestration.py`, `tests/test_analysis_gating.py`):
+    - 85/85 backend tests passing across 16 suites (21 new tests added for Module 33).
+    - `ruff check` passed with 0 issues.
+    - `openapi-spec-validator` passed with 0 issues.
+  - Updated `backend/docs/SETUP_GUIDE.md` with beginner-friendly Groq API key setup guide, official documentation URLs, and safe synthetic smoke test instructions.
+- **Components Created / Updated:**
+  - Backend: `providers/__init__.py`, `providers/base.py`, `providers/models.py`, `providers/exceptions.py`, `providers/prompts.py`, `providers/groq.py`, `providers/service.py`, `api/dependencies.py`, `api/routes/analysis.py`, `core/config.py`, `core/state.py`, `main.py`, `.env.example`, `docs/SETUP_GUIDE.md`, `tests/test_groq_provider.py`, `tests/test_ai_orchestration.py`, `tests/test_analysis_gating.py`, `tests/test_health.py`.
+  - Frontend: `docs/ROADMAP.md`, `docs/MODULE_LOG.md`, `docs/PROJECT_STATE.md`.
+- **Checks Performed:**
+  - `pytest backend/tests`: PASS (85/85 tests passed across 16 suites in 2.35s).
+  - `ruff check src tests`: PASS (0 issues found).
+  - `openapi-spec-validator backend/contracts/openapi.yaml`: PASS.
+  - `python -m unittest discover database/tests`: PASS (11/11 tests passed).
+  - GitHub Actions CI (run `38746019869` on `backend`, run `38742621904` on `database`): PASS.
+  - Whitespace audit: PASS (`git diff --check` clean).
+- **Physical Device & Verification Status:** Device test from Module 32 remains preserved as pending. No phone is required for backend provider integration.
+- **Status:** Complete. Pushed to `backend` (`be2761b`) and `frontend`. Stopped before Module 34.
