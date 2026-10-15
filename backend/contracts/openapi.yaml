@@ -1,0 +1,708 @@
+openapi: 3.1.0
+info:
+  title: TrustCue Backend API
+  description: >
+    TrustCue API providing protected server-assisted AI scam-indicator analysis,
+    managed session validation, account lifecycle management, and optional report sync.
+    Client-side local analysis remains fully operable without this API.
+  version: 1.0.0
+  contact:
+    name: TrustCue Project Team
+    url: https://github.com/muhammadtaimoorajmal/trustcue-mobile
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://trustcue-api.onrender.com
+    description: Hosted staging/production server on Render
+
+security:
+  - BearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Service Health Check
+      description: >
+        Lightweight liveness probe for load balancers and container orchestrators.
+        Does not query external dependencies.
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: Service is healthy and accepting requests.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  value:
+                    status: ok
+                    version: 1.0.0
+                    timestamp: '2026-10-15T12:00:00Z'
+                    uptimeSeconds: 3600
+
+  /ready:
+    get:
+      summary: Service Readiness Probe
+      description: >
+        Readiness check verifying connectivity to Supabase and AI provider endpoints.
+        Fails if core dependencies are unreachable.
+      operationId: getReadiness
+      security: []
+      responses:
+        '200':
+          description: Service is fully initialized and dependencies are reachable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+              examples:
+                ready:
+                  value:
+                    status: ready
+                    timestamp: '2026-10-15T12:00:00Z'
+                    dependencies:
+                      authProvider: ok
+                      database: ok
+                      aiProvider: ok
+        '503':
+          description: Service is degraded or initializing; dependencies are unreachable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+              examples:
+                degraded:
+                  value:
+                    status: degraded
+                    timestamp: '2026-10-15T12:00:00Z'
+                    dependencies:
+                      authProvider: ok
+                      database: ok
+                      aiProvider: error
+
+  /api/v1/analysis/ai:
+    post:
+      summary: Protected Server-Assisted AI Analysis
+      description: >
+        Evaluates a user-reviewed, user-consented text snapshot for potential scam
+        warning indicators using a server-side AI model (Google Gemini or Groq Cloud).
+        User text is treated strictly as untrusted data.
+        Evidence offsets returned are validated by the server to ensure exact UTF-16
+        code-unit grounding in the submitted text snapshot.
+      operationId: analyzeTextWithAi
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalysisAiRequest'
+            examples:
+              urgentCredentialScam:
+                summary: Synthetic urgent credential request scenario
+                value:
+                  snapshotId: 'snap-synth-001'
+                  text: 'CRITICAL SECURITY ALERT: Your bank account has been suspended due to unauthorized activity. Send your online banking password to verification@secure-bank-alert.com immediately to unlock your funds.'
+                  source: 'messageText'
+                  sourceRevision: 'rev-1'
+                  clientTimestamp: '2026-10-15T12:00:00Z'
+              benignReceipt:
+                summary: Synthetic benign notification
+                value:
+                  snapshotId: 'snap-synth-002'
+                  text: 'Your order #98765 has shipped via Express Courier. Estimated delivery is Friday, October 17. Track your package in your official store app.'
+                  source: 'messageText'
+                  sourceRevision: 'rev-1'
+                  clientTimestamp: '2026-10-15T12:05:00Z'
+      responses:
+        '200':
+          description: AI analysis successfully synthesized with server-verified evidence references.
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+                format: uuid
+              description: Unique request tracing identifier without content leakage.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisAiResponse'
+              examples:
+                indicatorsDetected:
+                  summary: Detected indicators with grounded evidence
+                  value:
+                    reportId: 'ai-rep-a1b2c3d4-e5f6-4789-abcd-ef0123456789'
+                    snapshotId: 'snap-synth-001'
+                    provider: 'google-gemini'
+                    model: 'gemini-1.5-flash'
+                    analyzedAt: '2026-10-15T12:00:02Z'
+                    factualSummary: 'AI analysis identified 2 potential warning indicators in the submitted text (urgency or pressure, requests for credentials).'
+                    findings:
+                      - id: 'ai-finding-001'
+                        category: 'account_suspension_or_threats'
+                        severity: 'high'
+                        title: 'Threat of account suspension or restricted access'
+                        explanation: 'The message claims the recipient account has been suspended, creating pressure to respond without independent verification.'
+                        evidenceReferences:
+                          - startOffset: 0
+                            endOffset: 89
+                            excerpt: 'CRITICAL SECURITY ALERT: Your bank account has been suspended due to unauthorized activity.'
+                      - id: 'ai-finding-002'
+                        category: 'requests_for_credentials'
+                        severity: 'high'
+                        title: 'Request to disclose online banking credentials'
+                        explanation: 'The message instructs the recipient to send their secret online banking password to an unverified email address.'
+                        evidenceReferences:
+                          - startOffset: 90
+                            endOffset: 161
+                            excerpt: 'Send your online banking password to verification@secure-bank-alert.com'
+                    uncertaintyNotes:
+                      - 'AI evaluations are probabilistic observations, not definitive proof of fraud or safety.'
+                      - 'External sender identity and email domain authenticity cannot be established by text analysis alone.'
+                      - 'Analysis was conducted exclusively on the exact submitted text.'
+                    suggestedActions:
+                      - id: 'action-independent-verify-bank'
+                        priority: 'immediate'
+                        title: 'Verify directly with your financial institution'
+                        detail: 'Do not reply to this email or send credentials. Contact your bank using the phone number on your physical payment card or official mobile banking app.'
+                noIndicatorsMatched:
+                  summary: Content evaluated with zero warning indicators matched
+                  value:
+                    reportId: 'ai-rep-b2c3d4e5-f6a7-4890-bcde-f0123456789a'
+                    snapshotId: 'snap-synth-002'
+                    provider: 'google-gemini'
+                    model: 'gemini-1.5-flash'
+                    analyzedAt: '2026-10-15T12:05:01Z'
+                    factualSummary: 'No warning indicators were matched in this text by the AI analysis. This does not establish that the communication is safe or authentic.'
+                    findings: []
+                    uncertaintyNotes:
+                      - 'Absence of detected indicators does not guarantee that a communication is safe or legitimate.'
+                      - 'Legitimate delivery notices can be spoofed; always verify tracking numbers inside your official store account.'
+                    suggestedActions:
+                      - id: 'action-verify-app'
+                        priority: 'recommended'
+                        title: 'Check official application or account directly'
+                        detail: 'View your order status by signing in directly to the merchant application or official website.'
+        '400':
+          description: Bad request. Payload violates input limits, malformed JSON, or unpaired UTF-16 surrogates.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                tooLong:
+                  value:
+                    error:
+                      code: 'text_too_long'
+                      message: 'Submitted text exceeds maximum boundary (10,000 code points or 40,000 UTF-8 bytes).'
+                      requestId: 'req-err-400-001'
+                      timestamp: '2026-10-15T12:00:00Z'
+        '401':
+          description: Unauthorized. Missing, expired, or invalid JWT bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                invalidToken:
+                  value:
+                    error:
+                      code: 'unauthorized'
+                      message: 'Authentication token is invalid, expired, or issued by an unrecognized authority.'
+                      requestId: 'req-err-401-001'
+                      timestamp: '2026-10-15T12:00:00Z'
+        '429':
+          description: Quota or rate limit exceeded.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Number of seconds to wait before retrying.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                rateLimited:
+                  value:
+                    error:
+                      code: 'rate_limit_exceeded'
+                      message: 'Analysis quota exceeded for this account period. Please retry after the indicated duration.'
+                      requestId: 'req-err-429-001'
+                      timestamp: '2026-10-15T12:00:00Z'
+                      details:
+                        retryAfterSeconds: 60
+        '502':
+          description: Bad Gateway. AI provider endpoint failure or server evidence grounding failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                aiUnavailable:
+                  value:
+                    error:
+                      code: 'ai_provider_unavailable'
+                      message: 'Remote AI analysis is temporarily unavailable. Local on-device analysis results remain active and unaffected.'
+                      requestId: 'req-err-502-001'
+                      timestamp: '2026-10-15T12:00:00Z'
+        '500':
+          description: Internal server error. Diagnostics sanitized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                internalError:
+                  value:
+                    error:
+                      code: 'internal_error'
+                      message: 'An unexpected server error occurred while processing the request.'
+                      requestId: 'req-err-500-001'
+                      timestamp: '2026-10-15T12:00:00Z'
+
+  /api/v1/account/profile:
+    get:
+      summary: Retrieve User Profile
+      description: >
+        Fetches minimal application profile metadata associated with the authenticated user.
+        Authentication is delegated to Supabase Auth.
+      operationId: getAccountProfile
+      responses:
+        '200':
+          description: User profile metadata retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+              examples:
+                profile:
+                  value:
+                    userId: 'usr-c5d6e7f8-90ab-4cde-f123-456789abcdef'
+                    email: 'user@example.com'
+                    emailVerified: true
+                    createdAt: '2026-10-01T08:00:00Z'
+                    syncEnabled: false
+                    quotaRemainingToday: 15
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/v1/account:
+    delete:
+      summary: Delete Account and Server Data
+      description: >
+        Permanently deletes the authenticated user account and all associated server records,
+        including profiles, sync records, and quota usage. Invokes administrative deletion
+        via Supabase Auth API.
+      operationId: deleteAccount
+      responses:
+        '200':
+          description: Account and all associated server data successfully deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletionResponse'
+              examples:
+                deleted:
+                  value:
+                    status: 'deleted'
+                    userId: 'usr-c5d6e7f8-90ab-4cde-f123-456789abcdef'
+                    deletedAt: '2026-10-15T12:10:00Z'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/sync/reports:
+    get:
+      summary: '[PLANNED - Module 39] List Synced Reports'
+      description: >
+        PLANNED (Module 39). Not implemented yet in this version.
+        When implemented, retrieves metadata and encrypted payloads for user-opted synced reports.
+      operationId: listSyncedReports
+      deprecated: false
+      responses:
+        '501':
+          description: Endpoint planned for Module 39; not implemented in Module 27/28.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                notImplemented:
+                  value:
+                    error:
+                      code: 'not_implemented'
+                      message: 'Cloud sync is planned for Module 39. Local report storage remains active.'
+                      requestId: 'req-err-501-001'
+                      timestamp: '2026-10-15T12:00:00Z'
+    post:
+      summary: '[PLANNED - Module 39] Batch Sync Reports'
+      description: >
+        PLANNED (Module 39). Not implemented yet in this version.
+        When implemented, uploads user-selected encrypted reports under explicit account opt-in.
+      operationId: syncReportsBatch
+      deprecated: false
+      responses:
+        '501':
+          description: Endpoint planned for Module 39; not implemented in Module 27/28.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Supabase Auth issued RS256 or HS256 JWT access token.
+        Validated by backend against Supabase project JWT secret or JWKS endpoint.
+
+  responses:
+    UnauthorizedError:
+      description: Missing or invalid authentication token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    InternalServerError:
+      description: Server error occurred during processing.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - version
+        - timestamp
+        - uptimeSeconds
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        version:
+          type: string
+          example: '1.0.0'
+        timestamp:
+          type: string
+          format: date-time
+        uptimeSeconds:
+          type: integer
+          example: 3600
+
+    ReadinessResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+        - dependencies
+      properties:
+        status:
+          type: string
+          enum: [ready, degraded]
+        timestamp:
+          type: string
+          format: date-time
+        dependencies:
+          type: object
+          required:
+            - authProvider
+            - database
+            - aiProvider
+          properties:
+            authProvider:
+              type: string
+              enum: [ok, error]
+            database:
+              type: string
+              enum: [ok, error]
+            aiProvider:
+              type: string
+              enum: [ok, error]
+
+    InputSource:
+      type: string
+      enum:
+        - messageText
+        - screenshot
+        - link
+        - qrCode
+      description: The user intake vector through which the text entered the application.
+
+    IndicatorCategory:
+      type: string
+      enum:
+        - urgency_or_pressure
+        - requests_for_credentials
+        - requests_for_verification_codes
+        - requests_for_payment
+        - account_suspension_or_threats
+        - claimed_identity_or_impersonation
+        - rewards_or_prizes
+        - job_or_recruitment_offers
+        - investment_or_return_promises
+        - link_structural_indicators
+      description: Stable plain-language observation category aligned with the TrustCue indicator taxonomy.
+
+    FindingSeverity:
+      type: string
+      enum:
+        - high
+        - medium
+        - low
+        - informational
+      description: Relative potential warning significance of the observed indicator pattern.
+
+    AnalysisAiRequest:
+      type: object
+      required:
+        - snapshotId
+        - text
+        - source
+        - sourceRevision
+        - clientTimestamp
+      properties:
+        snapshotId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Unique client-generated identifier of the text snapshot being analyzed.
+        text:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          description: >
+            Exact reviewed and user-approved text.
+            Must not exceed 10,000 Unicode code points (runes) or 40,000 UTF-8 encoded bytes.
+            Must contain at least one visible, non-whitespace character.
+        source:
+          $ref: '#/components/schemas/InputSource'
+        sourceRevision:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: In-memory revision tag of the intake editor at the moment of review confirmation.
+        clientTimestamp:
+          type: string
+          format: date-time
+          description: ISO-8601 UTC timestamp of client-side review confirmation.
+
+    EvidenceReference:
+      type: object
+      required:
+        - startOffset
+        - endOffset
+        - excerpt
+      properties:
+        startOffset:
+          type: integer
+          minimum: 0
+          description: >
+            Zero-indexed starting offset measured in UTF-16 code units matching Dart String indexing.
+        endOffset:
+          type: integer
+          minimum: 1
+          description: >
+            Zero-indexed exclusive ending offset measured in UTF-16 code units.
+        excerpt:
+          type: string
+          minLength: 1
+          description: >
+            Byte-for-byte exact substring matching submitted text between startOffset and endOffset.
+
+    AiFinding:
+      type: object
+      required:
+        - id
+        - category
+        - severity
+        - title
+        - explanation
+        - evidenceReferences
+      properties:
+        id:
+          type: string
+          minLength: 1
+          description: Server-assigned finding identifier.
+        category:
+          $ref: '#/components/schemas/IndicatorCategory'
+        severity:
+          $ref: '#/components/schemas/FindingSeverity'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Concise factual summary of what pattern was observed.
+        explanation:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          description: Objective context explaining why this pattern warrants independent verification.
+        evidenceReferences:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/EvidenceReference'
+
+    SuggestedAction:
+      type: object
+      required:
+        - id
+        - priority
+        - title
+        - detail
+      properties:
+        id:
+          type: string
+          example: 'action-verify-bank-official'
+        priority:
+          type: string
+          enum: [immediate, recommended, conditional]
+        title:
+          type: string
+          maxLength: 128
+        detail:
+          type: string
+          maxLength: 512
+
+    AnalysisAiResponse:
+      type: object
+      required:
+        - reportId
+        - snapshotId
+        - provider
+        - model
+        - analyzedAt
+        - factualSummary
+        - findings
+        - uncertaintyNotes
+        - suggestedActions
+      properties:
+        reportId:
+          type: string
+          description: Unique server-generated report identifier.
+        snapshotId:
+          type: string
+          description: Echoed snapshot identifier matching request.
+        provider:
+          type: string
+          enum: [google-gemini, groq-cloud, synthetic-fallback]
+        model:
+          type: string
+          example: 'gemini-1.5-flash'
+        analyzedAt:
+          type: string
+          format: date-time
+        factualSummary:
+          type: string
+          maxLength: 512
+          description: Objective summary statement without risk percentages or safety guarantees.
+        findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiFinding'
+        uncertaintyNotes:
+          type: array
+          items:
+            type: string
+        suggestedActions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SuggestedAction'
+
+    UserProfileResponse:
+      type: object
+      required:
+        - userId
+        - email
+        - emailVerified
+        - createdAt
+        - syncEnabled
+        - quotaRemainingToday
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        emailVerified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        syncEnabled:
+          type: boolean
+        quotaRemainingToday:
+          type: integer
+          minimum: 0
+
+    AccountDeletionResponse:
+      type: object
+      required:
+        - status
+        - userId
+        - deletedAt
+      properties:
+        status:
+          type: string
+          enum: [deleted]
+        userId:
+          type: string
+          format: uuid
+        deletedAt:
+          type: string
+          format: date-time
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - timestamp
+      properties:
+        code:
+          type: string
+          enum:
+            - invalid_payload
+            - text_too_long
+            - malformed_unicode
+            - only_whitespace
+            - unauthorized
+            - token_expired
+            - invalid_issuer
+            - rate_limit_exceeded
+            - ai_provider_unavailable
+            - ai_grounding_failed
+            - not_implemented
+            - internal_error
+        message:
+          type: string
+          description: Sanitized, user-safe explanation without leaking tokens, credentials, or user text.
+        requestId:
+          type: string
+          description: Correlation identifier for log tracing.
+        timestamp:
+          type: string
+          format: date-time
+        details:
+          type: object
+          additionalProperties: true
+
+    ErrorEnvelope:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
