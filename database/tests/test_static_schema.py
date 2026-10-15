@@ -18,13 +18,14 @@ class TestDatabaseMigrations(unittest.TestCase):
     """Validates PostgreSQL migration files for correct DDL, constraints, and privacy."""
 
     def test_migration_files_present_and_ordered(self):
-        """Ensures all 5 migrations exist with valid sequential prefixes."""
+        """Ensures all 6 migrations exist with valid sequential prefixes."""
         expected_migrations = [
             "00001_create_profiles.sql",
             "00002_create_ai_usage_quotas.sql",
             "00003_create_synced_reports.sql",
             "00004_create_rls_and_policies.sql",
             "00005_create_auth_trigger.sql",
+            "00006_create_quota_reservation.sql",
         ]
         actual_files = sorted([f.name for f in MIGRATIONS_DIR.glob("*.sql")])
         self.assertEqual(actual_files, expected_migrations)
@@ -138,6 +139,17 @@ class TestDatabaseMigrations(unittest.TestCase):
 class TestSQLRegressionSuites(unittest.TestCase):
     """Validates SQL regression test files for complete coverage and transaction safety."""
 
+    def test_quota_reservation_invariants(self):
+        """Validates migration 6 quota reservation, release, and profile recovery functions."""
+        content = (MIGRATIONS_DIR / "00006_create_quota_reservation.sql").read_text(encoding="utf-8")
+        self.assertIn("FUNCTION public.reserve_ai_quota", content)
+        self.assertIn("FUNCTION public.release_ai_quota", content)
+        self.assertIn("FUNCTION public.ensure_profile_exists", content)
+        self.assertIn("SECURITY DEFINER", content)
+        self.assertIn("SET search_path = public, auth, pg_temp", content)
+        self.assertIn("REVOKE ALL ON FUNCTION public.reserve_ai_quota(UUID, INT, INT) FROM PUBLIC, anon, authenticated;", content)
+        self.assertIn("GRANT EXECUTE ON FUNCTION public.reserve_ai_quota(UUID, INT, INT) TO service_role, postgres;", content)
+
     def test_regression_test_files_present(self):
         """Verifies all required SQL regression test suites exist."""
         expected_tests = [
@@ -145,6 +157,7 @@ class TestSQLRegressionSuites(unittest.TestCase):
             "02_test_quotas_isolation.sql",
             "03_test_reports_sync_rls.sql",
             "04_test_cascade_deletion.sql",
+            "05_test_quota_reservation.sql",
         ]
         actual_files = sorted([f.name for f in TESTS_SQL_DIR.glob("*.sql")])
         self.assertEqual(actual_files, expected_tests)

@@ -23,7 +23,7 @@ jobs:
           python-version: "3.11"
 
       - name: Run Static Schema Test Suite
-        run: python -m unittest discover tests
+        run: python -m unittest discover database/tests
 
   postgres-rls-tests:
     name: PostgreSQL 16 Migration & RLS Enforcement
@@ -65,26 +65,29 @@ jobs:
         run: psql -c "SELECT version();"
 
       - name: Apply Test Auth Compatibility Fixtures
-        run: psql -v ON_ERROR_STOP=1 -f tests/fixtures/test_auth_compat.sql
+        run: psql -v ON_ERROR_STOP=1 -f database/tests/fixtures/test_auth_compat.sql
 
       - name: Apply Migrations Sequentially
         run: |
-          for migration in migrations/*.sql; do
+          for migration in database/migrations/*.sql; do
             echo "Applying $migration..."
             psql -v ON_ERROR_STOP=1 -f "$migration"
           done
 
       - name: Apply Synthetic Test Seeds
-        run: psql -v ON_ERROR_STOP=1 -f seeds/001_synthetic_test_seeds.sql
+        run: psql -v ON_ERROR_STOP=1 -f database/seeds/001_synthetic_test_seeds.sql
 
       - name: Run SQL Regression Test 01 - Profiles RLS
-        run: psql -v ON_ERROR_STOP=1 -f tests/sql/01_test_profiles_rls.sql
+        run: psql -v ON_ERROR_STOP=1 -f database/tests/sql/01_test_profiles_rls.sql
 
       - name: Run SQL Regression Test 02 - Quotas Isolation
-        run: psql -v ON_ERROR_STOP=1 -f tests/sql/02_test_quotas_isolation.sql
+        run: psql -v ON_ERROR_STOP=1 -f database/tests/sql/02_test_quotas_isolation.sql
 
       - name: Run SQL Regression Test 03 - Synced Reports RLS
-        run: psql -v ON_ERROR_STOP=1 -f tests/sql/03_test_reports_sync_rls.sql
+        run: psql -v ON_ERROR_STOP=1 -f database/tests/sql/03_test_reports_sync_rls.sql
 
       - name: Run SQL Regression Test 04 - Cascade Deletion
-        run: psql -v ON_ERROR_STOP=1 -f tests/sql/04_test_cascade_deletion.sql
+        run: psql -v ON_ERROR_STOP=1 -f database/tests/sql/04_test_cascade_deletion.sql
+
+      - name: Run SQL Regression Test 05 - Quota Reservation
+        run: psql -v ON_ERROR_STOP=1 -f database/tests/sql/05_test_quota_reservation.sql

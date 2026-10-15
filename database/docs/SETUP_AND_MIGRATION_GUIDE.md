@@ -27,6 +27,7 @@ Migrations are located in `migrations/` and must be applied in strict numerical 
 | `00003_create_synced_reports.sql` | Cloud report synchronization | `public.synced_reports`, 500 KB limit, tombstone check |
 | `00004_create_rls_and_policies.sql` | RLS and permission grants | RLS enabled/forced, role grants, policies |
 | `00005_create_auth_trigger.sql` | Automatic profile provisioning | `public.handle_new_user()` trigger on `auth.users` |
+| `00006_create_quota_reservation.sql` | Atomic quota & profile recovery | `public.reserve_ai_quota()`, `release_ai_quota()`, `ensure_profile_exists()` |
 
 ---
 
