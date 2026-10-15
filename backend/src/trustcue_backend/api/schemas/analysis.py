@@ -42,6 +42,43 @@ class FindingSeverity(StrEnum):
     informational = "informational"
 
 
+class UploadConsentMetadata(BaseModel):
+    """Explicit per-request user upload consent declaration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    granted: bool = Field(
+        description="Explicit affirmative confirmation to transmit this exact reviewed text snapshot."
+    )
+    disclosureVersion: Annotated[
+        str,
+        Field(
+            min_length=1,
+            max_length=32,
+            description="Version of the pre-upload consent disclosure acknowledged by the user.",
+        ),
+    ]
+    timestamp: datetime = Field(
+        description="Client timestamp when affirmative upload consent was explicitly granted."
+    )
+    recipient: Annotated[
+        str,
+        Field(
+            min_length=1,
+            max_length=64,
+            description="Recipient service identifier acknowledged by the user.",
+        ),
+    ]
+    provider: Annotated[
+        str,
+        Field(
+            min_length=1,
+            max_length=64,
+            description="AI provider identifier acknowledged by the user.",
+        ),
+    ]
+
+
 class AnalysisAiRequest(BaseModel):
     """Request payload for protected server-assisted AI analysis."""
 
@@ -72,6 +109,10 @@ class AnalysisAiRequest(BaseModel):
         ),
     ]
     clientTimestamp: datetime
+    consent: UploadConsentMetadata | None = Field(
+        default=None,
+        description="Explicit per-request user upload consent declaration.",
+    )
 
     @field_validator("text")
     @classmethod

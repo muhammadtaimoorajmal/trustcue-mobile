@@ -465,6 +465,38 @@ components:
         - informational
       description: Relative potential warning significance of the observed indicator pattern.
 
+    UploadConsentMetadata:
+      type: object
+      required:
+        - granted
+        - disclosureVersion
+        - timestamp
+        - recipient
+        - provider
+      properties:
+        granted:
+          type: boolean
+          description: Explicit affirmative confirmation to transmit this exact reviewed text snapshot.
+        disclosureVersion:
+          type: string
+          minLength: 1
+          maxLength: 32
+          description: Version of the pre-upload consent disclosure acknowledged by the user.
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO-8601 UTC timestamp when affirmative upload consent was explicitly granted.
+        recipient:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Recipient service identifier acknowledged by the user.
+        provider:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: AI provider identifier acknowledged by the user.
+
     AnalysisAiRequest:
       type: object
       required:
@@ -498,6 +530,8 @@ components:
           type: string
           format: date-time
           description: ISO-8601 UTC timestamp of client-side review confirmation.
+        consent:
+          $ref: '#/components/schemas/UploadConsentMetadata'
 
     EvidenceReference:
       type: object
