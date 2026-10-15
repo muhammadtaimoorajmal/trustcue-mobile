@@ -46,7 +46,12 @@ class JWTValidator:
         self.jwks_client: PyJWKClient | None = None
 
         if self.jwks_url:
-            self.jwks_client = PyJWKClient(self.jwks_url)
+            self.jwks_client = PyJWKClient(
+                self.jwks_url,
+                cache_keys=True,
+                max_cached_keys=16,
+                timeout=5,
+            )
 
     def validate_token(self, token: str) -> AuthenticatedUser:
         """
@@ -61,9 +66,48 @@ class JWTValidator:
                 message="Authentication token is missing or empty.",
             )
 
-        # Resolve signing key
+        # 0. Inspect token header to defend against algorithm confusion and header injection
+        try:
+            unverified_header = jwt.get_unverified_header(token_clean)
+        except Exception as exc:
+            raise AuthenticationError(
+                code="unauthorized",
+                message="Authentication token header is malformed.",
+            ) from exc
+
+        # Disallow remote key location headers (jku/x5u)
+        if "jku" in unverified_header or "x5u" in unverified_header:
+            raise AuthenticationError(
+                code="unauthorized",
+                message="Insecure token header parameter detected.",
+            )
+
+        token_alg = str(unverified_header.get("alg", "")).strip()
+        if not token_alg or token_alg.lower() == "none":
+            raise AuthenticationError(
+                code="unauthorized",
+                message="Authentication token algorithm is invalid or insecure.",
+            )
+
+        # Resolve signing key and enforce algorithm-to-key binding
         key: Any
+        allowed_algorithms: list[str]
+
         if self.jwks_client:
+            # JWKS authority must strictly use asymmetric algorithms
+            if token_alg.upper().startswith("HS"):
+                raise AuthenticationError(
+                    code="unauthorized",
+                    message="Symmetric HMAC algorithms are not permitted for JWKS verification.",
+                )
+            allowed_algorithms = [a for a in self.algorithms if not a.upper().startswith("HS")]
+            if not allowed_algorithms:
+                allowed_algorithms = ["RS256", "ES256"]
+            if token_alg.upper() not in [a.upper() for a in allowed_algorithms]:
+                raise AuthenticationError(
+                    code="unauthorized",
+                    message=f"Algorithm '{token_alg}' is not in the allowed JWKS algorithm list.",
+                )
             try:
                 signing_key = self.jwks_client.get_signing_key_from_jwt(token_clean)
                 key = signing_key.key
@@ -74,6 +118,20 @@ class JWTValidator:
                     message="Unable to verify token signature against JWKS authority.",
                 ) from exc
         elif self.jwt_secret:
+            # Shared secret configuration must strictly use symmetric HMAC algorithms
+            if not token_alg.upper().startswith("HS"):
+                raise AuthenticationError(
+                    code="unauthorized",
+                    message="Asymmetric algorithms are not permitted when HMAC secret is configured.",
+                )
+            allowed_algorithms = [a for a in self.algorithms if a.upper().startswith("HS")]
+            if not allowed_algorithms:
+                allowed_algorithms = ["HS256"]
+            if token_alg.upper() not in [a.upper() for a in allowed_algorithms]:
+                raise AuthenticationError(
+                    code="unauthorized",
+                    message=f"Algorithm '{token_alg}' is not in the allowed HMAC algorithm list.",
+                )
             key = self.jwt_secret
         else:
             raise AuthenticationError(
@@ -93,7 +151,7 @@ class JWTValidator:
             claims = jwt.decode(
                 token_clean,
                 key,
-                algorithms=self.algorithms,
+                algorithms=allowed_algorithms,
                 audience=self.audience if self.audience else None,
                 issuer=self.issuer if self.issuer else None,
                 options=options,

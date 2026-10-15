@@ -62,6 +62,7 @@ def build_error_envelope(
     request_id: str,
     status_code: int,
     details: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
 ) -> JSONResponse:
     """Construct a standardized, privacy-safe JSON error response."""
     payload: dict[str, Any] = {
@@ -75,22 +76,31 @@ def build_error_envelope(
     if details:
         payload["error"]["details"] = details
 
+    response_headers = {"X-Request-ID": request_id}
+    if headers:
+        response_headers.update(headers)
+
     return JSONResponse(
         status_code=status_code,
         content=payload,
-        headers={"X-Request-ID": request_id},
+        headers=response_headers,
     )
 
 
 async def trustcue_error_handler(request: Request, exc: TrustCueError) -> JSONResponse:
     """Handle domain TrustCueError exceptions."""
     req_id = get_request_id(request)
+    extra_headers: dict[str, str] = {}
+    if hasattr(exc, "retry_after"):
+        extra_headers["Retry-After"] = str(exc.retry_after)
+
     return build_error_envelope(
         code=exc.code,
         message=exc.message,
         request_id=req_id,
         status_code=exc.status_code,
         details=exc.details,
+        headers=extra_headers,
     )
 
 

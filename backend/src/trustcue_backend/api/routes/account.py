@@ -6,13 +6,18 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from trustcue_backend.api.dependencies import get_app_settings, get_current_user
+from trustcue_backend.api.dependencies import (
+    get_app_settings,
+    get_current_user,
+    get_quota_store,
+)
 from trustcue_backend.api.schemas.account import (
     AccountDeletionResponse,
     UserProfileResponse,
 )
 from trustcue_backend.core.auth import AuthenticatedUser
 from trustcue_backend.core.config import Settings
+from trustcue_backend.core.quota import QuotaStore
 
 logger = logging.getLogger("trustcue.account")
 
@@ -41,6 +46,7 @@ router = APIRouter(prefix="/api/v1/account", tags=["Account"])
 async def get_account_profile(
     current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_app_settings)],
+    quota_store: Annotated[QuotaStore, Depends(get_quota_store)],
 ) -> UserProfileResponse:
     """Retrieve verified profile metadata for the authenticated user session."""
     created_at = datetime.now(UTC)
@@ -51,6 +57,7 @@ async def get_account_profile(
             pass
 
     user_email = current_user.email or f"{current_user.user_id}@trustcue.local"
+    remaining_quota = await quota_store.get_remaining_quota(current_user.user_id)
 
     return UserProfileResponse(
         userId=current_user.user_id,
@@ -58,7 +65,7 @@ async def get_account_profile(
         emailVerified=current_user.email_verified,
         createdAt=created_at,
         syncEnabled=False,
-        quotaRemainingToday=settings.DEFAULT_DAILY_AI_QUOTA,
+        quotaRemainingToday=remaining_quota,
     )
 
 

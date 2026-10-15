@@ -3,6 +3,9 @@
 import time
 from typing import TYPE_CHECKING, Literal
 
+from trustcue_backend.core.quota import InMemoryQuotaStore, QuotaStore
+from trustcue_backend.core.rate_limit import ConcurrencyLimiter, SlidingWindowRateLimiter
+
 if TYPE_CHECKING:
     from trustcue_backend.core.config import Settings
 
@@ -10,10 +13,13 @@ if TYPE_CHECKING:
 class AppState:
     """Manages application runtime lifecycle, uptime, and readiness state."""
 
-    def __init__(self) -> None:
+    def __init__(self, quota_store: QuotaStore | None = None) -> None:
         self.started_at_monotonic: float = time.monotonic()
         self.is_ready: bool = True
         self.is_shutting_down: bool = False
+        self.rate_limiter = SlidingWindowRateLimiter()
+        self.concurrency_limiter = ConcurrencyLimiter()
+        self.quota_store = quota_store or InMemoryQuotaStore()
 
     @property
     def uptime_seconds(self) -> int:

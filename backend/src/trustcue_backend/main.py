@@ -3,20 +3,17 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import Response
 
 from trustcue_backend import __version__
-from trustcue_backend.api.routes import account, health
+from trustcue_backend.api.routes import account, analysis, health
+from trustcue_backend.core.body_limiter import RequestBodyLimitMiddleware
 from trustcue_backend.core.config import Settings, get_settings
 from trustcue_backend.core.errors import (
     TrustCueError,
-    build_error_envelope,
-    get_request_id,
     http_exception_handler,
     trustcue_error_handler,
     unhandled_exception_handler,
@@ -27,31 +24,6 @@ from trustcue_backend.core.logging import (
     configure_logging,
 )
 from trustcue_backend.core.state import AppState
-
-
-class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
-    """Rejects request payloads exceeding the configured byte threshold."""
-
-    def __init__(self, app: FastAPI, max_bytes: int) -> None:
-        super().__init__(app)
-        self.max_bytes = max_bytes
-
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        content_length = request.headers.get("content-length")
-        if content_length:
-            try:
-                length = int(content_length)
-                if length > self.max_bytes:
-                    req_id = get_request_id(request)
-                    return build_error_envelope(
-                        code="PAYLOAD_TOO_LARGE",
-                        message=f"Request payload exceeds maximum allowed size of {self.max_bytes} bytes.",
-                        request_id=req_id,
-                        status_code=413,
-                    )
-            except ValueError:
-                pass
-        return await call_next(request)
 
 
 @asynccontextmanager
@@ -102,7 +74,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(PrivacySafeAccessMiddleware)
 
     # 2. Request Body Size Limit Middleware
-    app.add_middleware(RequestSizeLimitMiddleware, max_bytes=app_settings.MAX_REQUEST_BODY_BYTES)
+    app.add_middleware(RequestBodyLimitMiddleware, max_bytes=app_settings.MAX_REQUEST_BODY_BYTES)
 
     # 3. CORS Middleware (Applied only if explicit origins are configured)
     if app_settings.CORS_ALLOWED_ORIGINS:
@@ -123,6 +95,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Mount Implemented Route Handlers
     app.include_router(health.router)
     app.include_router(account.router)
+    app.include_router(analysis.router)
 
     return app
 
