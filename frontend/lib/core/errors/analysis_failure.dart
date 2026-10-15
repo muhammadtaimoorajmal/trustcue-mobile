@@ -10,6 +10,8 @@ enum AnalysisFailureCode {
   unauthorized,
   consentRequired,
   providerError,
+  storage,
+  corruptData,
 }
 
 /// Represents an operational or validation failure in input processing or analysis.
@@ -98,6 +100,20 @@ class AnalysisFailure {
   const AnalysisFailure.providerError(String message, [String? safeDetails])
     : this(
         code: AnalysisFailureCode.providerError,
+        message: message,
+        safeDetails: safeDetails,
+      );
+
+  const AnalysisFailure.storage(String message, [String? safeDetails])
+    : this(
+        code: AnalysisFailureCode.storage,
+        message: message,
+        safeDetails: safeDetails,
+      );
+
+  const AnalysisFailure.corruptData(String message, [String? safeDetails])
+    : this(
+        code: AnalysisFailureCode.corruptData,
         message: message,
         safeDetails: safeDetails,
       );

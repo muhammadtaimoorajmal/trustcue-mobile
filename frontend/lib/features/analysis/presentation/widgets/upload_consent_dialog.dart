@@ -119,14 +119,14 @@ class UploadConsentDialog extends StatelessWidget {
                               theme,
                               icon: Icons.lock_outline,
                               title: 'Destination & Transit',
-                              description: 'Text is encrypted via HTTPS and sent to the TrustCue backend and Groq Cloud LPUs.',
+                              description: 'Text is sent over HTTPS to the TrustCue backend, which forwards it to Groq Cloud LPUs.',
                             ),
                             const SizedBox(height: 8),
                             _buildDisclosureRow(
                               theme,
                               icon: Icons.memory_outlined,
                               title: 'Ephemeral Processing',
-                              description: 'Processed in memory solely to analyze potential indicators. Not retained or used to train models.',
+                              description: 'Processed solely to analyze indicators. Not used for AI training; transient diagnostic logs may be held up to 30 days by Groq for reliability.',
                             ),
                             const SizedBox(height: 8),
                             _buildDisclosureRow(

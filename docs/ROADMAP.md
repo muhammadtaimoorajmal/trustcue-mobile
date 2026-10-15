@@ -59,7 +59,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **33** | Protected AI-provider integration | Completed (`be2761b`) | `backend` |
 | **34** | AI output/evidence validation and adversarial tests | Completed (`1f093f8`) | `backend` |
 | **35** | Mobile upload consent and optional AI workflow | Completed | `frontend` |
-| **36** | Local report persistence and migrations | Planned | `frontend` |
+| **36** | Local report persistence and migrations | Completed | `frontend` |
 | **37** | History, search, report details and deletion | Planned | `frontend` |
 | **38** | Account/profile settings and account deletion | Planned | `frontend` / `backend` |
 | **39** | Optional account-owned backup/sync and isolation | Planned | `frontend` / `backend` / `database` |

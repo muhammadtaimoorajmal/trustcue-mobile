@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:trustcue_mobile/core/errors/analysis_failure.dart';
 import 'package:trustcue_mobile/core/types/result.dart';
+import 'package:trustcue_mobile/features/analysis/data/serialization/analysis_finding_codec.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/ai_analysis_report.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_finding.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/assessment_action.dart';
@@ -11,6 +12,35 @@ import 'package:trustcue_mobile/features/analysis/domain/models/finding_origin.d
 /// Codec strictly decoding backend `POST /api/v1/analysis/ai` response envelopes into [AiAnalysisReport].
 class AiAnalysisReportCodec {
   const AiAnalysisReportCodec();
+
+  /// Encodes an [AiAnalysisReport] into a JSON-compatible map.
+  Map<String, dynamic> encode(AiAnalysisReport report) {
+    const findingCodec = AnalysisFindingCodec();
+    return {
+      'reportId': report.reportId,
+      'snapshotId': report.snapshotId,
+      'provider': report.provider,
+      'model': report.model,
+      'analyzedAt': report.analyzedAt.toIso8601String(),
+      'factualSummary': report.factualSummary,
+      'findings': report.findings.map(findingCodec.encode).toList(),
+      'uncertaintyNotes': report.uncertaintyNotes.toList(),
+      'suggestedActions': report.suggestedActions
+          .map(
+            (action) => {
+              'id': action.id,
+              'title': action.title,
+              'description': action.description,
+              'detail': action.description,
+              'priority': action.priority.name,
+              'supportingFindingIds': action.supportingFindingIds,
+              'supportingCategoryIds': action.supportingCategoryIds,
+              'isConditionalPostAction': action.isConditionalPostAction,
+            },
+          )
+          .toList(),
+    };
+  }
 
   /// Strictly decodes a JSON-compatible map into an [AiAnalysisReport].
   ///

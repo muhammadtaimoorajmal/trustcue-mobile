@@ -1247,6 +1247,10 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Local Save Action
+        _buildLocalSaveAction(theme),
+        const SizedBox(height: 12),
+
         AppButton.secondary(
           label: 'Return to review and edit text',
           onPressed: controller.returnToReview,
@@ -1258,5 +1262,110 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
         ),
       ],
     );
+  }
+
+  Widget _buildLocalSaveAction(ThemeData theme) {
+    return Obx(() {
+      final status = controller.saveStatus.value;
+
+      switch (status) {
+        case ReportSaveStatus.saved:
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  color: theme.colorScheme.primary,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Saved on this device',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Only reviewed text and findings are stored locally on your device.',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+
+        case ReportSaveStatus.saving:
+          return const AppButton.primary(
+            label: 'Saving to device...',
+            isLoading: true,
+            onPressed: null,
+          );
+
+        case ReportSaveStatus.failed:
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer.withValues(
+                    alpha: 0.35,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: theme.colorScheme.error),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      color: theme.colorScheme.error,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        controller.saveErrorMessage.value ??
+                            'Unable to save report locally.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              AppButton.primary(
+                label: 'Retry saving to device',
+                icon: Icons.refresh,
+                onPressed: controller.saveReportOnDevice,
+              ),
+            ],
+          );
+
+        case ReportSaveStatus.notSaved:
+          return AppButton.primary(
+            label: 'Save on this device',
+            icon: Icons.save_alt_outlined,
+            onPressed: controller.saveReportOnDevice,
+          );
+      }
+    });
   }
 }

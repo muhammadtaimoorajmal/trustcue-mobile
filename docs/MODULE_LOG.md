@@ -956,3 +956,66 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Whitespace audit: PASS (`git diff --check` clean).
 - **Physical Device & Verification Status:** Device test from Module 32 remains preserved as pending. No phone is required for mobile upload consent and cloud AI workflow integration.
 - **Status:** Complete. Pushed to `backend` (`d1542c6`) and `frontend`. Stopped before Module 36.
+
+## Module 36: Local Report Persistence and Migrations
+- **Scope:** Pure-local transactional SQLite persistence for analysis reports, schema migrations, domain models, integrity validation, and explicit "Save on this device" interaction.
+- **Branch:** `frontend`
+- **Key Deliverables & Architectural Invariants:**
+  - Selected and integrated pure-local SQLite via `sqflite: 2.4.4+2` (mobile runtime) and `sqflite_common_ffi: 2.4.4` (host/desktop tests) in `frontend/pubspec.yaml`.
+  - Configured app-private sandboxed database directory (`getDatabasesPath()`) with `android:allowBackup="false"` in `AndroidManifest.xml` to prevent OS cloud extraction.
+  - Implemented `LocalDatabaseMigrator` (`lib/features/reports/data/database/local_database_migrator.dart`):
+    - SQLite schema version management (`PRAGMA user_version = 1`).
+    - Enforced foreign keys (`PRAGMA foreign_keys = ON`).
+    - Schema V1 DDL creating `text_snapshots` and `saved_reports` tables with indices on `snapshot_id`, `account_id`, `saved_at`, and `analyzed_at`.
+    - Protected downgrade handling: throws typed `UnsupportedDatabaseVersionException` without wiping, corrupting, or deleting user data.
+  - Implemented domain models (`lib/features/reports/domain/models/`):
+    - `SavedReport`: Immutable domain model binding `TextSnapshot`, `AnalysisReport`, optional `AiAnalysisReport`, optional `accountId`, and `AssessmentOutcomeState`.
+    - `SavedReportSummary`: Bounded summary model for memory-efficient paginated queries without loading unredacted text bodies into memory.
+  - Implemented `SavedReportCodec` (`lib/features/reports/data/serialization/saved_report_codec.dart`):
+    - Format version `formatVersion = 1` JSON codec.
+    - Strictly validates all finding offsets against the snapshot upon deserialization.
+    - Maps format or invariant errors to typed `AnalysisFailureCode.corruptData`.
+  - Implemented `SqliteReportRepository` (`lib/features/reports/data/repositories/sqlite_report_repository.dart`):
+    - ACID transactional writes for report and snapshot storage.
+    - Idempotent duplicate save protection: returns existing record if snapshot matches.
+    - Conflicting save rejection: throws typed error if report ID exists with differing snapshot.
+    - Cascade orphan snapshot pruning: automatically deletes unreferenced snapshots upon report deletion.
+    - Account boundary scoping: guest reports (`accountId = null`) isolated from user account reports.
+  - Integrated explicit saving in `AnalysisResultsController` & `AnalysisResultsScreen`:
+    - Reports are saved strictly upon explicit user tap ("Save on this device"), never automatically.
+    - Saving spinner, retryable error banner on low storage/failure, and duplicate-tap protection.
+    - Reconciled upload consent wording regarding Groq Cloud transient diagnostic logs (up to 30 days for service reliability; zero model training).
+- **Components Created / Updated:**
+  - `lib/features/reports/domain/models/saved_report.dart`
+  - `lib/features/reports/domain/models/saved_report_summary.dart`
+  - `lib/features/reports/domain/contracts/local_report_repository.dart`
+  - `lib/features/reports/data/database/database_constants.dart`
+  - `lib/features/reports/data/database/local_database_migrator.dart`
+  - `lib/features/reports/data/database/app_database.dart`
+  - `lib/features/reports/data/serialization/saved_report_codec.dart`
+  - `lib/features/reports/data/repositories/sqlite_report_repository.dart`
+  - `lib/core/errors/analysis_failure.dart`
+  - `lib/features/input/domain/models/ocr_failure.dart`
+  - `lib/features/analysis/domain/models/analysis_report.dart`
+  - `lib/features/analysis/data/serialization/ai_analysis_report_codec.dart`
+  - `lib/features/analysis/presentation/controllers/analysis_results_controller.dart`
+  - `lib/features/analysis/presentation/screens/analysis_results_screen.dart`
+  - `lib/features/analysis/presentation/bindings/analysis_results_binding.dart`
+  - `lib/features/analysis/presentation/widgets/upload_consent_dialog.dart`
+  - `android/app/src/main/AndroidManifest.xml`
+  - `pubspec.yaml`, `pubspec.lock`
+  - `test/features/reports/domain/models/saved_report_test.dart`
+  - `test/features/reports/data/serialization/saved_report_codec_test.dart`
+  - `test/features/reports/data/database/local_database_migrator_test.dart`
+  - `test/features/reports/data/repositories/sqlite_report_repository_test.dart`
+  - `test/features/analysis/presentation/controllers/analysis_results_controller_persistence_test.dart`
+  - `test/features/analysis/presentation/screens/analysis_results_screen_persistence_test.dart`
+  - `docs/ROADMAP.md`, `docs/PROJECT_STATE.md`, `docs/MODULE_LOG.md`
+- **Checks Performed:**
+  - Full Flutter test suite: 710/710 PASS (35 new tests added, 0 failures).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `dart format`: PASS (231 files formatted, 0 changes needed).
+  - `flutter build apk --debug --no-pub`: PASS (`build/app/outputs/flutter-apk/app-debug.apk` built successfully).
+  - Whitespace audit: PASS (`git diff --check` clean).
+- **Physical Device & Verification Status:** Device test from Module 32 remains preserved as pending. No phone is required for local report persistence and SQLite database migrations.
+- **Status:** Complete. Pushed to `frontend`. Stopped before Module 37.

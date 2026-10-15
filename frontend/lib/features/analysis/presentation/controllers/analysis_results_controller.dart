@@ -4,6 +4,7 @@ import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/features/analysis/data/services/analysis_api_client.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/ai_analysis_report.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_finding.dart';
+import 'package:trustcue_mobile/features/analysis/domain/models/analysis_report.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/local_assessment.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/upload_consent.dart';
 import 'package:trustcue_mobile/features/analysis/domain/services/local_analysis_pipeline.dart';
@@ -12,6 +13,24 @@ import 'package:trustcue_mobile/features/analysis/presentation/widgets/analyzed_
 import 'package:trustcue_mobile/features/analysis/presentation/widgets/upload_consent_dialog.dart';
 import 'package:trustcue_mobile/features/auth/domain/contracts/auth_repository.dart';
 import 'package:trustcue_mobile/features/auth/domain/models/auth_state.dart';
+import 'package:trustcue_mobile/features/reports/data/database/app_database.dart';
+import 'package:trustcue_mobile/features/reports/domain/contracts/local_report_repository.dart';
+import 'package:trustcue_mobile/features/reports/domain/models/saved_report.dart';
+
+/// Explicit states for local on-device report persistence.
+enum ReportSaveStatus {
+  /// Report has not been saved on this device yet.
+  notSaved,
+
+  /// Currently executing transactional write to local database.
+  saving,
+
+  /// Successfully persisted to local device storage.
+  saved,
+
+  /// Save operation encountered a database or validation failure.
+  failed,
+}
 
 /// Explicit lifecycle states for on-device analysis execution.
 enum AnalysisState {
@@ -66,12 +85,14 @@ class AnalysisResultsController extends GetxController {
   final AnalysisResultsArgs? args;
   final AnalysisApiClient? apiClient;
   final AuthRepository? authRepository;
+  final LocalReportRepository? reportRepository;
 
   AnalysisResultsController({
     required this.pipeline,
     AnalysisResultsArgs? args,
     this.apiClient,
     this.authRepository,
+    this.reportRepository,
   }) : args = args ?? _getRouteArguments();
 
   final Rx<AnalysisState> state = AnalysisState.initial.obs;
@@ -87,6 +108,11 @@ class AnalysisResultsController extends GetxController {
   final Rxn<String> aiRetryAfter = Rxn<String>();
   final Rxn<UploadConsent> currentConsent = Rxn<UploadConsent>();
   final RxBool isRequestingAi = false.obs;
+
+  // Local persistence state
+  final Rx<ReportSaveStatus> saveStatus = ReportSaveStatus.notSaved.obs;
+  final RxBool isSaving = false.obs;
+  final RxnString saveErrorMessage = RxnString();
 
   int _operationId = 0;
   int _aiOperationId = 0;
@@ -117,8 +143,10 @@ class AnalysisResultsController extends GetxController {
       return;
     }
 
-    // Reset previous AI state upon fresh analysis start
+    // Reset previous AI and persistence state upon fresh analysis start
     invalidateConsent();
+    saveStatus.value = ReportSaveStatus.notSaved;
+    saveErrorMessage.value = null;
 
     final operationId = ++_operationId;
     state.value = AnalysisState.running;
@@ -161,8 +189,9 @@ class AnalysisResultsController extends GetxController {
   Future<void> requestAiAnalysis(BuildContext context) async {
     final currentArgs = args;
     if (currentArgs == null || !currentArgs.isValid) return;
-    if (isRequestingAi.value || aiState.value == AiAnalysisState.submitting)
+    if (isRequestingAi.value || aiState.value == AiAnalysisState.submitting) {
       return;
+    }
 
     final auth =
         authRepository ??
@@ -282,6 +311,87 @@ class AnalysisResultsController extends GetxController {
       await Get.toNamed(AppRoutes.guidance);
     } finally {
       isNavigatingAway.value = false;
+    }
+  }
+
+  /// Persists the current analysis findings and reviewed snapshot to local device storage.
+  ///
+  /// Guarantees:
+  /// - Explicit user initiation only; never runs automatically.
+  /// - Atomic transactional write to app-private SQLite database.
+  /// - Repeated calls are safe and idempotent.
+  /// - Failure leaves current analysis results 100% visible on screen.
+  Future<void> saveReportOnDevice() async {
+    final currentArgs = args;
+    if (currentArgs == null || !currentArgs.isValid) return;
+    if (isSaving.value || saveStatus.value == ReportSaveStatus.saving) return;
+
+    final currentAssessment = assessment.value;
+    if (currentAssessment == null) return;
+
+    final repo =
+        reportRepository ??
+        (Get.isRegistered<LocalReportRepository>()
+            ? Get.find<LocalReportRepository>()
+            : AppDatabase.getInstance());
+
+    isSaving.value = true;
+    saveStatus.value = ReportSaveStatus.saving;
+    saveErrorMessage.value = null;
+
+    try {
+      final auth =
+          authRepository ??
+          (Get.isRegistered<AuthRepository>()
+              ? Get.find<AuthRepository>()
+              : null);
+      final accountId = auth?.currentStatus == AuthStatus.authenticated
+          ? auth?.currentUser?.id
+          : null;
+
+      final now = DateTime.now().toUtc();
+      final localFindings = currentAssessment.groupedIndicators
+          .expand((group) => group.findings)
+          .toList();
+      final limitations = [
+        currentAssessment.coverageInfo.coverageDescription,
+        ...currentAssessment.uncertaintyNotes,
+      ];
+      final suggestedActions = currentAssessment.actionableSteps
+          .map((action) => action.title)
+          .toList();
+
+      final localReport = AnalysisReport(
+        id: currentAssessment.reportId,
+        snapshot: currentArgs.snapshot,
+        analyzedAt: currentAssessment.createdAt,
+        findings: localFindings,
+        limitations: limitations,
+        suggestedActions: suggestedActions,
+      );
+
+      final savedReport = SavedReport(
+        id: currentAssessment.reportId,
+        snapshot: currentArgs.snapshot,
+        accountId: accountId,
+        analyzedAt: currentAssessment.createdAt,
+        savedAt: now,
+        localReport: localReport,
+        aiReport: aiReport.value,
+      );
+
+      final saveResult = await repo.saveReport(savedReport);
+      if (saveResult.isSuccess) {
+        saveStatus.value = ReportSaveStatus.saved;
+      } else {
+        saveStatus.value = ReportSaveStatus.failed;
+        saveErrorMessage.value = saveResult.failureOrNull?.message;
+      }
+    } catch (e) {
+      saveStatus.value = ReportSaveStatus.failed;
+      saveErrorMessage.value = 'Failed to save report: ${e.toString()}';
+    } finally {
+      isSaving.value = false;
     }
   }
 

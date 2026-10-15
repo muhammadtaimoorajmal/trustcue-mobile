@@ -60,6 +60,23 @@ class AnalysisReport {
     }
   }
 
+  /// Validates that the report's snapshot matches [otherSnapshot] and all finding evidence offsets align.
+  void validateAgainst(TextSnapshot otherSnapshot) {
+    if (snapshot.id != otherSnapshot.id) {
+      throw ArgumentError(
+        'Snapshot ID mismatch: report bound to "${snapshot.id}" but provided snapshot is "${otherSnapshot.id}".',
+      );
+    }
+    if (snapshot.text != otherSnapshot.text) {
+      throw ArgumentError(
+        'Snapshot text mismatch between report and candidate snapshot.',
+      );
+    }
+    for (final finding in findings) {
+      finding.validateAgainst(otherSnapshot);
+    }
+  }
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;

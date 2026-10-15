@@ -7,6 +7,8 @@ import 'package:trustcue_mobile/features/analysis/domain/services/local_rule_eng
 import 'package:trustcue_mobile/features/analysis/presentation/controllers/analysis_results_controller.dart';
 import 'package:trustcue_mobile/features/analysis/presentation/models/analysis_results_args.dart';
 import 'package:trustcue_mobile/features/auth/domain/contracts/auth_repository.dart';
+import 'package:trustcue_mobile/features/reports/data/database/app_database.dart';
+import 'package:trustcue_mobile/features/reports/domain/contracts/local_report_repository.dart';
 
 /// GetX dependency injection binding for the analysis results flow.
 class AnalysisResultsBinding extends Bindings {
@@ -36,6 +38,10 @@ class AnalysisResultsBinding extends Bindings {
       });
     }
 
+    if (!Get.isRegistered<LocalReportRepository>()) {
+      Get.lazyPut<LocalReportRepository>(() => AppDatabase.getInstance());
+    }
+
     Get.lazyPut<AnalysisResultsController>(() {
       final rawArgs = Get.arguments;
       final args = rawArgs is AnalysisResultsArgs ? rawArgs : null;
@@ -47,6 +53,9 @@ class AnalysisResultsBinding extends Bindings {
             : null,
         authRepository: Get.isRegistered<AuthRepository>()
             ? Get.find<AuthRepository>()
+            : null,
+        reportRepository: Get.isRegistered<LocalReportRepository>()
+            ? Get.find<LocalReportRepository>()
             : null,
       );
     });

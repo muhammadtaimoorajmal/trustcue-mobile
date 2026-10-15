@@ -133,6 +133,9 @@ class OcrFailure {
       case AnalysisFailureCode.invalidInput:
       case AnalysisFailureCode.malformedData:
         return const OcrFailure.noReadableTextFound();
+      case AnalysisFailureCode.storage:
+      case AnalysisFailureCode.corruptData:
+        return const OcrFailure.internalError();
     }
   }
 
