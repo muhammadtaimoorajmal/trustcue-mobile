@@ -20,7 +20,7 @@ from trustcue_backend.api.schemas.analysis import (
 from trustcue_backend.core.auth import AuthenticatedUser
 from trustcue_backend.core.config import Settings
 from trustcue_backend.core.errors import TrustCueError
-from trustcue_backend.core.quota import InMemoryQuotaStore, QuotaStore
+from trustcue_backend.core.quota import QuotaStore
 from trustcue_backend.core.rate_limit import ConcurrencyLimiter, SlidingWindowRateLimiter
 from trustcue_backend.providers.service import ProtectedAiService
 
@@ -56,6 +56,9 @@ router = APIRouter(prefix="/api/v1/analysis", tags=["Analysis"])
         429: {
             "description": "Too Many Requests. Per-user rate limit or daily quota exceeded.",
         },
+        502: {
+            "description": "Bad Gateway. AI provider returned untrusted, ungrounded, or invalid output.",
+        },
         503: {
             "description": "AI provider service unavailable or not enabled.",
         },
@@ -73,51 +76,32 @@ async def analyze_text_with_ai(
     """
     Validate reviewed text snapshot, enforce rate limits, and dispatch to AI provider.
 
-    In Module 33, validates the payload and abuse controls strictly, wiring the
-    internal provider execution path. Preserves the Module 34 evidence-grounding
-    gate: public client responses return 503 until server-side evidence verification
-    is implemented, preventing raw or ungrounded model outputs from reaching mobile clients.
+    In Module 34, the internal analysis pipeline with strict untrusted-output validation and
+    exact evidence grounding is fully operational in ProtectedAiService.
+    Preserves the public real-user gate (Module 35): public client requests return honest 503
+    before acquiring quota reservations or concurrency locks, ensuring zero side effects until
+    mobile upload consent and client UX are implemented.
     """
     user_key = f"user:{current_user.user_id}"
 
     # 1. Abuse prevention: Sliding-window rate limit (10 requests/minute per user)
     await rate_limiter.check_rate_limit(user_key, max_requests=10, window_seconds=60)
 
-    # 2. Concurrency limiting: Max 1 in-flight analysis request per user
-    async with concurrency_limiter.acquire(user_key):
-        # 3. Quota reservation: Daily limit check
-        if isinstance(quota_store, InMemoryQuotaStore):
-            res_id = await quota_store.enforce_quota(current_user.user_id)
-        else:
-            success, remaining, res_id = await quota_store.reserve_quota(current_user.user_id)
-            if not success or res_id is None:
-                raise TrustCueError(
-                    code="rate_limit_exceeded",
-                    message="Daily AI analysis quota exhausted.",
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                )
+    # 2. Gate check: Check feature flag and public consent gate BEFORE side effects
+    # (no quota reservation, no concurrency locks, no external network calls).
+    if not settings.ENABLE_CLOUD_AI:
+        raise TrustCueError(
+            code="ai_provider_unavailable",
+            message="Server-assisted AI analysis is not enabled in this environment.",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
-        try:
-            # 4. Feature flag gating: Return factual 503 if not enabled
-            if not settings.ENABLE_CLOUD_AI:
-                await quota_store.release_quota(current_user.user_id, res_id)
-                raise TrustCueError(
-                    code="ai_provider_unavailable",
-                    message="Server-assisted AI analysis is not enabled in this environment.",
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
-
-            # 5. Module 34 & 35 Gate: Raw provider output must NOT be returned to clients
-            # without deterministic server-side evidence grounding and mobile consent.
-            # Refund reserved quota unit and return honest 503 indicating grounding status.
-            await quota_store.release_quota(current_user.user_id, res_id)
-            raise TrustCueError(
-                code="ai_provider_unavailable",
-                message="Server-assisted AI analysis is temporarily unavailable pending evidence grounding validation (Module 34).",
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-        except Exception:
-            # Re-raise without logging user text
-            logger.info("AI analysis request completed/aborted for user UUID: %s", current_user.user_id)
-            raise
-
+    # 3. Module 35 Gate: Public real-user cloud AI workflow requires explicit mobile upload consent
+    # and consent-audit verification (to be implemented in Module 35).
+    # The internal pipeline (validation, evidence grounding, and provider adapter) is fully implemented
+    # and verified internally via ProtectedAiService, but public exposure is gated until consent is complete.
+    raise TrustCueError(
+        code="ai_provider_unavailable",
+        message="Server-assisted AI analysis is temporarily unavailable pending mobile upload consent and client workflow implementation (Module 35).",
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+    )

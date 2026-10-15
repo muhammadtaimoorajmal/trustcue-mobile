@@ -109,9 +109,9 @@ class SuggestedAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
-    title: str
-    description: str
-    priority: str = "recommended"
+    priority: Annotated[str, Field(default="recommended", pattern="^(immediate|recommended|conditional)$")]
+    title: Annotated[str, Field(min_length=1, max_length=128)]
+    detail: Annotated[str, Field(min_length=1, max_length=512)]
 
 
 class AnalysisAiResponse(BaseModel):
@@ -119,12 +119,12 @@ class AnalysisAiResponse(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    analysisId: str
-    snapshotId: str
+    reportId: Annotated[str, Field(description="Unique server-generated report identifier.")]
+    snapshotId: Annotated[str, Field(description="Echoed snapshot identifier matching request.")]
     provider: str
     model: str
     analyzedAt: datetime
-    factualSummary: str
+    factualSummary: Annotated[str, Field(min_length=1, max_length=512)]
     findings: list[AiFinding]
     uncertaintyNotes: list[str] = Field(default_factory=list)
     suggestedActions: list[SuggestedAction] = Field(default_factory=list)

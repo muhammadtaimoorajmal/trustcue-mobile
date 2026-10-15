@@ -52,9 +52,19 @@ class AppState:
         """
         Evaluate readiness for implemented foundation capabilities.
 
-        Does not invent fake database or AI connections. Clearly reports
-        foundation status and indicates configured/unconfigured state.
-        Never makes paid network calls from routine readiness probes.
+        Subsystem Field Semantics:
+        - 'foundation': 'ok' when process is operational; 'degraded' during draining/shutdown.
+        - 'authProvider': 'ok' when JWT secrets or JWKS URLs are configured; 'unconfigured' on defaults.
+        - 'database': 'unconfigured' until persistent connection pooling is configured.
+        - 'aiProvider':
+            - 'disabled': ENABLE_CLOUD_AI feature flag is False.
+            - 'unconfigured': ENABLE_CLOUD_AI is True but GROQ_API_KEY is not configured.
+            - 'ok': ENABLE_CLOUD_AI is True and GROQ_API_KEY is configured (adapter initialized).
+              NOTE: 'ok' denotes local configuration readiness; external network probes are
+              intentionally omitted to avoid paid inference costs and probe latency.
+            - 'error': Process is draining or experienced fatal initialization error.
+
+        Does not invent fake database or AI connections. Never makes paid network calls from routine probes.
         """
         if self.is_operational():
             auth_status = (

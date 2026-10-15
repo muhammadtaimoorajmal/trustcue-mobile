@@ -102,8 +102,8 @@ def test_public_endpoint_gated_when_cloud_ai_disabled(test_jwt: str) -> None:
         assert profile_res.json()["quotaRemainingToday"] == 15
 
 
-def test_public_endpoint_gated_with_module34_grounding_notice(test_jwt: str) -> None:
-    """Verify 503 is returned and quota is refunded when ENABLE_CLOUD_AI=True pending Module 34."""
+def test_public_endpoint_gated_with_module35_consent_notice(test_jwt: str) -> None:
+    """Verify 503 is returned without reserving quota when ENABLE_CLOUD_AI=True pending Module 35."""
     settings = Settings(
         SUPABASE_JWT_SECRET=JWT_SECRET,
         ENABLE_CLOUD_AI=True,
@@ -123,9 +123,9 @@ def test_public_endpoint_gated_with_module34_grounding_notice(test_jwt: str) -> 
         assert res.status_code == 503
         data = res.json()
         assert data["error"]["code"] == "ai_provider_unavailable"
-        assert "pending evidence grounding validation (Module 34)" in data["error"]["message"]
+        assert "pending mobile upload consent and client workflow implementation (Module 35)" in data["error"]["message"]
 
-        # Check quota remaining - must be full (15) because unused quota was refunded
+        # Check quota remaining - must be full (15) because gate check occurs before quota reservation
         profile_res = client.get("/api/v1/account/profile", headers=headers)
         assert profile_res.status_code == 200
         assert profile_res.json()["quotaRemainingToday"] == 15
