@@ -16,6 +16,10 @@ import 'package:trustcue_mobile/features/input/presentation/controllers/input_re
 import 'package:trustcue_mobile/features/input/presentation/screens/input_review_screen.dart';
 
 void main() {
+  setUp(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+  });
+
   tearDown(() {
     Get.reset();
   });
@@ -72,8 +76,19 @@ void main() {
   }
 
   group('InputReview to Local Analysis Flow Integration', () {
-    testWidgets('unconfirmed review cannot start analysis until confirmed', (tester) async {
-      final input = createTestInput('Suspicious message: your password has expired.');
+    testWidgets('unconfirmed review cannot start analysis until confirmed', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final input = createTestInput(
+        'Suspicious message: your password has expired.',
+      );
       await tester.pumpWidget(createFlowWidget(input: input));
       await tester.pumpAndSettle();
 
@@ -82,76 +97,121 @@ void main() {
       expect(find.text('Confirm reviewed text'), findsOneWidget);
 
       // Tap Confirm
+      await tester.ensureVisible(find.text('Confirm reviewed text'));
       await tester.tap(find.text('Confirm reviewed text'));
       await tester.pumpAndSettle();
 
       // Now "Analyze on this device" and privacy explanation appear
       expect(find.text('Analyze on this device'), findsOneWidget);
       expect(
-        find.text('Checks the reviewed text using local rules. Nothing is uploaded.'),
+        find.text(
+          'Checks the reviewed text using local rules. Nothing is uploaded.',
+        ),
         findsOneWidget,
       );
     });
 
-    testWidgets('editing text invalidates prior confirmation and hides analyze button', (tester) async {
-      final input = createTestInput('Original text to be checked.');
-      await tester.pumpWidget(createFlowWidget(input: input));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'editing text invalidates prior confirmation and hides analyze button',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
 
-      // Confirm
-      await tester.tap(find.text('Confirm reviewed text'));
-      await tester.pumpAndSettle();
-      expect(find.text('Analyze on this device'), findsOneWidget);
+        final input = createTestInput('Original text to be checked.');
+        await tester.pumpWidget(createFlowWidget(input: input));
+        await tester.pumpAndSettle();
 
-      // Edit text in TextField
-      await tester.enterText(find.byType(TextField), 'Modified text with new changes.');
-      await tester.pumpAndSettle();
+        // Confirm
+        await tester.ensureVisible(find.text('Confirm reviewed text'));
+        await tester.tap(find.text('Confirm reviewed text'));
+        await tester.pumpAndSettle();
+        expect(find.text('Analyze on this device'), findsOneWidget);
 
-      // Analyze button must disappear because confirmation is invalidated!
-      expect(find.text('Analyze on this device'), findsNothing);
-      expect(find.text('Confirm reviewed text'), findsOneWidget);
-    });
+        // Edit text in TextField
+        await tester.enterText(
+          find.byType(TextField),
+          'Modified text with new changes.',
+        );
+        await tester.pumpAndSettle();
 
-    testWidgets('end-to-end: typed message -> review -> local analysis -> real results', (tester) async {
-      const suspiciousText =
-          'CRITICAL: Your bank account is locked. Send your password to unlock immediately.';
-      final input = createTestInput(suspiciousText);
+        // Analyze button must disappear because confirmation is invalidated!
+        expect(find.text('Analyze on this device'), findsNothing);
+        expect(find.text('Confirm reviewed text'), findsOneWidget);
+      },
+    );
 
-      await tester.pumpWidget(createFlowWidget(input: input));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'end-to-end: typed message -> review -> local analysis -> real results',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
 
-      // Confirm reviewed text
-      await tester.tap(find.text('Confirm reviewed text'));
-      await tester.pumpAndSettle();
+        const suspiciousText =
+            'CRITICAL: Your bank account is locked. Send your password to unlock immediately.';
+        final input = createTestInput(suspiciousText);
 
-      // Tap Analyze on this device
-      await tester.tap(find.text('Analyze on this device'));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(createFlowWidget(input: input));
+        await tester.pumpAndSettle();
 
-      // Verify we arrived on the Analysis Results screen
-      expect(Get.currentRoute, AppRoutes.analysisResults);
-      expect(find.text('Local on-device analysis'), findsOneWidget);
-      expect(find.text('Evaluated on this device using local rules. Nothing was uploaded.'), findsOneWidget);
+        // Confirm reviewed text
+        await tester.ensureVisible(find.text('Confirm reviewed text'));
+        await tester.tap(find.text('Confirm reviewed text'));
+        await tester.pumpAndSettle();
 
-      // Verify real indicators detected from real local rules
-      expect(find.textContaining('warning indicator'), findsWidgets);
-      expect(find.text('Evidence trail'), findsOneWidget);
-      expect(find.text('Suggested next steps'), findsOneWidget);
+        // Tap Analyze on this device
+        await tester.ensureVisible(find.text('Analyze on this device'));
+        await tester.tap(find.text('Analyze on this device'));
+        await tester.pumpAndSettle();
 
-      // Pop back to review screen
-      await tester.tap(find.text('Return to review and edit text'));
-      await tester.pumpAndSettle();
+        // Verify we arrived on the Analysis Results screen
+        expect(Get.currentRoute, AppRoutes.analysisResults);
+        expect(find.text('Local on-device analysis'), findsOneWidget);
+        expect(
+          find.text(
+            'Evaluated on this device using local rules. Nothing was uploaded.',
+          ),
+          findsOneWidget,
+        );
 
-      expect(Get.currentRoute, AppRoutes.inputReview);
-      expect(find.text('Review text'), findsOneWidget);
-    });
+        // Verify real indicators detected from real local rules
+        expect(find.textContaining('warning indicator'), findsWidgets);
+        expect(find.text('Evidence trail'), findsOneWidget);
+        expect(find.text('Suggested next steps'), findsOneWidget);
 
-    testWidgets('duplicate tap protection pushes results route only once', (tester) async {
+        // Pop back to review screen
+        await tester.ensureVisible(find.text('Return to review and edit text'));
+        await tester.tap(find.text('Return to review and edit text'));
+        await tester.pumpAndSettle();
+
+        expect(Get.currentRoute, AppRoutes.inputReview);
+        expect(find.text('Review text'), findsOneWidget);
+      },
+    );
+
+    testWidgets('duplicate tap protection pushes results route only once', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
       final input = createTestInput('Verify your code now.');
       await tester.pumpWidget(createFlowWidget(input: input));
       await tester.pumpAndSettle();
 
       // Confirm
+      await tester.ensureVisible(find.text('Confirm reviewed text'));
       await tester.tap(find.text('Confirm reviewed text'));
       await tester.pumpAndSettle();
 

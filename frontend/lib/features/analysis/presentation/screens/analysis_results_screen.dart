@@ -122,8 +122,7 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
               ),
               const SizedBox(height: 12),
               Text(
-                controller.errorMessage.value ??
-                    'Local analysis could not be completed for the provided text.',
+                controller.errorMessage.value ?? 'Local analysis could not be completed for the provided text.',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: AppSpacing.pagePaddingSmall),
@@ -333,8 +332,11 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
         children: [
           Row(
             children: [
-              Icon(Icons.rule_outlined,
-                  size: 20, color: theme.colorScheme.primary),
+              Icon(
+                Icons.rule_outlined,
+                size: 20,
+                color: theme.colorScheme.primary,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -392,19 +394,23 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
           ),
           if (controller.showLimitationsDetails.value) ...[
             const Divider(),
-            ...assessment.uncertaintyNotes.map((note) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('• ',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      Expanded(
-                        child: Text(note, style: theme.textTheme.bodySmall),
-                      ),
-                    ],
-                  ),
-                )),
+            ...assessment.uncertaintyNotes.map(
+              (note) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '• ',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Expanded(
+                      child: Text(note, style: theme.textTheme.bodySmall),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ],
       ),
