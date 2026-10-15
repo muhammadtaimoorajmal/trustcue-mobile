@@ -57,7 +57,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **31** | Flutter signup/login/verification/recovery/logout flows | Completed | `frontend` |
 | **32** | Backend validation, authorization and abuse controls | Completed (`0714bcd`) | `backend` |
 | **33** | Protected AI-provider integration | Completed (`be2761b`) | `backend` |
-| **34** | AI output/evidence validation and adversarial tests | Planned | `backend` |
+| **34** | AI output/evidence validation and adversarial tests | Completed (`1f093f8`) | `backend` |
 | **35** | Mobile upload consent and optional AI workflow | Planned | `frontend` |
 | **36** | Local report persistence and migrations | Planned | `frontend` |
 | **37** | History, search, report details and deletion | Planned | `frontend` |

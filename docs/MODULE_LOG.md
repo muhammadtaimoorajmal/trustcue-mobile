@@ -847,3 +847,44 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Whitespace audit: PASS (`git diff --check` clean).
 - **Physical Device & Verification Status:** Device test from Module 32 remains preserved as pending. No phone is required for backend provider integration.
 - **Status:** Complete. Pushed to `backend` (`be2761b`) and `frontend`. Stopped before Module 34.
+
+### 2026-10-15 — Module 34: AI Output/Evidence Validation and Adversarial Tests
+- **Scope & Objectives:**
+  - Implemented strict untrusted-output validation layer (`trustcue_backend.validation.output_validator`) enforcing structural, schema, and semantic safety boundaries on raw AI provider completions.
+  - Implemented strict JSON parser rejecting duplicate JSON keys (`_strict_object_pairs_hook`) and special numeric constants (`NaN`, `Infinity`, `-Infinity`).
+  - Prohibited numerical risk percentages/probabilities, definitive safety guarantees, false compromise claims, external lookup claims, and executable markup (`<script>`, `<iframe`, `javascript:`).
+  - Enforced exact evidence grounding (`trustcue_backend.validation.grounding`) with byte-for-byte preservation of submitted reviewed text (no trimming, case-folding, whitespace collapsing, or Unicode normalization).
+  - Implemented UTF-16 code-unit offset mapping compatible with Dart `String` indexing, guaranteeing safe substring extraction without surrogate-pair splitting (tested with supplementary emojis e.g. 🛡️ U+1F6E1 and RTL Urdu scripts).
+  - Implemented repeated quotation disambiguation policy: ambiguous duplicates without valid offsets are strictly rejected with `AmbiguousQuotationError`.
+  - Injected explicit honest limitations for empty findings (`DEFAULT_NO_FINDINGS_LIMITATION`).
+  - Addressed Module 33 gaps in `GroqProviderAdapter`:
+    - Incremental streaming with byte-bounding (`aiter_bytes`) enforcing the 64 KB limit before unrestricted buffering.
+    - Total operation timeout deadline (`asyncio.timeout`) guaranteeing bounded execution and cancellation cleanup.
+    - Truncation (`finish_reason == "length"`) and refusal detection.
+  - Documented readiness probe field semantics in `core/state.py` (clarifying that `aiProvider: "ok"` reflects static configuration readiness without paid network probes).
+  - Implemented quota accounting policy in `ProtectedAiService`:
+    - Pre-inference failures (connect timeout, unconfigured, upstream 401/429/503) refund reserved quota.
+    - Ambiguous read timeouts retain quota.
+    - Completed inference that fails output validation or evidence grounding commits quota to prevent free inference abuse loops.
+  - Hardened public analysis route (`POST /api/v1/analysis/ai`) checking feature flags and public consent gate (Module 35) BEFORE side effects (no quota reservation, no concurrency locks).
+  - Authored comprehensive backend test suites (`tests/test_output_validation.py`, `tests/test_evidence_grounding.py`, `tests/test_ai_pipeline_e2e.py`):
+    - 119/119 backend tests passing across 19 suites (34 new tests added for Module 34).
+    - `ruff check` passed with 0 issues.
+    - `openapi-spec-validator` passed with 0 issues.
+  - Authored Flutter consumer contract test (`frontend/test/features/analysis/data/serialization/ai_contract_compatibility_test.dart`):
+    - 4/4 Flutter contract tests passing (verifying remote AI deserialization, UTF-16 emoji offsets, surrogate split rejection, and `AnalysisReport` integration).
+    - `flutter analyze --no-pub` passed with 0 issues.
+  - Created backend specification documentation (`backend/docs/AI_OUTPUT_VALIDATION.md`).
+- **Components Created / Updated:**
+  - Backend: `validation/__init__.py`, `validation/exceptions.py`, `validation/output_validator.py`, `validation/grounding.py`, `providers/groq.py`, `providers/service.py`, `api/routes/analysis.py`, `api/schemas/analysis.py`, `core/state.py`, `docs/AI_OUTPUT_VALIDATION.md`, `tests/test_output_validation.py`, `tests/test_evidence_grounding.py`, `tests/test_ai_pipeline_e2e.py`, `tests/test_analysis_gating.py`.
+  - Frontend: `test/features/analysis/data/serialization/ai_contract_compatibility_test.dart`, `docs/ROADMAP.md`, `docs/MODULE_LOG.md`, `docs/PROJECT_STATE.md`.
+- **Checks Performed:**
+  - `pytest backend/tests`: PASS (119/119 tests passed across 19 suites in 2.73s).
+  - `ruff check src tests`: PASS (0 issues found).
+  - `openapi-spec-validator backend/contracts/openapi.yaml`: PASS.
+  - `python -m unittest discover database/tests`: PASS (11/11 tests passed).
+  - `flutter test .../ai_contract_compatibility_test.dart`: PASS (4/4 tests passed).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - Whitespace audit: PASS (`git diff --check` and `git diff --cached --check` clean).
+- **Physical Device & Verification Status:** Device test from Module 32 remains preserved as pending. No phone is required for output validation and grounding.
+- **Status:** Complete. Pushed to `backend` (`1f093f8`) and `frontend`. Stopped before Module 35.
