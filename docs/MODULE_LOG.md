@@ -659,5 +659,57 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 - **Host Tooling & RLS Verification Disclosure:**
   - Neither PostgreSQL nor Docker is installed locally on the host machine.
   - Local verification was performed using the offline Python static schema test suite (`tests/test_static_schema.py`).
-  - Executable PostgreSQL 16 migration application and RLS policy enforcement are wired into GitHub Actions Database CI (`.github/workflows/database-ci.yml`), using a genuine `postgres:16-alpine` service container.
-- **Status:** Complete. Pushed to `database` (`521cade`). Reconciled on `frontend`. Stopped before Module 30.
+  - Executable PostgreSQL 16 migration application and RLS policy enforcement were verified in GitHub Actions Database CI (`.github/workflows/database-ci.yml`) using a genuine `postgres:16-alpine` service container. CI run `38701649252` passed all 12 steps with SUCCESS following role-reset and permission adjustments (commit `02db979`).
+- **Status:** Complete. Pushed to `database` (`02db979`). Reconciled on `frontend`.
+
+### 2026-10-15 — Module 30: Authentication Integration and Session-Validation Contracts
+- **Scope & Objectives:**
+  - Implemented authentication integration and backend session-validation contracts adhering strictly to OpenAPI 3.1.0 specifications and local-first architecture.
+  - Installed and configured `pyjwt[crypto]>=2.10.0` for cryptographic JWT verification in Python 3.13+.
+  - Updated typed configuration (`core/config.py`):
+    - Added `SUPABASE_JWT_SECRET`, `SUPABASE_JWT_ALGORITHMS` (default `["HS256"]`), `SUPABASE_JWT_AUDIENCE` (default `"authenticated"`), `SUPABASE_JWT_ISSUER`, `SUPABASE_JWKS_URL`, and `DEFAULT_DAILY_AI_QUOTA` (default 15).
+    - Hardened configuration validation in `validate_environment_and_features`: actively rejects test signing keys (`"test-jwt-secret-key-..."`, `"test"`, `"secret"`, `"demo"`, etc.) when `ENVIRONMENT="production"`.
+  - Implemented `core/auth.py`:
+    - `AuthenticatedUser` model containing `user_id` (UUID), `email`, `email_verified`, `role`, `app_metadata`, `user_metadata`, `session_id`, and `claims`.
+    - `JWTValidator` engine: verifies token signature against configured `SUPABASE_JWT_SECRET` or `SUPABASE_JWKS_URL` using `PyJWKClient`; strictly parses and validates that `sub` is a valid RFC 4122 UUID; rejects anonymous tokens (`role: 'anon'` or `aud: 'anon'`); verifies temporal bounds (`exp`, `nbf`); maps signature/expiration/issuer failures to standard error codes (`"token_expired"`, `"invalid_issuer"`, `"unauthorized"`).
+    - `create_test_jwt()`: synthetic test token generator for local testing and offline verification, strictly guarded against execution when `environment="production"`.
+  - Implemented error handling (`core/errors.py`):
+    - Added `AuthenticationError` subclass of `TrustCueError` mapping to HTTP 401 and standard `ErrorEnvelope`.
+    - Updated `http_exception_handler` to map HTTP 401 to `code="unauthorized"` and HTTP 403 to `code="forbidden"`.
+  - Updated readiness probe (`core/state.py` & `api/routes/health.py`):
+    - `AppState.get_readiness_status()` accepts optional `Settings` instance and reports `authProvider: "ok"` when JWT secret or JWKS is configured, while safely maintaining `"unconfigured"` on default settings.
+  - Added dependency injection providers (`api/dependencies.py`):
+    - `get_jwt_validator`: constructs configured `JWTValidator`.
+    - `get_current_user`: extracts Bearer token from `Authorization` header, verifies validity with `JWTValidator`, injects `AuthenticatedUser` into `request.state.current_user`, and rejects missing/malformed/invalid headers with 401 `ErrorEnvelope`.
+  - Created OpenAPI 3.1.0 response schemas (`api/schemas/account.py`):
+    - `UserProfileResponse`: `userId` (UUID), `email`, `emailVerified`, `createdAt`, `syncEnabled: false`, `quotaRemainingToday: 15`.
+    - `AccountDeletionResponse`: `status: "deleted"`, `userId` (UUID), `deletedAt`.
+  - Implemented protected route handlers (`api/routes/account.py`):
+    - `GET /api/v1/account/profile`: requires valid Bearer token, returns `UserProfileResponse` matching OpenAPI schema.
+    - `DELETE /api/v1/account`: requires valid Bearer token, executes account deletion, returns `AccountDeletionResponse` with UTC timestamp.
+    - Both endpoints enforce privacy-safe logging (never leaking user emails, tokens, or PII) and return `X-Request-ID` correlation headers.
+  - Mounted `account.router` under prefix `/api/v1/account` in `main.py`.
+  - Authored comprehensive test suites:
+    - `backend/tests/test_auth.py`: 11 unit tests covering valid token decoding, expiration rejection (`token_expired`), signature mismatch, wrong audience, wrong issuer (`invalid_issuer`), anonymous role/audience rejection, non-UUID subject rejection, malformed/empty tokens, unconfigured validator, and production guard enforcement.
+    - `backend/tests/test_account.py`: 8 integration tests covering profile retrieval (missing auth, non-Bearer scheme, expired token, forged signature, anon token, valid profile response), and account deletion (missing auth, valid deletion response).
+    - Updated `test_config.py` (JWT defaults, production key rejection), `test_health.py` (readiness with configured auth), and `test_contract_consistency.py` (verifying `/health`, `/ready`, `/api/v1/account/profile`, and `/api/v1/account` are exposed and match `openapi.yaml`, while planned AI and sync endpoints remain strictly unmounted).
+  - Updated backend documentation: `backend/docs/SETUP_GUIDE.md` (Module 30 verification instructions, offline synthetic testing vs live Supabase setup, production key prohibition) and `backend/docs/DATABASE_AND_AUTH_DESIGN.md` (stateless session validation architecture).
+- **Backend Components Created / Updated (Committed on `backend` at `fa11d88`):**
+  - `backend/src/trustcue_backend/core/auth.py`: JWT validator, authenticated user model, test token helper.
+  - `backend/src/trustcue_backend/api/schemas/account.py`: User profile and account deletion response schemas.
+  - `backend/src/trustcue_backend/api/routes/account.py`: Account profile and deletion route handlers.
+  - `backend/src/trustcue_backend/api/dependencies.py`: Current user and JWT validator dependencies.
+  - `backend/src/trustcue_backend/core/config.py`: JWT settings and production security validator.
+  - `backend/src/trustcue_backend/core/errors.py`: AuthenticationError and HTTP 401/403 mappings.
+  - `backend/src/trustcue_backend/core/state.py`: Readiness status with auth provider reporting.
+  - `backend/src/trustcue_backend/api/routes/health.py`: Settings injection for readiness probe.
+  - `backend/src/trustcue_backend/main.py`: Account router registration.
+  - `backend/tests/test_auth.py` & `backend/tests/test_account.py`: Automated test suites.
+  - `backend/docs/SETUP_GUIDE.md` & `backend/docs/DATABASE_AND_AUTH_DESIGN.md`: Updated architecture and setup documentation.
+- **Checks Performed:**
+  - `ruff check backend/src backend/tests`: PASS (All checks passed, 0 issues).
+  - `openapi_spec_validator backend/contracts/openapi.yaml`: PASS (OpenAPI 3.1.0 contract valid).
+  - `pytest backend/tests`: PASS (46/46 passed across 9 suites in 0.82s).
+  - Whitespace & format audit: PASS (`git diff --cached --check` clean).
+  - Git worktree separation: `trustcue-backend` clean, committed (`fa11d88`), and pushed to `origin/backend`.
+- **Status:** Complete. Pushed to `backend` (`fa11d88`). Reconciled on `frontend`. Stopped before Module 31.

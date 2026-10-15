@@ -52,8 +52,8 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **26** | Working local-analysis results and Evidence Trail interface | Completed (`027a0cc`) | `frontend` |
 | **27** | Architecture, feasibility, privacy and API contracts | Completed (`60745dc`) | `backend` |
 | **28** | Backend foundation and configuration | Completed (`766e61a`) | `backend` |
-| **29** | Database schema, migrations and ownership policies | Completed (`521cade`) | `database` |
-| **30** | Authentication integration and session-validation contracts | Planned | `backend` |
+| **29** | Database schema, migrations and ownership policies | Completed (`02db979`) | `database` |
+| **30** | Authentication integration and session-validation contracts | Completed (`fa11d88`) | `backend` |
 | **31** | Flutter signup/login/verification/recovery/logout flows | Planned | `frontend` |
 | **32** | Backend validation, authorization and abuse controls | Planned | `backend` |
 | **33** | Protected AI-provider integration | Planned | `backend` |
