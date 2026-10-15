@@ -1,12 +1,15 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:trustcue_mobile/core/errors/analysis_failure.dart';
 import 'package:trustcue_mobile/core/types/result.dart';
+import 'package:trustcue_mobile/features/analysis/data/services/analysis_api_client.dart';
 import 'package:trustcue_mobile/features/analysis/domain/contracts/analysis_execution_context.dart';
 import 'package:trustcue_mobile/features/analysis/domain/contracts/analysis_service.dart';
 import 'package:trustcue_mobile/features/analysis/domain/contracts/assessment_synthesizer.dart';
+import 'package:trustcue_mobile/features/analysis/domain/models/ai_analysis_report.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_finding.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_report.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/assessment_action.dart';
@@ -17,13 +20,18 @@ import 'package:trustcue_mobile/features/analysis/domain/models/evidence_referen
 import 'package:trustcue_mobile/features/analysis/domain/models/finding_origin.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/indicator_category.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/local_assessment.dart';
+import 'package:trustcue_mobile/features/analysis/domain/models/upload_consent.dart';
 import 'package:trustcue_mobile/features/analysis/domain/rules/local_rule_catalog.dart';
 import 'package:trustcue_mobile/features/analysis/domain/services/local_analysis_pipeline.dart';
 import 'package:trustcue_mobile/features/analysis/presentation/controllers/analysis_results_controller.dart';
 import 'package:trustcue_mobile/features/analysis/presentation/models/analysis_results_args.dart';
+import 'package:trustcue_mobile/features/auth/domain/models/auth_state.dart';
+import 'package:trustcue_mobile/features/auth/domain/models/auth_user.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/input/domain/models/reviewed_text_result.dart';
 import 'package:trustcue_mobile/features/input/domain/models/text_snapshot.dart';
+
+import '../../../auth/mocks/fake_auth_repository.dart';
 
 class _FakeEngine implements AnalysisService {
   final Future<Result<AnalysisReport>> Function(TextSnapshot snapshot)?
@@ -399,4 +407,241 @@ void main() {
       expect(attempts, 2);
     });
   });
+
+  group('AnalysisResultsController Cloud AI Tests', () {
+    late LocalAnalysisPipeline dummyPipeline;
+    late ReviewedTextResult reviewResult;
+
+    setUp(() {
+      dummyPipeline = LocalAnalysisPipeline(
+        engine: _FakeEngine(),
+        synthesizer: _FakeSynthesizer(),
+        registry: LocalRuleCatalog.createRegistry(),
+      );
+      reviewResult = _createSampleReviewResult();
+    });
+
+    testWidgets(
+      'unauthenticated user requesting AI transitions to failed with sign-in notice',
+      (tester) async {
+        final fakeAuth = FakeAuthRepository(
+          initialStatus: AuthStatus.unauthenticated,
+        );
+
+        final controller = AnalysisResultsController(
+          pipeline: dummyPipeline,
+          args: AnalysisResultsArgs(reviewResult: reviewResult),
+          authRepository: fakeAuth,
+        );
+        controller.onInit();
+        await tester.pump();
+
+        // Verify local assessment completes first
+        expect(controller.state.value, AnalysisState.completedWithNoMatches);
+        expect(controller.assessment.value, isNotNull);
+        expect(controller.aiState.value, AiAnalysisState.idle);
+
+        // Create a dummy context for the call
+        await tester.pumpWidget(
+          Builder(
+            builder: (context) {
+              controller.requestAiAnalysis(context);
+              return const SizedBox.shrink();
+            },
+          ),
+        );
+        await tester.pump();
+
+        // AI state transitions to failed, but local assessment remains intact!
+        expect(controller.aiState.value, AiAnalysisState.failed);
+        expect(
+          controller.aiErrorMessage.value,
+          contains('requires an authenticated account'),
+        );
+        expect(controller.assessment.value, isNotNull);
+        expect(controller.state.value, AnalysisState.completedWithNoMatches);
+      },
+    );
+
+    testWidgets(
+      'authenticated user with valid consent executes AI analysis successfully',
+      (tester) async {
+        final fakeAuth = FakeAuthRepository(
+          initialStatus: AuthStatus.authenticated,
+          initialUser: AuthUser(
+            id: 'user-auth-123',
+            email: 'test@trustcue.app',
+            emailVerified: true,
+            createdAt: DateTime.utc(2026, 1, 1),
+          ),
+        );
+
+        final fakeApiClient = _FakeAnalysisApiClient();
+
+        final controller = AnalysisResultsController(
+          pipeline: dummyPipeline,
+          args: AnalysisResultsArgs(reviewResult: reviewResult),
+          authRepository: fakeAuth,
+          apiClient: fakeApiClient,
+        );
+        controller.onInit();
+        await tester.pump();
+
+        // Pre-seed affirmative consent
+        controller.currentConsent.value = UploadConsent.affirmative(
+          snapshot: reviewResult.snapshot,
+          accountId: 'user-auth-123',
+        );
+
+        await tester.pumpWidget(
+          Builder(
+            builder: (context) {
+              controller.requestAiAnalysis(context);
+              return const SizedBox.shrink();
+            },
+          ),
+        );
+        await tester.pump();
+
+        expect(controller.aiState.value, AiAnalysisState.completed);
+        expect(controller.aiReport.value?.reportId, equals('rep-ai-test'));
+        expect(controller.assessment.value, isNotNull);
+      },
+    );
+
+    testWidgets(
+      'server failure transitions aiState to failed and preserves local assessment',
+      (tester) async {
+        final fakeAuth = FakeAuthRepository(
+          initialStatus: AuthStatus.authenticated,
+          initialUser: AuthUser(
+            id: 'user-auth-123',
+            email: 'test@trustcue.app',
+            emailVerified: true,
+            createdAt: DateTime.utc(2026, 1, 1),
+          ),
+        );
+
+        final fakeApiClient = _FakeAnalysisApiClient(
+          onAnalyzeWithAi:
+              ({
+                required snapshot,
+                required consent,
+                required sourceRevision,
+                currentAccountId,
+              }) async {
+                return const Result.failure(
+                  AnalysisFailure.unavailable('Server connection lost.'),
+                );
+              },
+        );
+
+        final controller = AnalysisResultsController(
+          pipeline: dummyPipeline,
+          args: AnalysisResultsArgs(reviewResult: reviewResult),
+          authRepository: fakeAuth,
+          apiClient: fakeApiClient,
+        );
+        controller.onInit();
+        await tester.pump();
+
+        controller.currentConsent.value = UploadConsent.affirmative(
+          snapshot: reviewResult.snapshot,
+          accountId: 'user-auth-123',
+        );
+
+        await tester.pumpWidget(
+          Builder(
+            builder: (context) {
+              controller.requestAiAnalysis(context);
+              return const SizedBox.shrink();
+            },
+          ),
+        );
+        await tester.pump();
+
+        expect(controller.aiState.value, AiAnalysisState.failed);
+        expect(
+          controller.aiErrorMessage.value,
+          equals('Server connection lost.'),
+        );
+        // Local assessment is preserved
+        expect(controller.assessment.value, isNotNull);
+      },
+    );
+
+    test('invalidateConsent resets consent, report, and aiState', () {
+      final controller = AnalysisResultsController(
+        pipeline: dummyPipeline,
+        args: AnalysisResultsArgs(reviewResult: reviewResult),
+      );
+
+      controller.currentConsent.value = UploadConsent.affirmative(
+        snapshot: reviewResult.snapshot,
+        accountId: 'user-123',
+      );
+      controller.aiState.value = AiAnalysisState.completed;
+      controller.aiReport.value = AiAnalysisReport(
+        reportId: 'rep-test',
+        snapshotId: reviewResult.snapshot.id,
+        provider: 'groq',
+        model: 'qwen',
+        analyzedAt: DateTime.utc(2026, 1, 1),
+        factualSummary: 'summary',
+        findings: const [],
+        uncertaintyNotes: const [],
+        suggestedActions: const [],
+      );
+
+      controller.invalidateConsent();
+
+      expect(controller.currentConsent.value, isNull);
+      expect(controller.aiReport.value, isNull);
+      expect(controller.aiState.value, equals(AiAnalysisState.idle));
+      expect(controller.aiErrorMessage.value, isNull);
+    });
+  });
+}
+
+class _FakeAnalysisApiClient extends AnalysisApiClient {
+  final Future<Result<AiAnalysisReport>> Function({
+    required TextSnapshot snapshot,
+    required UploadConsent consent,
+    required String sourceRevision,
+    String? currentAccountId,
+  })?
+  onAnalyzeWithAi;
+
+  _FakeAnalysisApiClient({this.onAnalyzeWithAi})
+    : super(tokenProvider: () async => 'valid-token');
+
+  @override
+  Future<Result<AiAnalysisReport>> analyzeWithAi({
+    required TextSnapshot snapshot,
+    required UploadConsent consent,
+    required String sourceRevision,
+    String? currentAccountId,
+  }) async {
+    if (onAnalyzeWithAi != null) {
+      return onAnalyzeWithAi!(
+        snapshot: snapshot,
+        consent: consent,
+        sourceRevision: sourceRevision,
+        currentAccountId: currentAccountId,
+      );
+    }
+    return Result.success(
+      AiAnalysisReport(
+        reportId: 'rep-ai-test',
+        snapshotId: snapshot.id,
+        provider: 'groq',
+        model: 'qwen/qwen3.8-27b',
+        analyzedAt: DateTime.utc(2026, 1, 1),
+        factualSummary: 'AI test summary',
+        findings: const [],
+        uncertaintyNotes: const ['Note 1'],
+        suggestedActions: const [],
+      ),
+    );
+  }
 }

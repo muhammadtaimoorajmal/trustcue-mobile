@@ -53,6 +53,11 @@ class FakeAuthRepository implements AuthRepository {
   @override
   AuthUser? get currentUser => _currentUser;
 
+  String? nextAccessToken = 'test-mock-jwt-token';
+
+  @override
+  Future<String?> getAccessToken() async => nextAccessToken;
+
   void setStatus(AuthStatus status, {AuthUser? user}) {
     _currentStatus = status;
     _currentUser = user;

@@ -123,6 +123,10 @@ class OcrFailure {
       case AnalysisFailureCode.cancelled:
         return const OcrFailure.userCancelled();
       case AnalysisFailureCode.unavailable:
+      case AnalysisFailureCode.rateLimited:
+      case AnalysisFailureCode.unauthorized:
+      case AnalysisFailureCode.consentRequired:
+      case AnalysisFailureCode.providerError:
         return const OcrFailure.recognitionUnavailable();
       case AnalysisFailureCode.unsupportedInput:
         return const OcrFailure.outputExceedsLimits();

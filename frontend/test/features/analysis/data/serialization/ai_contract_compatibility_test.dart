@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trustcue_mobile/features/analysis/data/serialization/analysis_finding_codec.dart';
 import 'package:trustcue_mobile/features/analysis/data/serialization/analysis_report_codec.dart';
@@ -40,7 +41,10 @@ void main() {
 
       final finding = findingCodec.decode(backendFindingJson);
 
-      expect(finding.id, equals('finding-7b8192a3-5c21-4f9e-bc3d-112233445566'));
+      expect(
+        finding.id,
+        equals('finding-7b8192a3-5c21-4f9e-bc3d-112233445566'),
+      );
       expect(finding.category, equals('requests_for_credentials'));
       expect(finding.origin, equals(FindingOrigin.remoteAi));
       expect(finding.producerId, equals('trustcue-ai-groq'));
@@ -56,36 +60,39 @@ void main() {
       expect(() => finding.validateAgainst(snapshot), returnsNormally);
     });
 
-    test('validates UTF-16 code units across supplementary emoji characters', () {
-      const shield = '\u{1F6E1}'; // 🛡 (2 UTF-16 code units)
-      const text = 'Urgent $shield password alert';
-      // 'Urgent ' is 7 code units
-      // shield is 2 code units -> offsets [7, 9)
-      // ' password' is 9 code units -> starts at offset 9, ends at 9 + 9 = 18
+    test(
+      'validates UTF-16 code units across supplementary emoji characters',
+      () {
+        const shield = '\u{1F6E1}'; // 🛡 (2 UTF-16 code units)
+        const text = 'Urgent $shield password alert';
+        // 'Urgent ' is 7 code units
+        // shield is 2 code units -> offsets [7, 9)
+        // ' password' is 9 code units -> starts at offset 9, ends at 9 + 9 = 18
 
-      final snapshot = TextSnapshot(
-        id: 'snap-emoji-01',
-        text: text,
-        source: InputSource.messageText,
-        createdAt: DateTime.parse('2026-10-15T12:00:00Z'),
-      );
+        final snapshot = TextSnapshot(
+          id: 'snap-emoji-01',
+          text: text,
+          source: InputSource.messageText,
+          createdAt: DateTime.parse('2026-10-15T12:00:00Z'),
+        );
 
-      final excerpt = 'password';
-      final startOffset = text.indexOf(excerpt); // 9
-      final endOffset = startOffset + excerpt.length; // 17
+        final excerpt = 'password';
+        final startOffset = text.indexOf(excerpt); // 9
+        final endOffset = startOffset + excerpt.length; // 17
 
-      final evidenceJson = {
-        'snapshotId': 'snap-emoji-01',
-        'startOffset': startOffset,
-        'endOffset': endOffset,
-        'exactExcerpt': excerpt,
-      };
+        final evidenceJson = {
+          'snapshotId': 'snap-emoji-01',
+          'startOffset': startOffset,
+          'endOffset': endOffset,
+          'exactExcerpt': excerpt,
+        };
 
-      final ev = evidenceCodec.decode(evidenceJson);
-      expect(ev.startOffset, equals(10));
-      expect(ev.endOffset, equals(18));
-      expect(() => ev.validateAgainst(snapshot), returnsNormally);
-    });
+        final ev = evidenceCodec.decode(evidenceJson);
+        expect(ev.startOffset, equals(10));
+        expect(ev.endOffset, equals(18));
+        expect(() => ev.validateAgainst(snapshot), returnsNormally);
+      },
+    );
 
     test('rejects evidence offset that splits a UTF-16 surrogate pair', () {
       const shield = '\u{1F6E1}'; // 🛡 (2 UTF-16 code units: 0xD83D 0xDEE1)
@@ -107,11 +114,13 @@ void main() {
           endOffset: 12,
           exactExcerpt: splitSubstring,
         ).validateAgainst(snapshot),
-        throwsA(isA<ArgumentError>().having(
-          (e) => e.message,
-          'message',
-          contains('splits a UTF-16 surrogate pair'),
-        )),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('splits a UTF-16 surrogate pair'),
+          ),
+        ),
       );
     });
 
@@ -129,7 +138,7 @@ void main() {
         'findings': <Map<String, dynamic>>[],
         'limitations': [
           'No scam warning indicators were detected in the evaluated text snapshot. '
-          'This does not establish that the communication is safe or authentic.',
+              'This does not establish that the communication is safe or authentic.',
         ],
         'suggestedActions': [
           'Verify official tracking directly through the carrier application.',
@@ -142,7 +151,10 @@ void main() {
       final report = reportResult.valueOrNull!;
       expect(report.id, equals('rep-server-uuid-1234'));
       expect(report.findings, isEmpty);
-      expect(report.limitations.first, contains('does not establish that the communication is safe'));
+      expect(
+        report.limitations.first,
+        contains('does not establish that the communication is safe'),
+      );
     });
   });
 }

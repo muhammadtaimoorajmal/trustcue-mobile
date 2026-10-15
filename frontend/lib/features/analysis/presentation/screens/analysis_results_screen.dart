@@ -4,14 +4,17 @@ import 'package:trustcue_mobile/core/theme/app_spacing.dart';
 import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/core/widgets/app_card.dart';
 import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
+import 'package:trustcue_mobile/features/analysis/domain/models/ai_analysis_report.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_finding.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/assessment_action.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/assessment_indicator_group.dart';
+import 'package:trustcue_mobile/features/analysis/domain/models/finding_origin.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/local_assessment.dart';
 import 'package:trustcue_mobile/features/analysis/presentation/controllers/analysis_results_controller.dart';
 
 /// Screen displaying deterministic on-device analysis results, scope limitations,
-/// factual evidence trail, and prioritized protective actions.
+/// factual evidence trail, prioritized protective actions, and optional protected
+/// cloud AI assistance.
 ///
 /// Principles:
 /// - Never presents findings as a definitive fraud score, probability, or safe verdict.
@@ -19,7 +22,9 @@ import 'package:trustcue_mobile/features/analysis/presentation/controllers/analy
 /// - No-match outcome is explicitly stated as NOT proof of safety (no green shield or safe badges).
 /// - Partial coverage constraints remain visible even when findings are detected.
 /// - Exposes complete evidence trail with UTF-16 offset traceability and educational context.
-/// - Does not include nonfunctional Save, Share, AI, or History controls.
+/// - Distinct provenance: On-device findings are marked `[On-device heuristic]`, cloud findings `[AI-Assisted: Groq]`.
+/// - Local on-device analysis remains the primary baseline and is preserved if cloud AI is unavailable.
+/// - All text is rendered inert; never parsed as markdown or clickable HTML.
 class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
   const AnalysisResultsScreen({super.key});
 
@@ -29,7 +34,7 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Local analysis'),
+        title: const Text('Analysis results'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           tooltip: 'Return to review',
@@ -180,7 +185,11 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
         _buildSuggestedNextSteps(theme, assessment),
         const SizedBox(height: AppSpacing.pagePaddingLarge),
 
-        // F. Navigation Actions
+        // F. Optional Cloud AI Analysis Section
+        _buildCloudAiSection(theme, context),
+        const SizedBox(height: AppSpacing.pagePaddingLarge),
+
+        // G. Navigation Actions
         _buildNavigationActions(theme),
         const SizedBox(height: AppSpacing.pagePaddingLarge),
       ],
@@ -244,7 +253,6 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
         bannerBg = theme.colorScheme.errorContainer.withValues(alpha: 0.2);
         break;
       case AssessmentOutcomeState.noIndicatorsMatched:
-        // NEVER a green checkmark or green shield! Use neutral informational style.
         icon = Icons.info_outline;
         iconColor = theme.colorScheme.primary;
         heading = 'No indicators matched';
@@ -586,6 +594,8 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
     AnalysisFinding finding,
     BuildContext context,
   ) {
+    final isAi = finding.origin == FindingOrigin.remoteAi;
+
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(10),
@@ -596,16 +606,46 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isAi
+                      ? theme.colorScheme.tertiaryContainer
+                      : theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  isAi ? '[AI-Assisted: Groq]' : '[On-device heuristic]',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: isAi
+                        ? theme.colorScheme.onTertiaryContainer
+                        : theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isAi
+                      ? 'Groq Cloud • ${finding.producerId}'
+                      : 'Rule provenance: ${finding.producerId} (on-device local rule)',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.hintColor,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
           Text(
             finding.explanation,
             style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Rule provenance: ${finding.producerId} (on-device local rule)',
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
           ),
           const SizedBox(height: 8),
           Text(
@@ -781,6 +821,425 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
           ],
         ),
       ),
+    );
+  }
+
+  // --- Cloud AI Workflow Section ---
+
+  Widget _buildCloudAiSection(ThemeData theme, BuildContext context) {
+    return Obx(() {
+      final aiState = controller.aiState.value;
+      switch (aiState) {
+        case AiAnalysisState.idle:
+          return _buildAiIdleCard(theme, context);
+        case AiAnalysisState.submitting:
+          return _buildAiSubmittingCard(theme);
+        case AiAnalysisState.failed:
+          return _buildAiFailedCard(theme, context);
+        case AiAnalysisState.completed:
+          final report = controller.aiReport.value;
+          if (report == null) return _buildAiIdleCard(theme, context);
+          return _buildAiCompletedCard(theme, report, context);
+      }
+    });
+  }
+
+  Widget _buildAiIdleCard(ThemeData theme, BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.tertiaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.auto_awesome,
+                  color: theme.colorScheme.onTertiaryContainer,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Optional Cloud AI analysis',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Secondary pattern evaluation via Groq Cloud',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.hintColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Request an AI-assisted evaluation powered by high-speed Groq LPUs. Groq checks for subtle linguistic indicators, pretexting, and social engineering cues.',
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.privacy_tip_outlined,
+                  size: 16,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Requires explicit affirmative upload consent. Only your reviewed text is sent over TLS; original images and device data are never uploaded.',
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          AppButton.primary(
+            label: 'Ask Cloud AI',
+            icon: Icons.auto_awesome,
+            onPressed: () => controller.requestAiAnalysis(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiSubmittingCard(ThemeData theme) {
+    return AppCard(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          children: [
+            Semantics(
+              label: 'Requesting cloud AI analysis from TrustCue backend',
+              child: const CircularProgressIndicator(),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Analyzing with Cloud AI...',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Securely transmitting reviewed text to Groq Cloud LPUs.\nYour on-device local results above remain active.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.hintColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAiFailedCard(ThemeData theme, BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.error_outline,
+                color: theme.colorScheme.error,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Cloud AI analysis unavailable',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            controller.aiErrorMessage.value ??
+                'Cloud AI analysis request could not be completed.',
+            style: theme.textTheme.bodyMedium,
+          ),
+          if (controller.aiRetryAfter.value != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Retry after ${controller.aiRetryAfter.value} seconds.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  size: 16,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Your local on-device analysis above is complete and unaffected.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: AppButton.secondary(
+                  label: 'Dismiss',
+                  onPressed: controller.invalidateConsent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: AppButton.primary(
+                  label: 'Retry AI review',
+                  onPressed: () => controller.retryAiAnalysis(context),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiCompletedCard(
+    ThemeData theme,
+    AiAnalysisReport report,
+    BuildContext context,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Provenance & Header Banner
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.pagePaddingSmall),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: theme.colorScheme.tertiary),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.tertiaryContainer,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '[AI-Assisted: Groq]',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onTertiaryContainer,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${report.provider} • ${report.model}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Non-guarantee disclosure: AI assistance identifies potential patterns and explanations. It does not provide absolute fraud scores, guarantee safety, or verify sender legitimacy.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontStyle: FontStyle.italic,
+                  color: theme.hintColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.pagePaddingSmall),
+
+        // AI Summary Card
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.psychology_outlined,
+                    size: 20,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'AI pattern summary',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(report.factualSummary, style: theme.textTheme.bodyMedium),
+              if (report.uncertaintyNotes.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Model uncertainty & limitations:',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ...report.uncertaintyNotes.map(
+                  (note) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '• ',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Expanded(
+                          child: Text(note, style: theme.textTheme.bodySmall),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.pagePaddingSmall),
+
+        // AI Findings / Evidence
+        if (report.findings.isNotEmpty) ...[
+          Row(
+            children: [
+              Icon(
+                Icons.find_in_page_outlined,
+                size: 20,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'AI-identified indicators (${report.findings.length})',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...report.findings.map(
+            (finding) => _buildFindingTile(theme, finding, context),
+          ),
+          const SizedBox(height: AppSpacing.pagePaddingSmall),
+        ] else ...[
+          AppCard(
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  size: 20,
+                  color: theme.hintColor,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'No additional scam indicators were identified by cloud AI. (Not proof of safety).',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.pagePaddingSmall),
+        ],
+
+        // AI Suggested Actions
+        if (report.suggestedActions.isNotEmpty) ...[
+          Row(
+            children: [
+              Icon(
+                Icons.checklist_outlined,
+                size: 20,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'AI-recommended verification steps',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...report.suggestedActions.map(
+            (action) => _buildActionCard(theme, action),
+          ),
+          const SizedBox(height: AppSpacing.pagePaddingSmall),
+        ],
+      ],
     );
   }
 

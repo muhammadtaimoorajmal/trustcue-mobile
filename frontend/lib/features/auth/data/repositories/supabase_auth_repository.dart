@@ -370,6 +370,22 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<String?> getAccessToken() async {
+    if (!_config.isConfigured) return null;
+    try {
+      final session = _activeClient.auth.currentSession;
+      if (session == null) return null;
+      if (session.isExpired) {
+        final response = await _activeClient.auth.refreshSession();
+        return response.session?.accessToken;
+      }
+      return session.accessToken;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
   void dispose() {
     _authSubscription?.cancel();
     _statusController.close();

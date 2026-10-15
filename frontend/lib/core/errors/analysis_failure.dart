@@ -6,6 +6,10 @@ enum AnalysisFailureCode {
   timeout,
   cancelled,
   malformedData,
+  rateLimited,
+  unauthorized,
+  consentRequired,
+  providerError,
 }
 
 /// Represents an operational or validation failure in input processing or analysis.
@@ -23,6 +27,10 @@ class AnalysisFailure {
     required this.message,
     this.safeDetails,
   });
+
+  /// Optional retry-after duration or hint when [code] is [AnalysisFailureCode.rateLimited].
+  String? get retryAfterSeconds =>
+      code == AnalysisFailureCode.rateLimited ? safeDetails : null;
 
   const AnalysisFailure.invalidInput(String message, [String? safeDetails])
     : this(
@@ -62,6 +70,34 @@ class AnalysisFailure {
   const AnalysisFailure.malformedData(String message, [String? safeDetails])
     : this(
         code: AnalysisFailureCode.malformedData,
+        message: message,
+        safeDetails: safeDetails,
+      );
+
+  const AnalysisFailure.rateLimited(String message, [String? safeDetails])
+    : this(
+        code: AnalysisFailureCode.rateLimited,
+        message: message,
+        safeDetails: safeDetails,
+      );
+
+  const AnalysisFailure.unauthorized(String message, [String? safeDetails])
+    : this(
+        code: AnalysisFailureCode.unauthorized,
+        message: message,
+        safeDetails: safeDetails,
+      );
+
+  const AnalysisFailure.consentRequired(String message, [String? safeDetails])
+    : this(
+        code: AnalysisFailureCode.consentRequired,
+        message: message,
+        safeDetails: safeDetails,
+      );
+
+  const AnalysisFailure.providerError(String message, [String? safeDetails])
+    : this(
+        code: AnalysisFailureCode.providerError,
         message: message,
         safeDetails: safeDetails,
       );

@@ -888,3 +888,71 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Whitespace audit: PASS (`git diff --check` and `git diff --cached --check` clean).
 - **Physical Device & Verification Status:** Device test from Module 32 remains preserved as pending. No phone is required for output validation and grounding.
 - **Status:** Complete. Pushed to `backend` (`1f093f8`) and `frontend`. Stopped before Module 35.
+
+### 2026-10-15 — Module 35: Mobile Upload Consent and Optional AI Workflow
+- **Scope & Objectives:**
+  - Implemented the client-side pre-upload consent architecture, typed backend API client, server response codec with client-side invariant verification, and results screen presentation for optional cloud AI assistance.
+  - Implemented `UploadConsent` domain model (`lib/features/analysis/domain/models/upload_consent.dart`):
+    - Immutable model holding `snapshotId`, `reviewedText`, `userId`, `consentTimestamp`, and `consentVersion` ("1.0.0").
+    - Explicit `isValidFor(snapshot, currentUserId)` method verifying exact snapshot ID match, exact UTF-16 text equality, and account ownership.
+    - Prevents transmission if reviewed text has been modified or account context has changed.
+  - Implemented `UploadConsentDialog` modal widget (`lib/features/analysis/presentation/widgets/upload_consent_dialog.dart`):
+    - Responsive layout with scrollable preview of exact reviewed text and code-unit length.
+    - Full transparency disclosures: destinations (TrustCue self-hosted backend and Groq Cloud LPU processors), ephemeral processing policy (zero model training, no customer data retention), and TLS transit encryption.
+    - Explicit consent confirmation button ("I understand and consent") with primary branding and cancel button.
+    - Preserves local results completely upon dismissal or cancellation.
+  - Implemented `AnalysisApiClient` service (`lib/features/analysis/data/services/analysis_api_client.dart`):
+    - Requires valid `UploadConsent` matching reviewed text before initiating network request.
+    - Fetches fresh Bearer token via `AuthRepository.getAccessToken()`.
+    - Enforces 20-second timeout and 1 MB max response size (`readBytes()`).
+    - Robust error mapping to typed `AnalysisFailure` domain instances (`network()`, `timeout()`, `rateLimited()`, `unauthorized()`, `serverError()`, `serviceUnavailable()`, `format()`).
+    - Extracts `retryAfterSeconds` from HTTP 429 responses.
+  - Implemented `AiAnalysisReport` domain model & `AiAnalysisReportCodec` (`lib/features/analysis/data/serialization/ai_analysis_report_codec.dart`):
+    - Deserializes backend `POST /api/v1/analysis/ai` JSON response supporting flexible backend schema variants (`evidenceReferences`/`evidence`, `excerpt`/`exactExcerpt`, `detail`/`description`).
+    - Enforces client-side invariant verification (`report.validateAgainst(snapshot)`): guarantees exact UTF-16 code-unit excerpt matching, valid taxonomy categories, and non-empty limitations.
+  - Implemented `AnalysisResultsController` state orchestration & `AnalysisResultsScreen` UI (`lib/features/analysis/presentation/screens/analysis_results_screen.dart`):
+    - Distinct provenance badges: `[On-device heuristic]` for local rule findings, and `[AI-Assisted: Groq]` for server AI findings.
+    - Honest non-guarantee disclosures explicitly warning that AI findings explain potential warning indicators and do not guarantee safety or prove scam presence.
+    - Inert plain text rendering protecting against executable markup injection.
+    - Fail-safe local preservation: if cloud AI fails, local on-device rule findings, evidence trail, and safety recommendations remain completely intact.
+    - Invalidation on text edit: any modification to reviewed text invalidates prior consent (`invalidateConsent()`).
+  - Ungated and aligned backend route (`POST /api/v1/analysis/ai`) on `trustcue-backend`:
+    - Validates incoming `consent_version` and `consent_confirmed` flags.
+    - Pre-quota consent enforcement and atomic quota reservation/commitment.
+    - Active model configured: `GROQ_MODEL=qwen/qwen3.8-27b` in backend `.env` (matches free Groq tier availability and produces 100% exact UTF-16 evidence grounding).
+- **Components Created / Updated:**
+  - Frontend:
+    - `lib/features/analysis/domain/models/upload_consent.dart`
+    - `lib/features/analysis/domain/models/ai_analysis_report.dart`
+    - `lib/features/analysis/data/services/analysis_api_client.dart`
+    - `lib/features/analysis/data/serialization/ai_analysis_report_codec.dart`
+    - `lib/features/analysis/presentation/widgets/upload_consent_dialog.dart`
+    - `lib/features/analysis/presentation/controllers/analysis_results_controller.dart`
+    - `lib/features/analysis/presentation/screens/analysis_results_screen.dart`
+    - `lib/features/analysis/presentation/bindings/analysis_results_binding.dart`
+    - `lib/core/errors/analysis_failure.dart`
+    - `lib/features/auth/domain/contracts/auth_repository.dart`
+    - `lib/features/auth/data/repositories/supabase_auth_repository.dart`
+    - `lib/features/input/domain/models/ocr_failure.dart`
+    - `pubspec.yaml`, `pubspec.lock`
+    - `test/features/analysis/domain/models/upload_consent_test.dart`
+    - `test/features/analysis/data/serialization/ai_analysis_report_codec_test.dart`
+    - `test/features/analysis/data/services/analysis_api_client_test.dart`
+    - `test/features/analysis/presentation/widgets/upload_consent_dialog_test.dart`
+    - `test/features/analysis/presentation/controllers/analysis_results_controller_test.dart`
+    - `test/features/analysis/presentation/screens/analysis_results_screen_test.dart`
+    - `test/features/auth/mocks/fake_auth_repository.dart`
+    - `docs/ROADMAP.md`, `docs/PROJECT_STATE.md`, `docs/MODULE_LOG.md`
+  - Backend:
+    - `trustcue_backend/api/routes/analysis.py`
+    - `trustcue_backend/api/schemas/analysis.py`
+    - `backend/tests/test_analysis_gating.py`
+- **Checks Performed:**
+  - Full Flutter test suite: 675/675 PASS (0 failures).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `dart format`: PASS (0 changes needed across 217 files).
+  - Backend tests: `pytest backend/tests`: PASS (123/123 tests passed).
+  - `ruff check src tests`: PASS (0 issues found).
+  - Whitespace audit: PASS (`git diff --check` clean).
+- **Physical Device & Verification Status:** Device test from Module 32 remains preserved as pending. No phone is required for mobile upload consent and cloud AI workflow integration.
+- **Status:** Complete. Pushed to `backend` (`d1542c6`) and `frontend`. Stopped before Module 36.

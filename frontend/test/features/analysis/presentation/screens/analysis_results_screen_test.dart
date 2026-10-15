@@ -5,6 +5,7 @@ import 'package:trustcue_mobile/core/types/result.dart';
 import 'package:trustcue_mobile/features/analysis/domain/contracts/analysis_execution_context.dart';
 import 'package:trustcue_mobile/features/analysis/domain/contracts/analysis_service.dart';
 import 'package:trustcue_mobile/features/analysis/domain/contracts/assessment_synthesizer.dart';
+import 'package:trustcue_mobile/features/analysis/domain/models/ai_analysis_report.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_finding.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_report.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/assessment_action.dart';
@@ -406,6 +407,228 @@ void main() {
 
       expect(find.text('Local on-device analysis'), findsOneWidget);
       expect(find.text('No indicators matched'), findsOneWidget);
+    });
+
+    testWidgets(
+      'renders [On-device heuristic] badge and [Optional Cloud AI] idle section',
+      (tester) async {
+        final review = _makeReview(
+          'Send your password immediately to avoid suspension.',
+        );
+        final finding = AnalysisFinding(
+          id: 'f-1',
+          category: 'requests_for_credentials',
+          explanation: 'Requests user password.',
+          origin: FindingOrigin.localRule,
+          producerId: 'rule.credential_request',
+          evidence: [
+            EvidenceReference(
+              snapshotId: review.snapshot.id,
+              startOffset: 10,
+              endOffset: 18,
+              exactExcerpt: 'password',
+            ),
+          ],
+        );
+
+        final assessment = LocalAssessment(
+          reportId: 'rep-badge-test',
+          snapshotId: review.snapshot.id,
+          snapshotSource: InputSource.messageText,
+          outcomeState: AssessmentOutcomeState.indicatorsDetected,
+          factualSummary: 'Detected credential request.',
+          groupedIndicators: [
+            AssessmentIndicatorGroup(
+              categoryId: 'requests_for_credentials',
+              category: IndicatorCategory.requestsForCredentials,
+              categoryLabel: 'Requests for credentials',
+              findings: [finding],
+              educationalContext: const CategoryEducationalContext(
+                id: 'edu.cred',
+                categoryId: 'requests_for_credentials',
+                whatObserved: 'Password request.',
+                whyAttention: 'Risk of compromise.',
+                whatCannotEstablish: 'Sender identity.',
+                independentVerificationStep: 'Contact institution.',
+              ),
+            ),
+          ],
+          coverageInfo: AssessmentCoverageInfo(
+            executedRuleIds: const ['rule.credential_request'],
+            evaluatedCategories: const [
+              IndicatorCategory.requestsForCredentials,
+            ],
+          ),
+          uncertaintyNotes: const ['Sample note'],
+          actionableSteps: const [],
+          createdAt: DateTime.utc(2026, 1, 1),
+        );
+
+        final pipeline = LocalAnalysisPipeline(
+          engine: _MockEngine(),
+          synthesizer: _MockSynthesizer(assessment),
+          registry: LocalRuleCatalog.createRegistry(),
+        );
+
+        final controller = AnalysisResultsController(
+          pipeline: pipeline,
+          args: AnalysisResultsArgs(reviewResult: review),
+        );
+
+        await tester.pumpWidget(createTestWidget(controller: controller));
+        await tester.pumpAndSettle();
+
+        // Check on-device provenance badge
+        expect(find.text('[On-device heuristic]'), findsOneWidget);
+
+        // Check Cloud AI section in idle state
+        await tester.ensureVisible(find.text('Optional Cloud AI analysis'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Optional Cloud AI analysis'), findsOneWidget);
+        expect(find.text('Ask Cloud AI'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'renders [AI-Assisted: Groq] badge and AI report details when completed',
+      (tester) async {
+        final review = _makeReview(
+          'Send your password immediately to avoid suspension.',
+        );
+        final assessment = LocalAssessment(
+          reportId: 'rep-ai-screen-test',
+          snapshotId: review.snapshot.id,
+          snapshotSource: InputSource.messageText,
+          outcomeState: AssessmentOutcomeState.noIndicatorsMatched,
+          factualSummary: 'Local analysis found no matches.',
+          groupedIndicators: const [],
+          coverageInfo: AssessmentCoverageInfo(
+            executedRuleIds: const ['rule-1'],
+            evaluatedCategories: const [
+              IndicatorCategory.requestsForCredentials,
+            ],
+          ),
+          uncertaintyNotes: const [],
+          actionableSteps: const [],
+          createdAt: DateTime.utc(2026, 1, 1),
+        );
+
+        final pipeline = LocalAnalysisPipeline(
+          engine: _MockEngine(),
+          synthesizer: _MockSynthesizer(assessment),
+          registry: LocalRuleCatalog.createRegistry(),
+        );
+
+        final controller = AnalysisResultsController(
+          pipeline: pipeline,
+          args: AnalysisResultsArgs(reviewResult: review),
+        );
+
+        final aiFinding = AnalysisFinding(
+          id: 'ai-f-1',
+          category: 'urgency',
+          explanation: 'AI detected urgent coercive phrasing.',
+          origin: FindingOrigin.remoteAi,
+          producerId: 'groq-qwen',
+          evidence: [
+            EvidenceReference(
+              snapshotId: review.snapshot.id,
+              startOffset: 19,
+              endOffset: 30,
+              exactExcerpt: 'immediately',
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(createTestWidget(controller: controller));
+        await tester.pumpAndSettle();
+
+        // Transition AI state to completed
+        controller.aiReport.value = AiAnalysisReport(
+          reportId: 'ai-rep-completed',
+          snapshotId: review.snapshot.id,
+          provider: 'groq',
+          model: 'qwen/qwen3.8-27b',
+          analyzedAt: DateTime.utc(2026, 10, 15, 12, 0, 0),
+          factualSummary: 'AI observed time pressure pressure tactics.',
+          findings: [aiFinding],
+          uncertaintyNotes: const ['AI does not verify sender identity.'],
+          suggestedActions: const [],
+        );
+        controller.aiState.value = AiAnalysisState.completed;
+        await tester.pumpAndSettle();
+
+        // Ensure visible and verify AI elements
+        await tester.ensureVisible(find.text('[AI-Assisted: Groq]').first);
+        await tester.pumpAndSettle();
+
+        expect(find.text('[AI-Assisted: Groq]'), findsWidgets);
+        expect(find.text('AI pattern summary'), findsOneWidget);
+        expect(
+          find.text('AI observed time pressure pressure tactics.'),
+          findsOneWidget,
+        );
+        expect(
+          find.text('AI detected urgent coercive phrasing.'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('renders AI failure card with local results preserved', (
+      tester,
+    ) async {
+      final review = _makeReview(
+        'Send your password immediately to avoid suspension.',
+      );
+      final assessment = LocalAssessment(
+        reportId: 'rep-ai-fail-screen',
+        snapshotId: review.snapshot.id,
+        snapshotSource: InputSource.messageText,
+        outcomeState: AssessmentOutcomeState.noIndicatorsMatched,
+        factualSummary: 'Local analysis found no matches.',
+        groupedIndicators: const [],
+        coverageInfo: AssessmentCoverageInfo(
+          executedRuleIds: const ['rule-1'],
+          evaluatedCategories: const [IndicatorCategory.requestsForCredentials],
+        ),
+        uncertaintyNotes: const [],
+        actionableSteps: const [],
+        createdAt: DateTime.utc(2026, 1, 1),
+      );
+
+      final pipeline = LocalAnalysisPipeline(
+        engine: _MockEngine(),
+        synthesizer: _MockSynthesizer(assessment),
+        registry: LocalRuleCatalog.createRegistry(),
+      );
+
+      final controller = AnalysisResultsController(
+        pipeline: pipeline,
+        args: AnalysisResultsArgs(reviewResult: review),
+      );
+
+      await tester.pumpWidget(createTestWidget(controller: controller));
+      await tester.pumpAndSettle();
+
+      // Transition AI state to failed
+      controller.aiErrorMessage.value = 'AI service temporarily unavailable.';
+      controller.aiState.value = AiAnalysisState.failed;
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Cloud AI analysis unavailable'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cloud AI analysis unavailable'), findsOneWidget);
+      expect(find.text('AI service temporarily unavailable.'), findsOneWidget);
+      expect(
+        find.text(
+          'Your local on-device analysis above is complete and unaffected.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Retry AI review'), findsOneWidget);
     });
   });
 }

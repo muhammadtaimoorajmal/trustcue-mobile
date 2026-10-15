@@ -53,6 +53,9 @@ abstract class AuthRepository {
   /// Processes an incoming deep link or OAuth/PKCE callback URI.
   Future<AuthResult<void>> handleAuthCallback(Uri uri);
 
+  /// Returns the current valid JWT bearer access token, or null if unauthenticated.
+  Future<String?> getAccessToken();
+
   /// Releases resources, timers, and stream controllers.
   void dispose();
 }
