@@ -1,4 +1,4 @@
-# Module Log
+﻿# Module Log
 
 This log tracks the progress of TrustCue's implementation across approximately 100 modules.
 
@@ -217,7 +217,7 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 - **Status:** Complete. Pushed to `frontend`. Integration into `main` remains paused pending human smoke-test sign-off.
 
 ## Module 18: Local OCR, Script Limitations, Extraction Errors, and Retries
-- **Scope:** Implement real on-device Latin text extraction on `/input/screenshot` using `google_mlkit_text_recognition: 0.17.1`. The bridge is community-maintained by `flutter-ml.dev` and wraps Google's on-device ML Kit C++/Java libraries without API keys, accounts, or network dependencies. Extract text only upon deliberate user request via "Extract text from image" button. Display clear script limitation notice (Latin alphabet only) and accuracy warning. Provide read-only, selectable text presentation with prominent "Unreviewed text — accuracy not verified" banner. Robust error handling mapping failures into user-friendly messages: empty image text, limits exceeded (10,000 code points / 40,000 UTF-8 bytes), platform unsupported, timeout, and user cancellation. Provide recovery actions: "Retry extraction" and "Enter message text manually". Truthful retry state prevents overlapping native operations (`isNativeSettling`). Coordinate file reader lifecycle (`_activeReadingFiles`) so active native readers prevent premature file deletion. Update Home dashboard Screenshot card status from "Preview available" to "Text extraction available". Reconcile iOS deployment target in Xcode project to 15.5+ (`IPHONEOS_DEPLOYMENT_TARGET = 15.5`).
+- **Scope:** Implement real on-device Latin text extraction on `/input/screenshot` using `google_mlkit_text_recognition: 0.17.1`. The bridge is community-maintained by `flutter-ml.dev` and wraps Google's on-device ML Kit C++/Java libraries without API keys, accounts, or network dependencies. Extract text only upon deliberate user request via "Extract text from image" button. Display clear script limitation notice (Latin alphabet only) and accuracy warning. Provide read-only, selectable text presentation with prominent "Unreviewed text â€” accuracy not verified" banner. Robust error handling mapping failures into user-friendly messages: empty image text, limits exceeded (10,000 code points / 40,000 UTF-8 bytes), platform unsupported, timeout, and user cancellation. Provide recovery actions: "Retry extraction" and "Enter message text manually". Truthful retry state prevents overlapping native operations (`isNativeSettling`). Coordinate file reader lifecycle (`_activeReadingFiles`) so active native readers prevent premature file deletion. Update Home dashboard Screenshot card status from "Preview available" to "Text extraction available". Reconcile iOS deployment target in Xcode project to 15.5+ (`IPHONEOS_DEPLOYMENT_TARGET = 15.5`).
 - **Branch:** `frontend`
 - **Domain, Storage, & Presentation Components:**
   - `lib/features/input/domain/contracts/text_recognition_service.dart`: Asynchronous contract defining `processImage()`, `cancelOperation()`, and `dispose()`.
@@ -451,7 +451,7 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 - **Physical Device & Verification Status:** Pure-Dart on-device heuristic rules; no platform channel or visible UI modifications. In Module 22, APK installation and live `ACTION_SEND` intent delivery via adb were verified, but the automated device integration test suite (`tool/test.ps1 -Suite device`) was not executed for Module 22 (marked unverified for Module 22; last run in Module 21 where 5/5 tests passed). Automated assertions, APK installation, live intent delivery, and manual observations remain recorded distinctly.
 - **Status:** Complete. Pushed to `frontend`. Stopped before Module 24.
 
-### 2026-10-14 — Module 24: Extended Local Indicator Rules and False-Positive Regression Coverage
+### 2026-10-14 â€” Module 24: Extended Local Indicator Rules and False-Positive Regression Coverage
 - **Scope & Objectives:**
   - Implemented the second local warning-indicator rule pack, extending coverage to all 10 `IndicatorCategory` taxonomy families.
   - Implemented 5 extended rule classes: `ClaimedIdentityRule`, `JobOfferRule`, `RewardClaimRule`, `InvestmentReturnRule`, and `LinkStructuralRule`.
@@ -484,7 +484,7 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 - **Physical Device & Verification Status:** Pure-Dart on-device heuristic rules; no platform channel or visible UI modifications. Local rule packs are implemented; the user-facing analysis workflow is not enabled yet. In Module 22, APK installation and live `ACTION_SEND` intent delivery via adb were verified, but the automated device integration test suite (`tool/test.ps1 -Suite device`) was not executed for Module 22 (marked unverified for Module 22; last run in Module 21 where 5/5 tests passed). Automated assertions, APK installation, live intent delivery, and manual observations remain recorded distinctly.
 - **Status:** Complete. Pushed to `frontend`. Stopped before Module 25.
 
-### 2026-10-15 — Module 25: Local Assessment Synthesis, Uncertainty, and Educational Guidance
+### 2026-10-15 â€” Module 25: Local Assessment Synthesis, Uncertainty, and Educational Guidance
 - **Scope & Objectives:**
   - Implemented deterministic on-device assessment synthesizer (`LocalAssessmentSynthesizer`) transforming a completed `AnalysisReport` and explicit `AnalysisExecutionContext` into an immutable `LocalAssessment`.
   - Defined derived domain models: `LocalAssessment`, `AssessmentIndicatorGroup`, `AssessmentAction`, `AssessmentCoverageInfo`, and `CategoryEducationalContext`.
@@ -521,7 +521,7 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 - **Physical Device & Verification Status:** Pure-Dart on-device contracts and synthesizer; no platform channel or visible UI modifications. Local assessment synthesis is implemented; the user-facing analysis workflow is not enabled yet. In Module 22, APK installation and live `ACTION_SEND` intent delivery via adb were verified, but the automated device integration test suite (`tool/test.ps1 -Suite device`) was not executed for Module 22 (marked unverified for Module 22; last run in Module 21 where 5/5 tests passed). Automated assertions, APK installation, live intent delivery, and manual observations remain recorded distinctly.
 - **Status:** Complete. Pushed to `frontend`. Stopped before Module 26.
 
-### 2026-10-15 — Module 26: Working Local-Analysis Results and Evidence Trail Interface
+### 2026-10-15 â€” Module 26: Working Local-Analysis Results and Evidence Trail Interface
 - **Scope & Objectives:**
   - Implemented the user-facing local-analysis results and evidence trail presentation interface on route `/analysis/results` (`AppRoutes.analysisResults`), wired via `AppPages` with `AnalysisResultsBinding`.
   - Connected confirmed text review (`/input/review`) to `LocalAnalysisPipeline` via explicit user action: primary button *"Analyze on this device"* with subtitle *"Checks the reviewed text using local rules. Nothing is uploaded."*
@@ -530,7 +530,7 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Managed controller lifecycle with stale operation isolation (`AnalysisResultsController`): unique incremental operation IDs ensure results arriving after screen pop or controller disposal are safely discarded.
   - Built comprehensive, honest results hierarchy (`AnalysisResultsScreen`):
     - On-device header banner: *"Local on-device analysis"*, *"Evaluated on this device using local rules. Nothing was uploaded."*
-    - Outcome summary card: truthful state representation for detected indicators, neutral notice for zero matches (*"No indicators were matched by these local checks. This does not establish that the message is safe."* — strictly NO green shield or safe verdict), coverage limits, or typed failure.
+    - Outcome summary card: truthful state representation for detected indicators, neutral notice for zero matches (*"No indicators were matched by these local checks. This does not establish that the message is safe."* â€” strictly NO green shield or safe verdict), coverage limits, or typed failure.
     - Coverage & Limitations section: highlights evaluated categories, heuristic constraints, English-only rule scope, OCR inaccuracy caveats, and redaction impact. Expandable full uncertainty notes.
     - Evidence Trail: deterministically grouped findings with category badges, rule limitations, exact quoted excerpts, and *"View in analyzed text"* modal action.
     - Suggested Next Steps: deduplicated, prioritized actions (`immediate` > `recommended` > `conditional`) referencing supporting finding IDs and categories.
@@ -566,7 +566,7 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 - **Physical Device & Verification Status:** Full device integration test suite executed on physical Vivo V2207 device (`10AC9R1ABF0013A`) via `tool/test.ps1 -Suite device` with 5/5 tests passing in 31s (smoke test, real native Google ML Kit Latin OCR, Module 19 text review & redaction, Module 20 offline link & QR decoding, Module 21 Android incoming shares platform channel & lifecycle). Debug APK installed via streamed install and launched cleanly via adb (`Starting: Intent { cmp=io.github.muhammadtaimoorajmal.trustcue/.MainActivity }`).
 - **Status:** Complete. Pushed to `frontend`. Stopped before Module 27.
 
-### 2026-10-15 — Module 27: Backend/AI Architecture, Service Feasibility, Privacy Decisions, and API Contracts
+### 2026-10-15 â€” Module 27: Backend/AI Architecture, Service Feasibility, Privacy Decisions, and API Contracts
 - **Scope & Objectives:**
   - Evaluated technology stack feasibility for server-assisted AI scam-indicator analysis under zero financial expenditure and Pakistan developer operating constraints (CS3643, BSCS Semester 5-1, Fall 2026, Riphah International University).
   - Selected Primary Stack: Node.js (TypeScript) + Fastify running on Render Free Web Service, with managed authentication and PostgreSQL provided by Supabase Free Tier.
@@ -576,7 +576,7 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Defined strict server-side evidence grounding verification: byte-for-byte substring matching, exact UTF-16 code-unit offsets, surrogate pair safety, and automatic filtering of ungrounded model hallucinations.
   - Designed conceptual database entity model (`auth.users`, `public.profiles`, `public.synced_reports`, `public.ai_usage_quotas`) with PostgreSQL Row Level Security (RLS) and cascade account deletion.
   - Authored beginner-friendly cloud service setup guide (`backend/docs/SETUP_GUIDE.md`) with `.env.example` placeholder template and immediate checklist for Module 28.
-  - Reconciled authoritative 50-module roadmap preserving completed Modules 1–26 and defining primary branches, deliverables, dependencies, acceptance criteria, and necessary human actions for Modules 27–50.
+  - Reconciled authoritative 50-module roadmap preserving completed Modules 1â€“26 and defining primary branches, deliverables, dependencies, acceptance criteria, and necessary human actions for Modules 27â€“50.
   - Reconciled Module 26 physical-device test coverage in `app_smoke_test.dart` and recorded missing device flows for future phone execution.
 - **Backend Components Created (Committed on `backend` at `60745dc`):**
   - `backend/contracts/openapi.yaml`: Versioned OpenAPI 3.1.0 specification.
@@ -594,7 +594,7 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Exactly 50 numbered roadmap modules preserved.
 - **Status:** Complete. Pushed to `backend` (`60745dc`). Reconciled on `frontend`. Stopped before Module 28.
 
-### 2026-10-15 — Module 28: Backend Foundation, Configuration, Health/Readiness, Error Handling, and CI Validation
+### 2026-10-15 â€” Module 28: Backend Foundation, Configuration, Health/Readiness, Error Handling, and CI Validation
 - **Scope & Objectives:**
   - Audited and corrected Module 27 provider assumptions: documented Groq Cloud API retention nuances (up to 30 days for system reliability, troubleshooting, and abuse investigation), Gemini API unpaid free tier terms (model training, human review, explicit prohibition against submitting sensitive/confidential personal text), verified Groq free-tier limits for `llama-3.3-70b-versatile` (30 RPM, 1,000 RPD, 12,000 TPM, 100,000 TPD), and strictly prohibited automatic cross-provider fallback to preserve user privacy consent boundaries.
   - Telemetry Privacy: Completely removed message SHA-256 content hashes from routine telemetry to prevent dictionary guessing and correlation attacks on predictable messages.
@@ -625,7 +625,7 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Git worktree separation: `trustcue-backend` clean, committed, and pushed to `origin/backend` (`766e61a`).
 - **Status:** Complete. Pushed to `backend` (`766e61a`). Reconciled on `frontend`. Stopped before Module 29.
 
-### 2026-10-15 — Module 29: Database Schema, Versioned Migrations, Ownership Policies, and Database Regression Tests
+### 2026-10-15 â€” Module 29: Database Schema, Versioned Migrations, Ownership Policies, and Database Regression Tests
 - **Scope & Objectives:**
   - Implemented versioned PostgreSQL DDL migrations for TrustCue cloud data storage, strictly adhering to local-first privacy invariants.
   - Implemented `public.profiles` (`migrations/00001_create_profiles.sql`) bound 1:1 to `auth.users(id)` with cascade deletion, bounded `display_name` (<=64 characters, trimmed), `terms_version` (1-32 characters), and explicit `sync_enabled` boolean opt-in.
@@ -662,7 +662,7 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Executable PostgreSQL 16 migration application and RLS policy enforcement were verified in GitHub Actions Database CI (`.github/workflows/database-ci.yml`) using a genuine `postgres:16-alpine` service container. CI run `38701649252` passed all 12 steps with SUCCESS following role-reset and permission adjustments (commit `02db979`).
 - **Status:** Complete. Pushed to `database` (`02db979`). Reconciled on `frontend`.
 
-### 2026-10-15 — Module 30: Authentication Integration and Session-Validation Contracts
+### 2026-10-15 â€” Module 30: Authentication Integration and Session-Validation Contracts
 - **Scope & Objectives:**
   - Implemented authentication integration and backend session-validation contracts adhering strictly to OpenAPI 3.1.0 specifications and local-first architecture.
   - Installed and configured `pyjwt[crypto]>=2.10.0` for cryptographic JWT verification in Python 3.13+.
@@ -712,4 +712,47 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `pytest backend/tests`: PASS (46/46 passed across 9 suites in 0.82s).
   - Whitespace & format audit: PASS (`git diff --cached --check` clean).
   - Git worktree separation: `trustcue-backend` clean, committed (`fa11d88`), and pushed to `origin/backend`.
-- **Status:** Complete. Pushed to `backend` (`fa11d88`). Reconciled on `frontend`. Stopped before Module 31.
+- **Status:** Complete. Pushed to `backend` (`fa11d88`). Reconciled on `frontend`.
+
+### 2026-10-15 â€” Module 31: Flutter Signup, Login, Email Verification, Password Recovery, Logout, and Session Handling
+- **Scope & Objectives:**
+  - Implemented the complete client authentication, account management, and session handling flows on the Flutter mobile client (`frontend`).
+  - Added and pinned dependencies: `supabase_flutter: 2.18.3` and `flutter_secure_storage: 11.2.0` (with `get: 4.7.3`).
+  - Built domain layer under `lib/features/auth/domain/`:
+    - `models/auth_user.dart`: Strongly-typed UUID `id`, `email`, `emailVerified`, `createdAt`, with privacy-safe `toString()`.
+    - `models/auth_state.dart`: `AuthStatus` enum (`unauthenticated`, `authenticated`, `verificationPending`, `recoverySession`, `unconfigured`) and `AuthSession` with expiration check.
+    - `models/auth_failure.dart`: Standardized `AuthFailureCode` and privacy-safe factories.
+    - `models/auth_result.dart`: Dedicated typed `AuthResult<T>` monad (`AuthSuccess<T>`, `AuthFailureOutcome<T>`, `fold()`, `when()`) preventing auth outcomes from leaking into `AnalysisFailure`.
+    - `contracts/auth_repository.dart`: Explicit repository contract covering registration, login, logout, verification email resend, password recovery, password update, and session restoration.
+  - Built data layer under `lib/features/auth/data/`:
+    - `services/auth_config.dart`: Public client configuration (`SUPABASE_URL`, publishable anon key, redirect URL scheme/host) parsed from environment defines (`--dart-define`).
+    - `services/secure_local_storage.dart`: Custom Supabase `LocalStorage` implementation powered by `FlutterSecureStorage`, using Android KeyStore AES-GCM + RSA key wrapping (`AndroidOptions(resetOnError: true)`) and iOS Keychain (`kSecAttrAccessibleAfterFirstUnlock`).
+    - `repositories/supabase_auth_repository.dart`: Production repository utilizing PKCE flow (`AuthFlowType.pkce`), broadcast state streaming, provider rate-limit mapping (`AuthFailure.rateLimitExceeded`), enumeration-resistant password recovery, offline sign-out fallback, and unconfigured safety.
+  - Built presentation layer under `lib/features/auth/presentation/`:
+    - Controllers: `AuthController` (app-wide session lifecycle), `LoginController` (sign-in with auto-routing on unconfirmed email), `RegisterController` (sign-up with redirect to email verification), `VerifyEmailController` (60-second cooldown timer, spam notices, resend), `ForgotPasswordController` (anti-enumeration generic confirmation), `ResetPasswordController` (new password validation, confirmation matching).
+    - Screens: `AccountScreen` (guest vs. authenticated view, email verification status, sign-out dialog), `LoginScreen` (password visibility toggle, forgot password / register links), `RegisterScreen` (password matching, verify email redirect), `VerifyEmailScreen` (status card, countdown button, return to sign in), `ForgotPasswordScreen` (email entry, generic inbox confirmation card), `ResetPasswordScreen` (password update form, success card).
+    - Responsive Accessibility: Applied `Wrap` layout to all footer action groups to eliminate `RenderFlex` overflows at 200% font scaling on 320px viewports. Minimum 48x48 touch targets on all interactive buttons.
+    - Bindings: `AuthBinding`, `LoginBinding`, `RegisterBinding`, `VerifyEmailBinding`, `ForgotPasswordBinding`, `ResetPasswordBinding`.
+  - Application Integration & Deep Linking:
+    - `lib/app/routes/app_routes.dart` & `app_pages.dart`: Registered `/account`, `/auth/login`, `/auth/register`, `/auth/verify-email`, `/auth/forgot-password`, `/auth/reset-password` with exact-path resolution.
+    - `lib/features/home/presentation/screens/home_screen.dart`: Added Account button with `Icons.account_circle_outlined`, tooltip, and 48x48 min touch targets in AppBar actions.
+    - `lib/app/trustcue_app.dart`: Supported optional `AuthRepository` dependency injection and auto-initialization via `AuthBinding.ensureInitialized()`.
+    - `android/app/src/main/AndroidManifest.xml`: Registered `trustcue://auth-callback` deep-link `intent-filter` for PKCE callback redirection.
+  - Security & Architectural Invariants:
+    - **Guest Mode Untouched:** 100% of local scam detection, text extraction, review, and results features remain completely functional without an account.
+    - **No Secret Key Leakage:** Client exclusively uses public publishable keys (`SUPABASE_URL`, public publishable anon key). Service-role keys and JWT signing secrets remain strictly prohibited.
+    - **Enumeration Resistance:** Password recovery always displays a generic success card ("Check your inbox") regardless of whether the email is registered.
+  - Database Follow-Up Items (Recorded for Module 39 / Database Team):
+    - Sync opt-in enforcement: `public.synced_reports` RLS write policy must require `profiles.sync_enabled = true`.
+    - Payload bounds & privacy: 500 KB ceiling (`chk_report_payload_size`), structured findings only, zero message/OCR/hash storage.
+    - Deletion semantics: Soft-delete tombstones for sync propagation vs. `ON DELETE CASCADE` for complete account deletion.
+    - Signup trigger safety: Exception handling in `handle_new_user()` prevents auth lockouts.
+    - Root migration tracking: Migrations `00001`â€“`00005` in `database/migrations/`.
+  - **Checks Performed:**
+    - `flutter analyze --no-pub`: PASS (0 issues found).
+    - `dart format --output=none --set-exit-if-changed lib test integration_test`: PASS (0 diffs across 208 files).
+    - Automated Unit & Widget Tests: PASS (43/43 tests passed across `test/features/auth` and `test/features/home`).
+    - Full Test Suite (`tool/test.ps1 -Suite all -TimeoutSeconds 180`): PASS (637/637 tests passed in 33 seconds).
+    - Debug APK Compilation (`flutter build apk --debug --no-pub -t lib/main.dart`): PASS (`build/app/outputs/flutter-apk/app-debug.apk` built cleanly).
+    - Physical Phone / Real Deep Link Verification: BLOCKED / NOT RUN (physical phone unavailable today; external callback and live provider inbox verification recorded as pending).
+- **Status:** Complete. Pushed to `frontend`. Stopped before Module 32.

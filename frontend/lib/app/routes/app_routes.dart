@@ -10,4 +10,10 @@ abstract class AppRoutes {
   static const inputLink = '/input/link';
   static const inputReview = '/input/review';
   static const analysisResults = '/analysis/results';
+  static const account = '/account';
+  static const authLogin = '/auth/login';
+  static const authRegister = '/auth/register';
+  static const authVerifyEmail = '/auth/verify-email';
+  static const authForgotPassword = '/auth/forgot-password';
+  static const authResetPassword = '/auth/reset-password';
 }

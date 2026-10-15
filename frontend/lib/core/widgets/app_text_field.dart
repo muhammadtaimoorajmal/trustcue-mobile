@@ -13,6 +13,12 @@ class AppTextField extends StatelessWidget {
   final bool multiline;
   final int? minLines;
   final int? maxLines;
+  final bool obscureText;
+  final Widget? suffixIcon;
+  final TextInputType? keyboardType;
+  final Iterable<String>? autofillHints;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
 
   const AppTextField({
     super.key,
@@ -28,6 +34,12 @@ class AppTextField extends StatelessWidget {
     this.multiline = false,
     this.minLines,
     this.maxLines,
+    this.obscureText = false,
+    this.suffixIcon,
+    this.keyboardType,
+    this.autofillHints,
+    this.textInputAction,
+    this.onSubmitted,
   });
 
   @override
@@ -37,15 +49,22 @@ class AppTextField extends StatelessWidget {
       focusNode: focusNode,
       onChanged: onChanged,
       enabled: enabled,
+      obscureText: obscureText,
+      autofillHints: autofillHints,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
       minLines: multiline ? (minLines ?? 3) : 1,
       maxLines: multiline ? maxLines : 1,
-      keyboardType: multiline ? TextInputType.multiline : TextInputType.text,
+      keyboardType:
+          keyboardType ??
+          (multiline ? TextInputType.multiline : TextInputType.text),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         helperText: helperText,
         errorText: errorText,
         counterText: counterText,
+        suffixIcon: suffixIcon,
         helperMaxLines: 5,
         errorMaxLines: 5,
         border: const OutlineInputBorder(),

@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:trustcue_mobile/app/routes/app_pages.dart';
 import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/core/theme/app_theme.dart';
+import 'package:trustcue_mobile/features/auth/domain/contracts/auth_repository.dart';
+import 'package:trustcue_mobile/features/auth/presentation/bindings/auth_binding.dart';
 import 'package:trustcue_mobile/features/incoming_share/domain/contracts/incoming_share_adapter.dart';
 import 'package:trustcue_mobile/features/incoming_share/presentation/controllers/incoming_share_coordinator.dart';
 import 'package:trustcue_mobile/features/onboarding/data/onboarding_preferences.dart';
@@ -15,6 +17,7 @@ class TrustCueApp extends StatefulWidget {
     this.navigatorObservers = const [],
     this.incomingShareAdapter,
     this.incomingShareCoordinator,
+    this.authRepository,
   });
 
   final String? initialRoute;
@@ -22,6 +25,7 @@ class TrustCueApp extends StatefulWidget {
   final List<NavigatorObserver> navigatorObservers;
   final IncomingShareAdapter? incomingShareAdapter;
   final IncomingShareCoordinator? incomingShareCoordinator;
+  final AuthRepository? authRepository;
 
   @override
   State<TrustCueApp> createState() => _TrustCueAppState();
@@ -47,6 +51,7 @@ class _TrustCueAppState extends State<TrustCueApp> {
         permanent: true,
       );
     }
+    AuthBinding.ensureInitialized(authRepository: widget.authRepository);
   }
 
   @override

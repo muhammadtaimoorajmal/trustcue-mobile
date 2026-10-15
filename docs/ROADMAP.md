@@ -54,7 +54,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **28** | Backend foundation and configuration | Completed (`766e61a`) | `backend` |
 | **29** | Database schema, migrations and ownership policies | Completed (`02db979`) | `database` |
 | **30** | Authentication integration and session-validation contracts | Completed (`fa11d88`) | `backend` |
-| **31** | Flutter signup/login/verification/recovery/logout flows | Planned | `frontend` |
+| **31** | Flutter signup/login/verification/recovery/logout flows | Completed | `frontend` |
 | **32** | Backend validation, authorization and abuse controls | Planned | `backend` |
 | **33** | Protected AI-provider integration | Planned | `backend` |
 | **34** | AI output/evidence validation and adversarial tests | Planned | `backend` |
@@ -109,10 +109,10 @@ To prevent divergent or conflicting project roadmaps across branches:
 
 ### Module 31: Flutter Signup/Login/Verification/Recovery/Logout Flows
 - **Primary Branch:** `frontend`
-- **Deliverable:** Flutter authentication screens (`/auth/login`, `/auth/register`, `/auth/forgot-password`), Supabase client integration, PKCE auth flow, secure hardware session persistence (`flutter_secure_storage`), session state reactive bindings.
+- **Deliverables:** Complete Flutter authentication and session management architecture (`/account`, `/auth/login`, `/auth/register`, `/auth/verify-email`, `/auth/forgot-password`, `/auth/reset-password`), typed domain models (`AuthUser`, `AuthState`, `AuthFailure`), dedicated monadic `AuthResult<T>` decoupling auth outcomes from analysis failures, secure hardware token storage (`flutter_secure_storage: 11.2.0` with Android KeyStore AES-GCM + RSA key wrapping and iOS Keychain), PKCE client integration (`supabase_flutter: 2.18.3`), deep-link callback configuration (`trustcue://auth-callback`), rate-limit cooldown timers, enumeration-resistant password reset, responsive accessible UI adapting cleanly to 320px width and 200% font scale, and Home dashboard AppBar account access button.
 - **Dependencies:** Modules 13, 14, 30.
-- **Acceptance Criteria:** User can register, verify email, log in, recover password, and log out on device; tokens stored securely; local analysis remains accessible without login.
-- **Necessary Human Actions:** Test registration with real email inbox.
+- **Acceptance Criteria:** Offline guest mode completely unimpeded; user can initiate registration, email verification cooldowns, sign in, request password resets with anti-enumeration protection, set new password, inspect session details on account screen, and confirm sign-out; 43 auth/home tests and 637 full project tests pass; `flutter analyze --no-pub` reports 0 issues; debug APK builds cleanly.
+- **Necessary Human Actions:** Real-device email inbox verification and deep-link redirect verification (pending when physical device testing resumes).
 
 ### Module 32: Backend Validation, Authorization, and Abuse Controls
 - **Primary Branch:** `backend`

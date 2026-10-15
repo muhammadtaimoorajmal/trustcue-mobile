@@ -20,6 +20,13 @@ import 'package:trustcue_mobile/features/input/presentation/screens/input_screen
 import 'package:trustcue_mobile/features/input/presentation/screens/input_text_screen.dart';
 import 'package:trustcue_mobile/features/analysis/presentation/bindings/analysis_results_binding.dart';
 import 'package:trustcue_mobile/features/analysis/presentation/screens/analysis_results_screen.dart';
+import 'package:trustcue_mobile/features/auth/presentation/bindings/auth_binding.dart';
+import 'package:trustcue_mobile/features/auth/presentation/screens/account_screen.dart';
+import 'package:trustcue_mobile/features/auth/presentation/screens/forgot_password_screen.dart';
+import 'package:trustcue_mobile/features/auth/presentation/screens/login_screen.dart';
+import 'package:trustcue_mobile/features/auth/presentation/screens/register_screen.dart';
+import 'package:trustcue_mobile/features/auth/presentation/screens/reset_password_screen.dart';
+import 'package:trustcue_mobile/features/auth/presentation/screens/verify_email_screen.dart';
 
 class AppPages {
   AppPages(this.preferences, {this.requestedRoute});
@@ -72,6 +79,36 @@ class AppPages {
       name: AppRoutes.analysisResults,
       page: () => const AnalysisResultsScreen(),
       binding: AnalysisResultsBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.account,
+      page: () => const AccountScreen(),
+      binding: AuthBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.authLogin,
+      page: () => const LoginScreen(),
+      binding: LoginBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.authRegister,
+      page: () => const RegisterScreen(),
+      binding: RegisterBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.authVerifyEmail,
+      page: () => const VerifyEmailScreen(),
+      binding: VerifyEmailBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.authForgotPassword,
+      page: () => const ForgotPasswordScreen(),
+      binding: ForgotPasswordBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.authResetPassword,
+      page: () => const ResetPasswordScreen(),
+      binding: ResetPasswordBinding(),
     ),
     unknownRoute,
   ];
