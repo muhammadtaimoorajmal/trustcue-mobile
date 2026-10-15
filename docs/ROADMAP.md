@@ -51,7 +51,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **25** | Local assessment aggregation, uncertainty, evidence validation, safe-action catalog | Completed | `frontend` |
 | **26** | Working local-analysis results and Evidence Trail interface | Completed (`027a0cc`) | `frontend` |
 | **27** | Architecture, feasibility, privacy and API contracts | Completed (`60745dc`) | `backend` |
-| **28** | Backend foundation and configuration | Planned | `backend` |
+| **28** | Backend foundation and configuration | Completed (`766e61a`) | `backend` |
 | **29** | Database schema, migrations and ownership policies | Planned | `database` |
 | **30** | Authentication integration and session-validation contracts | Planned | `backend` |
 | **31** | Flutter signup/login/verification/recovery/logout flows | Planned | `frontend` |
@@ -86,19 +86,19 @@ To prevent divergent or conflicting project roadmaps across branches:
 - **Acceptance Criteria:** Validated OpenAPI 3.1.0 specification with 100% resolved internal `$ref` pointers; zero required upfront payment cards; Groq zero-retention strategy documented; synthetic data policy for unpaid Gemini API; explicit documentation ownership policy established.
 - **Necessary Human Actions:** None yet.
 
-### Module 28: Backend Foundation and Configuration
+### Module 28: Backend Foundation, Configuration, Health/Readiness, and CI Validation
 - **Primary Branch:** `backend`
-- **Deliverable:** Node.js/TypeScript Fastify project scaffold, environment variable loader, typed config schemas, structured JSON logger, health/readiness endpoints (`/health`, `/ready`), and automated contract tests.
+- **Deliverables:** Python 3.13+ FastAPI application scaffold, typed Pydantic Settings, loopback execution default (`127.0.0.1:8000`), `/health` and `/ready` probe routes matching design contract, privacy-safe structured logging, sanitized error envelopes (masking raw user input and internal exceptions), GitHub Actions backend CI workflow, and automated test suite.
 - **Dependencies:** Module 27.
-- **Acceptance Criteria:** Server starts cleanly on `localhost:3000`; health endpoint returns 200 with uptime and version; zero credentials committed to Git.
-- **Necessary Human Actions:** Create a free Supabase project and save credentials locally into `.env`.
+- **Acceptance Criteria:** Server starts cleanly on loopback; `/health` and `/ready` return 200 with valid schemas; `/ready` reports degraded 503 during draining; validation errors strip raw submitted values; logs never capture query strings, bodies, or content hashes; 24 automated tests pass; zero cloud credentials required.
+- **Necessary Human Actions:** None.
 
 ### Module 29: Database Schema, Migrations, and Ownership Policies
 - **Primary Branch:** `database`
-- **Deliverable:** Versioned PostgreSQL DDL migrations for `profiles`, `synced_reports`, and `ai_usage_quotas`; Row Level Security (RLS) policies; synthetic seed fixtures; database documentation.
+- **Deliverables:** Versioned PostgreSQL DDL migrations for `profiles`, `synced_reports`, and `ai_usage_quotas`; Row Level Security (RLS) policies; synthetic seed fixtures; database documentation.
 - **Dependencies:** Modules 27, 28.
 - **Acceptance Criteria:** Migrations apply idempotently; RLS prevents cross-user access; cascade delete purges all child records on user deletion.
-- **Necessary Human Actions:** Apply migrations via Supabase SQL Editor or CLI using project connection string.
+- **Necessary Human Actions:** None required for local migration authoring/testing. If deploying to cloud Supabase, create free project at supabase.com and apply migration scripts via Supabase SQL Editor.
 
 ### Module 30: Authentication Integration and Session-Validation Contracts
 - **Primary Branch:** `backend`

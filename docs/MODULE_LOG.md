@@ -593,3 +593,34 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Frontend repair verification: 594/594 automated tests passing (`tool/test.ps1 -Suite all`), `flutter analyze` 0 issues.
   - Exactly 50 numbered roadmap modules preserved.
 - **Status:** Complete. Pushed to `backend` (`60745dc`). Reconciled on `frontend`. Stopped before Module 28.
+
+### 2026-10-15 — Module 28: Backend Foundation, Configuration, Health/Readiness, Error Handling, and CI Validation
+- **Scope & Objectives:**
+  - Audited and corrected Module 27 provider assumptions: documented Groq Cloud API retention nuances (up to 30 days for system reliability, troubleshooting, and abuse investigation), Gemini API unpaid free tier terms (model training, human review, explicit prohibition against submitting sensitive/confidential personal text), verified Groq free-tier limits for `llama-3.3-70b-versatile` (30 RPM, 1,000 RPD, 12,000 TPM, 100,000 TPD), and strictly prohibited automatic cross-provider fallback to preserve user privacy consent boundaries.
+  - Telemetry Privacy: Completely removed message SHA-256 content hashes from routine telemetry to prevent dictionary guessing and correlation attacks on predictable messages.
+  - Prompt Injection Defense-in-Depth: Formally documented that XML tags and system instructions are one defensive layer and do not guarantee containment; enforced multi-layer defense comprising constrained JSON-only schema outputs, disabling all external tools/interpreters, strict server validation, and mandatory substring evidence grounding.
+  - Implemented application factory `create_app()` using Python 3.13+ and FastAPI with clean lifecycle handling (`lifespan`).
+  - Implemented typed configuration (`Settings`) using Pydantic Settings with loopback execution default (`127.0.0.1:8000`), feature flags defaulting to disabled, and zero required cloud credentials for foundation execution.
+  - Implemented application lifecycle and operational readiness state management (`AppState`).
+  - Implemented `/health` (200 OK liveness probe with uptime and version) and `/ready` (200 OK readiness probe reporting active foundation status and unconfigured planned subsystems; 503 Service Unavailable when draining/shutting down).
+  - Implemented privacy-safe structured logging (`StructuredJsonFormatter`, `PrivacySafeAccessMiddleware`) that generates server-controlled UUID4 request IDs and omits query strings, request bodies, authorization tokens, and content hashes from access logs.
+  - Implemented sanitized error envelopes (`TrustCueError`, `validation_error_handler` stripping raw user input values, `http_exception_handler` masking unknown paths, and `unhandled_exception_handler` suppressing internal stack traces and database credentials).
+  - Implemented request body size limit middleware (rejecting oversized payloads > 1 MB with HTTP 413).
+  - Created `.github/workflows/backend-ci.yml` defining GitHub Actions CI with read-only permissions, dependency installation, ruff linting, OpenAPI 3.1 specification validation, and automated pytest execution.
+  - Authored 24 automated unit, integration, error, and contract consistency tests in `backend/tests/` (100% passing).
+  - Verified live local server execution over HTTP on loopback (`http://127.0.0.1:8765`), confirming `/health` (200), `/ready` (200), and `/nonexistent` (404 sanitized envelope), followed by clean process shutdown.
+- **Backend Components Created (Committed on `backend` at `766e61a`):**
+  - `.github/workflows/backend-ci.yml`: GitHub Actions backend CI workflow.
+  - `backend/.env.example`: Safe configuration template with zero real secrets.
+  - `backend/pyproject.toml`, `requirements.txt`, `requirements-dev.txt`: Dependency specifications and tool configs.
+  - `backend/src/trustcue_backend/`: Core application package (`main.py`, `run.py`, `core/config.py`, `core/errors.py`, `core/logging.py`, `core/state.py`, `api/dependencies.py`, `api/routes/health.py`).
+  - `backend/tests/`: Automated test suite (`test_config.py`, `test_health.py`, `test_errors.py`, `test_logging.py`, `test_cors.py`, `test_lifecycle.py`, `test_contract_consistency.py`).
+  - `backend/docs/`: Corrected provider terms, privacy bounds, and setup guide.
+- **Checks Performed:**
+  - `ruff check backend/src backend/tests`: PASS (All checks passed, 0 issues).
+  - `python -m openapi_spec_validator backend/contracts/openapi.yaml`: PASS (backend/contracts/openapi.yaml: OK).
+  - `pytest backend/tests`: PASS (24/24 passed in 1.16s).
+  - Live loopback HTTP verification: PASS (`/health` 200, `/ready` 200, `/nonexistent` 404).
+  - Whitespace & format audit: PASS (`git diff --cached --check` clean).
+  - Git worktree separation: `trustcue-backend` clean, committed, and pushed to `origin/backend` (`766e61a`).
+- **Status:** Complete. Pushed to `backend` (`766e61a`). Reconciled on `frontend`. Stopped before Module 29.
