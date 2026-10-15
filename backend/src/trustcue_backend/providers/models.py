@@ -67,4 +67,4 @@ class ProviderAnalysisResult(BaseModel):
     findings: list[RawAiFinding] = Field(default_factory=list)
     uncertainty_notes: list[str] = Field(default_factory=list)
     suggested_actions: list[RawSuggestedAction] = Field(default_factory=list)
-    raw_usage: dict[str, int] | None = None
+    raw_usage: dict[str, int | float] | None = None

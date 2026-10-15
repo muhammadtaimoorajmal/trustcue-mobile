@@ -8,6 +8,9 @@ from starlette.testclient import TestClient
 from trustcue_backend.core.config import Settings
 from trustcue_backend.main import create_app
 
+# Hermetic test isolation: disable local .env loading during test suite execution
+Settings.model_config["env_file"] = None
+
 
 @pytest.fixture
 def default_settings() -> Settings:
