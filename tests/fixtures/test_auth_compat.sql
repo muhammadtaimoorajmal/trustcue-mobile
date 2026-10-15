@@ -34,6 +34,14 @@ BEGIN
     END IF;
 END $$;
 
+-- Allow postgres to switch roles during test execution
+GRANT anon TO postgres;
+GRANT authenticated TO postgres;
+GRANT service_role TO postgres;
+
+-- In Supabase, the service_role key has the BYPASSRLS attribute
+ALTER ROLE service_role BYPASSRLS;
+
 -- 4. Implement Supabase-compatible auth.uid() function
 -- Extracts the UUID from the standard request.jwt.claim.sub configuration setting
 CREATE OR REPLACE FUNCTION auth.uid()
@@ -52,12 +60,15 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 BEGIN
+    RESET ROLE;
     IF p_user_id IS NULL THEN
         PERFORM set_config('request.jwt.claim.sub', '', false);
     ELSE
         PERFORM set_config('request.jwt.claim.sub', p_user_id::text, false);
     END IF;
-    EXECUTE format('SET ROLE %I', p_role);
+    IF p_role IS NOT NULL AND p_role <> 'postgres' THEN
+        EXECUTE format('SET ROLE %I', p_role);
+    END IF;
 END;
 $$;
 
@@ -67,9 +78,15 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    PERFORM set_config('request.jwt.claim.sub', '', false);
     RESET ROLE;
+    PERFORM set_config('request.jwt.claim.sub', '', false);
 END;
 $$;
+
+-- 7. Grant execution privileges on auth helper functions and schema to all roles
+GRANT USAGE ON SCHEMA auth TO PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA auth TO PUBLIC, anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA auth TO postgres, service_role;
+GRANT SELECT ON ALL TABLES IN SCHEMA auth TO authenticated, anon;
 
 COMMIT;

@@ -22,10 +22,16 @@ DO $$
 DECLARE
     v_count INT;
 BEGIN
-    SELECT count(*) INTO v_count FROM public.profiles;
-    IF v_count <> 0 THEN
-        RAISE EXCEPTION 'RLS Failure: Anonymous role observed % rows from public.profiles (expected 0).', v_count;
-    END IF;
+    BEGIN
+        SELECT count(*) INTO v_count FROM public.profiles;
+        IF v_count <> 0 THEN
+            RAISE EXCEPTION 'RLS Failure: Anonymous role observed % rows from public.profiles (expected 0).', v_count;
+        END IF;
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            -- Expected: access denied at privilege layer
+            NULL;
+    END;
 END $$;
 
 -- 3. Authenticated User A Can Insert and Read Own Profile
@@ -89,18 +95,19 @@ END $$;
 -- User B cannot steal User A's identity by updating own ID to User A
 INSERT INTO public.profiles (id, display_name)
 VALUES ('b0000000-0000-0000-0000-000000000002', 'User B')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET display_name = 'User B';
 
 DO $$
 BEGIN
     BEGIN
         UPDATE public.profiles SET id = 'a0000000-0000-0000-0000-000000000001' WHERE id = 'b0000000-0000-0000-0000-000000000002';
-        RAISE EXCEPTION 'RLS Failure: User B successfully changed profile ownership to User A!';
     EXCEPTION
+        WHEN check_violation OR insufficient_privilege THEN
+            RETURN;
         WHEN OTHERS THEN
-            -- Expected rejection via RLS WITH CHECK policy
-            NULL;
+            RETURN;
     END;
+    RAISE EXCEPTION 'RLS Failure: User B successfully changed profile ownership to User A!';
 END $$;
 
 -- 6. Field Boundaries: Oversized display_name is rejected

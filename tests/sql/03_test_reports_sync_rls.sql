@@ -23,10 +23,15 @@ DO $$
 DECLARE
     v_count INT;
 BEGIN
-    SELECT count(*) INTO v_count FROM public.synced_reports;
-    IF v_count <> 0 THEN
-        RAISE EXCEPTION 'RLS Failure: Anonymous role observed % rows from public.synced_reports (expected 0).', v_count;
-    END IF;
+    BEGIN
+        SELECT count(*) INTO v_count FROM public.synced_reports;
+        IF v_count <> 0 THEN
+            RAISE EXCEPTION 'RLS Failure: Anonymous role observed % rows from public.synced_reports (expected 0).', v_count;
+        END IF;
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            NULL; -- Expected: permission denied at privilege layer
+    END;
 END $$;
 
 DO $$
@@ -43,8 +48,10 @@ BEGIN
         );
         RAISE EXCEPTION 'RLS Failure: Anonymous user was allowed to insert a synced report!';
     EXCEPTION
+        WHEN insufficient_privilege THEN
+            NULL; -- Expected
         WHEN OTHERS THEN
-            NULL; -- Expected permission denied
+            NULL; -- Expected
     END;
 END $$;
 

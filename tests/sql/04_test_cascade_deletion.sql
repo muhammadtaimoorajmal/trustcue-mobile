@@ -16,12 +16,13 @@ VALUES ('c0000000-0000-0000-0000-000000000003', 'cascade_test@test.com')
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. Populate records in all dependent tables
--- Public profiles
+-- Public profiles (handle_new_user trigger may have already created profile)
 INSERT INTO public.profiles (id, display_name, terms_version, sync_enabled)
-VALUES ('c0000000-0000-0000-0000-000000000003', 'Cascade Target', '1.0.0', TRUE);
+VALUES ('c0000000-0000-0000-0000-000000000003', 'Cascade Target', '1.0.0', TRUE)
+ON CONFLICT (id) DO UPDATE SET display_name = 'Cascade Target';
 
 -- AI Usage Quotas
-INSERT INTO public.ai_usage_quotas (user_id, quota_date, requests_used, tokens_used)
+INSERT INTO public.ai_usage_quotas (user_id, quota_date, request_count, token_count)
 VALUES ('c0000000-0000-0000-0000-000000000003', CURRENT_DATE, 5, 1200);
 
 -- Synced Reports
