@@ -26,6 +26,26 @@ class AppState:
         self.concurrency_limiter = ConcurrencyLimiter()
         self.quota_store = quota_store or InMemoryQuotaStore()
         self.ai_provider = ai_provider
+        self.deleted_users: set[str] = set()
+        self.profile_display_names: dict[str, str | None] = {}
+
+    def mark_user_deleted(self, user_id: str) -> None:
+        """Record user UUID as permanently deleted to immediately reject subsequent sessions."""
+        self.deleted_users.add(str(user_id).strip().lower())
+        self.profile_display_names.pop(str(user_id).strip(), None)
+
+    def is_user_deleted(self, user_id: str) -> bool:
+        """Check whether user UUID has been marked deleted."""
+        return str(user_id).strip().lower() in self.deleted_users
+
+    def get_display_name(self, user_id: str) -> str | None:
+        """Retrieve local in-memory display name if set."""
+        return self.profile_display_names.get(str(user_id).strip())
+
+    def set_display_name(self, user_id: str, display_name: str | None) -> None:
+        """Store local in-memory display name."""
+        self.profile_display_names[str(user_id).strip()] = display_name
+
 
     @property
     def uptime_seconds(self) -> int:

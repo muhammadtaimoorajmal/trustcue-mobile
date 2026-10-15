@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class UserProfileResponse(BaseModel):
@@ -26,6 +26,11 @@ class UserProfileResponse(BaseModel):
         alias="createdAt",
         description="Timestamp of account creation.",
     )
+    display_name: str | None = Field(
+        default=None,
+        alias="displayName",
+        description="Sanitized user display name (max 64 characters).",
+    )
     sync_enabled: bool = Field(
         default=False,
         alias="syncEnabled",
@@ -37,6 +42,33 @@ class UserProfileResponse(BaseModel):
         alias="quotaRemainingToday",
         description="Remaining server-assisted AI analysis quota for today.",
     )
+
+
+class UpdateUserProfileRequest(BaseModel):
+    """Payload for updating mutable profile fields."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    display_name: str | None = Field(
+        default=None,
+        max_length=64,
+        alias="displayName",
+        description="Sanitized user display name (max 64 characters, trimmed).",
+    )
+
+    @field_validator("display_name")
+    @classmethod
+    def validate_display_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v_trimmed = v.strip()
+        if not v_trimmed:
+            return None
+        if len(v_trimmed) > 64:
+            raise ValueError("Display name cannot exceed 64 characters.")
+        return v_trimmed
+
+
 
 
 class AccountDeletionResponse(BaseModel):

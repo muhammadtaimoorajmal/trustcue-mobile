@@ -13,6 +13,7 @@ from trustcue_backend.core.rate_limit import ConcurrencyLimiter, SlidingWindowRa
 from trustcue_backend.core.state import AppState
 from trustcue_backend.providers.base import AiProvider
 from trustcue_backend.providers.service import ProtectedAiService
+from trustcue_backend.services.account_service import AccountService
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -88,6 +89,19 @@ def enforce_user_ownership(resource_user_id: str, current_user: AuthenticatedUse
         )
 
 
+def get_account_service(
+    settings: Annotated[Settings, Depends(get_app_settings)],
+    app_state: Annotated[AppState, Depends(get_app_state)],
+    quota_store: Annotated[QuotaStore, Depends(get_quota_store)],
+) -> AccountService:
+    """Retrieve or construct the AccountService instance."""
+    return AccountService(
+        settings=settings,
+        app_state=app_state,
+        quota_store=quota_store,
+    )
+
+
 async def get_current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
@@ -97,7 +111,7 @@ async def get_current_user(
     Extract and cryptographically validate the Bearer token from the Authorization header.
 
     Attaches the verified AuthenticatedUser to request.state.current_user.
-    Raises AuthenticationError on missing, malformed, or invalid tokens.
+    Raises AuthenticationError on missing, malformed, invalid, or deleted user tokens.
     """
     auth_header = request.headers.get("authorization")
 
@@ -121,5 +135,13 @@ async def get_current_user(
         )
 
     user = validator.validate_token(token)
+    app_state = getattr(request.app.state, "app_state", None)
+    if app_state and app_state.is_user_deleted(user.user_id):
+        raise AuthenticationError(
+            code="unauthorized",
+            message="Account has been permanently deleted.",
+        )
+
     request.state.current_user = user
     return user
+

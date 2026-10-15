@@ -7,17 +7,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from trustcue_backend.api.dependencies import (
-    get_app_settings,
+    get_account_service,
     get_current_user,
-    get_quota_store,
 )
 from trustcue_backend.api.schemas.account import (
     AccountDeletionResponse,
+    UpdateUserProfileRequest,
     UserProfileResponse,
 )
 from trustcue_backend.core.auth import AuthenticatedUser
-from trustcue_backend.core.config import Settings
-from trustcue_backend.core.quota import QuotaStore
+from trustcue_backend.services.account_service import AccountService
 
 logger = logging.getLogger("trustcue.account")
 
@@ -45,8 +44,7 @@ router = APIRouter(prefix="/api/v1/account", tags=["Account"])
 )
 async def get_account_profile(
     current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
-    settings: Annotated[Settings, Depends(get_app_settings)],
-    quota_store: Annotated[QuotaStore, Depends(get_quota_store)],
+    account_service: Annotated[AccountService, Depends(get_account_service)],
 ) -> UserProfileResponse:
     """Retrieve verified profile metadata for the authenticated user session."""
     created_at = datetime.now(UTC)
@@ -56,16 +54,55 @@ async def get_account_profile(
         except Exception:
             pass
 
-    user_email = current_user.email or f"{current_user.user_id}@trustcue.local"
-    remaining_quota = await quota_store.get_remaining_quota(current_user.user_id)
+    return await account_service.get_profile(
+        user_id=current_user.user_id,
+        email=current_user.email,
+        email_verified=current_user.email_verified,
+        fallback_created_at=created_at,
+    )
 
-    return UserProfileResponse(
-        userId=current_user.user_id,
-        email=user_email,
-        emailVerified=current_user.email_verified,
-        createdAt=created_at,
-        syncEnabled=False,
-        quotaRemainingToday=remaining_quota,
+
+@router.patch(
+    "/profile",
+    response_model=UserProfileResponse,
+    summary="Update User Profile",
+    description=(
+        "Updates mutable profile fields (such as displayName) for the authenticated user. "
+        "Persists to PostgREST public.profiles with recovery fallback."
+    ),
+    operation_id="updateAccountProfile",
+    responses={
+        200: {
+            "model": UserProfileResponse,
+            "description": "User profile metadata updated successfully.",
+        },
+        400: {
+            "description": "Bad request. Invalid profile payload.",
+        },
+        401: {
+            "description": "Unauthorized. Missing, expired, or invalid JWT bearer token.",
+        },
+    },
+)
+async def update_account_profile(
+    payload: UpdateUserProfileRequest,
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    account_service: Annotated[AccountService, Depends(get_account_service)],
+) -> UserProfileResponse:
+    """Update profile display name for the authenticated user."""
+    created_at = datetime.now(UTC)
+    if "iat" in current_user.claims:
+        try:
+            created_at = datetime.fromtimestamp(current_user.claims["iat"], tz=UTC)
+        except Exception:
+            pass
+
+    return await account_service.update_profile(
+        user_id=current_user.user_id,
+        display_name=payload.display_name,
+        email=current_user.email,
+        email_verified=current_user.email_verified,
+        fallback_created_at=created_at,
     )
 
 
@@ -94,14 +131,7 @@ async def get_account_profile(
 )
 async def delete_account(
     current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
-    settings: Annotated[Settings, Depends(get_app_settings)],
+    account_service: Annotated[AccountService, Depends(get_account_service)],
 ) -> AccountDeletionResponse:
     """Execute permanent account deletion for the authenticated identity."""
-    # Privacy safeguard: Log correlation UUID only, never sensitive tokens, emails, or personal data
-    logger.info("Executing permanent account deletion for user UUID: %s", current_user.user_id)
-
-    return AccountDeletionResponse(
-        status="deleted",
-        userId=current_user.user_id,
-        deletedAt=datetime.now(UTC),
-    )
+    return await account_service.delete_account(user_id=current_user.user_id)

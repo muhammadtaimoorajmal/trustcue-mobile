@@ -290,6 +290,33 @@ paths:
                     quotaRemainingToday: 15
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+    patch:
+      summary: Update User Profile
+      description: >
+        Updates mutable profile fields (such as displayName) for the authenticated user.
+      operationId: updateAccountProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserProfileRequest'
+      responses:
+        '200':
+          description: User profile metadata updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '400':
+          description: Bad request. Invalid profile payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
 
   /api/v1/account:
     delete:
@@ -669,6 +696,10 @@ components:
         userId:
           type: string
           format: uuid
+        displayName:
+          type: string
+          nullable: true
+          maxLength: 64
         email:
           type: string
           format: email
@@ -682,6 +713,17 @@ components:
         quotaRemainingToday:
           type: integer
           minimum: 0
+
+    UpdateUserProfileRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          nullable: true
+          maxLength: 64
+          pattern: '^\S(.*\S)?$'
+          description: Sanitized user display name (max 64 characters, trimmed).
+
 
     AccountDeletionResponse:
       type: object
