@@ -565,3 +565,31 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `git diff --check`: PASS (clean whitespace).
 - **Physical Device & Verification Status:** Full device integration test suite executed on physical Vivo V2207 device (`10AC9R1ABF0013A`) via `tool/test.ps1 -Suite device` with 5/5 tests passing in 31s (smoke test, real native Google ML Kit Latin OCR, Module 19 text review & redaction, Module 20 offline link & QR decoding, Module 21 Android incoming shares platform channel & lifecycle). Debug APK installed via streamed install and launched cleanly via adb (`Starting: Intent { cmp=io.github.muhammadtaimoorajmal.trustcue/.MainActivity }`).
 - **Status:** Complete. Pushed to `frontend`. Stopped before Module 27.
+
+### 2026-10-15 — Module 27: Backend/AI Architecture, Service Feasibility, Privacy Decisions, and API Contracts
+- **Scope & Objectives:**
+  - Evaluated technology stack feasibility for server-assisted AI scam-indicator analysis under zero financial expenditure and Pakistan developer operating constraints (CS3643, BSCS Semester 5-1, Fall 2026, Riphah International University).
+  - Selected Primary Stack: Node.js (TypeScript) + Fastify running on Render Free Web Service, with managed authentication and PostgreSQL provided by Supabase Free Tier.
+  - Formulated Dual AI Privacy Strategy: Groq Cloud API (`llama-3.3-70b-versatile`) selected as primary inference engine due to contractual zero-retention and no model training on customer inference data; Google AI Studio Gemini API (`gemini-1.5-flash`) designated as secondary provider under a strict synthetic-data-only policy for unpaid free tier.
+  - Specified untrusted input isolation: user text is strictly bounded in `<untrusted_message_content>` XML tags with explicit anti-prompt-injection system instructions.
+  - Produced versioned OpenAPI 3.1.0 specification (`backend/contracts/openapi.yaml`) covering `/health`, `/ready`, `/api/v1/analysis/ai`, `/api/v1/account/profile`, `/api/v1/account` (deletion), and planned `/api/v1/sync/reports`.
+  - Defined strict server-side evidence grounding verification: byte-for-byte substring matching, exact UTF-16 code-unit offsets, surrogate pair safety, and automatic filtering of ungrounded model hallucinations.
+  - Designed conceptual database entity model (`auth.users`, `public.profiles`, `public.synced_reports`, `public.ai_usage_quotas`) with PostgreSQL Row Level Security (RLS) and cascade account deletion.
+  - Authored beginner-friendly cloud service setup guide (`backend/docs/SETUP_GUIDE.md`) with `.env.example` placeholder template and immediate checklist for Module 28.
+  - Reconciled authoritative 50-module roadmap preserving completed Modules 1–26 and defining primary branches, deliverables, dependencies, acceptance criteria, and necessary human actions for Modules 27–50.
+  - Reconciled Module 26 physical-device test coverage in `app_smoke_test.dart` and recorded missing device flows for future phone execution.
+- **Backend Components Created (Committed on `backend` at `60745dc`):**
+  - `backend/contracts/openapi.yaml`: Versioned OpenAPI 3.1.0 specification.
+  - `backend/docs/ARCHITECTURE.md`: Architecture & service feasibility evaluation.
+  - `backend/docs/PRIVACY_AND_AI_SAFETY.md`: Privacy boundaries, untrusted input isolation & logging rules.
+  - `backend/docs/DATABASE_AND_AUTH_DESIGN.md`: Entity model, RLS policies & deletion lifecycle.
+  - `backend/docs/SETUP_GUIDE.md`: Step-by-step setup guide for free cloud services.
+  - `backend/README.md` & root `README.md`: Backend overview & documentation index.
+  - `.gitignore`: Configured to ignore `.env`, `node_modules`, and build artifacts.
+- **Checks Performed:**
+  - OpenAPI 3.1.0 validation via Python PyYAML: PASS (6 paths, 14 schemas, 100% of internal `$ref` pointers cleanly resolved).
+  - Trailing whitespace audit on all backend markdown and YAML files: PASS (`git diff --cached --check` clean).
+  - Git worktree separation: `trustcue-backend` isolated on `backend` branch.
+  - Frontend repair verification: 594/594 automated tests passing (`tool/test.ps1 -Suite all`), `flutter analyze` 0 issues.
+  - Exactly 50 numbered roadmap modules preserved.
+- **Status:** Complete. Pushed to `backend` (`60745dc`). Reconciled on `frontend`. Stopped before Module 28.
