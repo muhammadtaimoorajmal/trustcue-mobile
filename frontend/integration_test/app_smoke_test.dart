@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:get/get.dart';
@@ -459,5 +460,163 @@ void main() {
       await tester.pumpAndSettle();
     },
     timeout: const Timeout(Duration(minutes: 2)),
+  );
+
+  testWidgets(
+    'Module 26 & 31 Real-device local analysis, evidence viewer, guest account, and KeyStore smoke test',
+    (WidgetTester tester) async {
+      // 0. Ensure application is launched
+      app.main();
+      await tester.pumpAndSettle();
+
+      // 1. Hardware KeyStore smoke test on real device
+      const secureStorage = FlutterSecureStorage(
+        aOptions: AndroidOptions(resetOnError: true),
+        iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+      );
+      const testKey = 'trustcue_device_test_key';
+      const testValue = 'device_keystore_secret_test_value';
+      await secureStorage.write(key: testKey, value: testValue);
+      final readVal = await secureStorage.read(key: testKey);
+      expect(readVal, equals(testValue));
+      await secureStorage.delete(key: testKey);
+      final postDeleteVal = await secureStorage.read(key: testKey);
+      expect(postDeleteVal, isNull);
+
+      // 2. Guest/unconfigured account screen check
+      Get.toNamed(AppRoutes.account);
+      await tester.pumpAndSettle();
+      expect(Get.currentRoute, AppRoutes.account);
+
+      final unconfiguredHeader = find.text('Cloud Service Not Configured');
+      final guestHeader = find.text('Guest Mode');
+      expect(
+        unconfiguredHeader.evaluate().isNotEmpty ||
+            guestHeader.evaluate().isNotEmpty,
+        isTrue,
+      );
+
+      if (unconfiguredHeader.evaluate().isNotEmpty) {
+        expect(
+          find.textContaining('All local scam analysis, text extraction'),
+          findsOneWidget,
+        );
+        final returnHomeBtn = find.widgetWithText(AppButton, 'Return to Home');
+        await tester.ensureVisible(returnHomeBtn);
+        await tester.pumpAndSettle();
+        await tester.tap(returnHomeBtn);
+        await tester.pumpAndSettle();
+      } else {
+        expect(find.text('Optional Account Access'), findsOneWidget);
+        final backFinder = find.byType(BackButton);
+        await tester.tap(backFinder);
+        await tester.pumpAndSettle();
+      }
+      expect(Get.currentRoute, AppRoutes.home);
+
+      // 3. Local analysis & evidence viewer test with sensitive redaction
+      final enterMessageFinder = find.widgetWithText(
+        AppButton,
+        'Enter message',
+      );
+      if (enterMessageFinder.evaluate().isNotEmpty) {
+        await tester.ensureVisible(enterMessageFinder);
+        await tester.pumpAndSettle();
+        await tester.tap(enterMessageFinder);
+        await tester.pumpAndSettle();
+      } else {
+        Get.toNamed(AppRoutes.inputText);
+        await tester.pumpAndSettle();
+      }
+
+      expect(Get.currentRoute, AppRoutes.inputText);
+
+      final inputController = Get.find<InputTextController>();
+      inputController.textEditingController.text = 'Your account will be suspended within 24 hours. Call +1-555-0199 immediately to verify.';
+      await tester.pumpAndSettle();
+
+      final prepareButton = find.widgetWithText(AppButton, 'Prepare text');
+      await tester.ensureVisible(prepareButton);
+      await tester.pumpAndSettle();
+      await tester.tap(prepareButton);
+      await tester.pumpAndSettle();
+
+      final reviewButton = find.widgetWithText(AppButton, 'Review text');
+      await tester.ensureVisible(reviewButton);
+      await tester.pumpAndSettle();
+      await tester.tap(reviewButton);
+      await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, AppRoutes.inputReview);
+
+      // Verify phone candidate was detected and redact it
+      expect(find.text('[PHONE]'), findsOneWidget);
+      final checkboxFinder = find.byType(Checkbox).first;
+      await tester.ensureVisible(checkboxFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(checkboxFinder);
+      await tester.pumpAndSettle();
+
+      // Confirm reviewed text
+      final confirmButton = find.widgetWithText(
+        AppButton,
+        'Confirm reviewed text',
+      );
+      await tester.ensureVisible(confirmButton);
+      await tester.pumpAndSettle();
+      await tester.tap(confirmButton);
+      await tester.pumpAndSettle();
+
+      // Tap "Analyze on this device"
+      final analyzeButton = find.widgetWithText(
+        AppButton,
+        'Analyze on this device',
+      );
+      await tester.ensureVisible(analyzeButton);
+      await tester.pumpAndSettle();
+      await tester.tap(analyzeButton);
+      await tester.pumpAndSettle();
+
+      // 4. Verify /analysis/results
+      expect(Get.currentRoute, AppRoutes.analysisResults);
+      expect(find.text('Local on-device analysis'), findsWidgets);
+      expect(find.text('Evidence trail'), findsOneWidget);
+
+      // 5. Open AnalyzedTextEvidenceViewer
+      final viewEvidenceBtn = find
+          .widgetWithText(AppButton, 'View in analyzed text')
+          .first;
+      await tester.ensureVisible(viewEvidenceBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(viewEvidenceBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Evidence in analyzed text'), findsOneWidget);
+      expect(find.textContaining('[PHONE]'), findsWidgets);
+
+      // Close the evidence viewer modal
+      final closeBtn = find.byTooltip('Close evidence view');
+      await tester.tap(closeBtn);
+      await tester.pumpAndSettle();
+      expect(find.text('Evidence in analyzed text'), findsNothing);
+
+      // 6. Return to review and verify reviewed text preserved
+      final returnToReviewBtn = find.widgetWithText(
+        AppButton,
+        'Return to review and edit text',
+      );
+      await tester.ensureVisible(returnToReviewBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(returnToReviewBtn);
+      await tester.pumpAndSettle();
+
+      expect(Get.currentRoute, AppRoutes.inputReview);
+      expect(find.textContaining('[PHONE]'), findsWidgets);
+
+      // Clean up to Home
+      Get.offAllNamed(AppRoutes.home);
+      await tester.pumpAndSettle();
+    },
+    timeout: const Timeout(Duration(minutes: 3)),
   );
 }

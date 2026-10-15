@@ -1,4 +1,4 @@
-﻿# Module Log
+# Module Log
 
 This log tracks the progress of TrustCue's implementation across approximately 100 modules.
 
@@ -756,3 +756,51 @@ This log tracks the progress of TrustCue's implementation across approximately 1
     - Debug APK Compilation (`flutter build apk --debug --no-pub -t lib/main.dart`): PASS (`build/app/outputs/flutter-apk/app-debug.apk` built cleanly).
     - Physical Phone / Real Deep Link Verification: BLOCKED / NOT RUN (physical phone unavailable today; external callback and live provider inbox verification recorded as pending).
 - **Status:** Complete. Pushed to `frontend`. Stopped before Module 32.
+
+### 2026-10-15 — Module 32: Backend Request Validation, Authorization, and Abuse Controls
+- **Scope & Objectives:**
+  - Implemented strict backend request validation, authorization, and abuse controls adhering strictly to OpenAPI 3.1.0 specifications and local-first architecture.
+  - Conservative repository layout unification: organized database worktree under standard `database/` root (`database/migrations/`, `database/seeds/`, `database/tests/`, `database/docs/`, `database/pyproject.toml`) matching `frontend/`, `backend/`, `database/`, `docs/`.
+  - Database Migration 6 (`database/migrations/00006_create_quota_reservation.sql`):
+    - Added atomic quota reservation and release RPC functions (`reserve_ai_quota`, `release_ai_quota`) executed strictly under `SECURITY DEFINER` and restricted to `service_role` and `postgres`.
+    - Added `ensure_profile_exists(UUID)` recovery function for seamless zero-failure profile backfill.
+    - Added SQL regression suite `database/tests/sql/05_test_quota_reservation.sql` and updated static schema tests (11/11 passing).
+  - Backend Strict Input Validation (`core/validation.py`):
+    - Text snapshot bounds: <= 10,000 Unicode code points (runes) and <= 40,000 UTF-8 bytes.
+    - Strict Unicode validity: rejects lone surrogate code points (`0xD800`–`0xDFFF`).
+    - Whitespace normalization and control character rejection: allows standard whitespace (`\t`, `\n`, `\r`) while rejecting ASCII/Unicode control characters (`\x00`–`\x1f`, `\x7f`).
+  - Strict Pydantic Models (`api/schemas/analysis.py`):
+    - Configured `AnalysisAiRequest` with `extra="forbid"` to strictly reject unexpected attributes.
+    - Used typed `StrEnum` for `IndicatorCategory` and analysis flags.
+  - Streaming Request Body Limiter (`core/body_limiter.py`):
+    - `RequestBodyLimitMiddleware` inspects byte count while streaming incoming chunked payloads before buffering into memory, aborting with HTTP 413 `PAYLOAD_TOO_LARGE`.
+  - Hardened JWT Validation (`core/auth.py`):
+    - Key-to-algorithm binding (strictly `HS256` for HMAC secrets; `RS256`/`ES256` for JWKS).
+    - Hard rejection of algorithm `"none"`, rejection of spoofed `jku` and `x5u` headers, and bounded JWKS fetching with TTL cache (`timeout=5`, `max_cached_keys=16`).
+  - Authorization & Abuse Controls (`core/rate_limit.py`, `core/quota.py`, `api/dependencies.py`):
+    - Sliding-window rate limiter (10 req/min per user, HTTP 429 `rate_limit_exceeded` with `Retry-After`).
+    - User concurrency limiter (preventing multiple simultaneous requests from the same user).
+    - `QuotaStore` interface with `InMemoryQuotaStore` and PostgreSQL reserve/release RPC integration.
+    - Cross-account ownership check `enforce_user_ownership` returning HTTP 403 `forbidden`.
+  - Analysis Route (`api/routes/analysis.py`):
+    - Mounted `POST /api/v1/analysis/ai` enforcing rate limits, concurrency limits, and quota reservation.
+    - Returns HTTP 503 `ai_provider_unavailable` when cloud AI is unconfigured without fabricating findings.
+  - Backend Test Suites (`backend/tests/`):
+    - Added `test_validation.py`, `test_rate_limit_and_abuse.py`, `test_auth_hardening.py`, `test_privacy_markers.py`.
+    - 64/64 backend tests passing in 1.65s, `ruff check` clean (0 issues), OpenAPI 3.1.0 contract valid.
+  - Physical Device Verification & Integration Test Enhancement:
+    - Added Test 6 to `frontend/integration_test/app_smoke_test.dart` covering Android KeyStore AES-GCM smoke test, guest/unconfigured account screen check, reviewed text -> local analysis -> results screen, evidence viewer modal, redacted text preservation, and return to review.
+    - Recorded phone check execution: device test runner executed on physical Vivo V2207 (`10AC9R1ABF0013A`); APK was installed via adb, but automated execution timed out waiting for unattended on-screen permission. Per instructions, device state is recorded truthfully without blocking progress.
+- **Components Created / Updated:**
+  - Backend: `core/validation.py`, `core/body_limiter.py`, `core/rate_limit.py`, `core/quota.py`, `api/schemas/analysis.py`, `api/routes/analysis.py`, `api/dependencies.py`, `core/auth.py`, `main.py`, `tests/test_validation.py`, `tests/test_rate_limit_and_abuse.py`, `tests/test_auth_hardening.py`, `tests/test_privacy_markers.py`.
+  - Database: `database/migrations/00006_create_quota_reservation.sql`, `database/tests/sql/05_test_quota_reservation.sql`, `database/tests/test_static_schema.py`, `.github/workflows/database-ci.yml`.
+  - Frontend: `frontend/integration_test/app_smoke_test.dart`, `docs/ROADMAP.md`, `docs/MODULE_LOG.md`, `docs/PROJECT_STATE.md`.
+- **Checks Performed:**
+  - Python tests on backend: 64/64 PASS.
+  - Ruff check on backend: PASS (0 issues).
+  - OpenAPI 3.1.0 spec validator: PASS.
+  - Python static tests on database: 11/11 PASS.
+  - Flutter analyze: PASS (0 issues).
+  - Dart format: PASS (0 changes).
+  - Full Flutter test suite: 637/637 PASS.
+- **Status:** Complete. Pushed to `database` (`2660aef`), `backend` (`0714bcd`), and `frontend`. Stopped before Module 33.
