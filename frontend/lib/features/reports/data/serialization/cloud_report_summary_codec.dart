@@ -33,15 +33,20 @@ class CloudReportSummaryCodec {
   /// Encodes a local [SavedReport] into a privacy-safe cloud summary map.
   Map<String, dynamic> encodeReport(SavedReport report) {
     final categories = <String>{};
-    for (final finding in report.findings) {
+    for (final finding in report.localReport.findings) {
       categories.add(finding.category);
+    }
+    if (report.aiReport != null) {
+      for (final finding in report.aiReport!.findings) {
+        categories.add(finding.category);
+      }
     }
 
     final payload = <String, dynamic>{
       'formatVersion': currentFormatVersion,
       'outcomeState': report.outcomeState.name,
       'hasAiAnalysis': report.hasAiAnalysis,
-      'indicatorCount': report.findingsCount,
+      'indicatorCount': report.totalFindingsCount,
       'categories': categories.toList()..sort(),
       'source': report.inputSource.name,
     };

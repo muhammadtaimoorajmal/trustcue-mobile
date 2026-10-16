@@ -1,9 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
 import 'package:trustcue_mobile/features/onboarding/data/onboarding_preferences.dart';
+import 'package:trustcue_mobile/features/reports/data/database/app_database.dart';
+import 'package:trustcue_mobile/features/reports/data/services/retention_preferences.dart';
+import 'package:trustcue_mobile/features/reports/data/services/retention_service.dart';
+import 'package:trustcue_mobile/features/reports/domain/contracts/local_report_repository.dart';
 
 class StartupScreen extends StatefulWidget {
   const StartupScreen({
@@ -28,6 +34,19 @@ class _StartupScreenState extends State<StartupScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
+  void _pruneExpiredReportsOnStartup() {
+    try {
+      final repo = Get.isRegistered<LocalReportRepository>()
+          ? Get.find<LocalReportRepository>()
+          : AppDatabase.getInstance();
+      final prefs = Get.isRegistered<RetentionPreferences>()
+          ? Get.find<RetentionPreferences>()
+          : LocalRetentionPreferences();
+      final service = RetentionService(preferences: prefs, repository: repo);
+      unawaited(service.pruneExpiredReports());
+    } catch (_) {}
+  }
+
   Future<void> _load() async {
     if (!mounted || _reading) return;
     _reading = true;
@@ -37,6 +56,9 @@ class _StartupScreenState extends State<StartupScreen> {
         const Duration(seconds: 10),
       );
       if (!mounted) return;
+
+      _pruneExpiredReportsOnStartup();
+
       // Explicit internal destinations still use the exact resolver. Onboarding
       // is an introduction, not an authorization boundary.
       final destination =

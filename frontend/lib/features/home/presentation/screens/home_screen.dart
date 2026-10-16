@@ -40,6 +40,16 @@ class HomeScreen extends GetView<HomeController> {
             },
           ),
           IconButton(
+            icon: const Icon(Icons.shield_outlined),
+            tooltip: 'Privacy & Data',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            onPressed: () {
+              if (Get.currentRoute != AppRoutes.privacy) {
+                Get.toNamed(AppRoutes.privacy);
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.info_outline),
             tooltip: 'About TrustCue',
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),

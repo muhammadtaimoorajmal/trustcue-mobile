@@ -1216,3 +1216,67 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - `flutter build apk --debug`: PASS (`build/app/outputs/flutter-apk/app-debug.apk` built).
   - Physical Device Verification: Streamed install via `adb install -r` on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34), verified clean app launch with Impeller rendering backend and no crashes.
 - **Status:** Complete. Database committed (`9b9028a`), Backend committed (`c1507b7`), Frontend committed and pushed. Stopped before Module 40.
+
+## Module 40: Privacy, Retention, and Consent Controls
+- **Scope:**
+  - Reconciliation of Module 39 sync/purge invariants across database and backend.
+  - Database Migration 00008 (`00008_harden_sync_purge_and_allowlist.sql`): `sync_generation`, `sync_purged_at` in `public.profiles`, atomic purge RPC supporting `service_role` and enforcing `auth.uid()`, and tightened `chk_report_payload_privacy` allowlist on `public.synced_reports`.
+  - Backend strict allowlist schema (`ReportSummaryPayload` with `extra="forbid"`), tie-breaker query sorting, and sync generation tracking preventing post-purge resurrection.
+  - Granular local report retention policies (`RetentionPolicy`: `never` [default], `30 days`, `60 days`, `90 days`), persisted in `RetentionPreferences` and automated via `RetentionService`.
+  - Automated retention pruning executed non-blockingly on app startup (`StartupScreen`) and on entering report history (`HistoryController`).
+  - Strict local pruning invariant: Local report expiration deletes local SQLite records and unreferenced snapshots, but NEVER creates cloud tombstones.
+  - Scoped data deletion confirmation dialog (`ScopeClearConfirmationDialog`) displaying exact itemized lists of what will be deleted and what will NOT be deleted.
+  - Privacy Center interface (`/privacy`, `PrivacyScreen`, `PrivacyController`, `PrivacyBinding`) accessible from HomeScreen, AccountScreen, and AboutScreen.
+  - Decoupled consent architecture guaranteeing absolute independence between onboarding introduction, local report saving, affirmative remote AI consent, and cloud sync.
+  - Comprehensive data lifecycle matrix and platform limitation disclosures in `docs/DATA_LIFECYCLE.md`.
+- **Components Created / Updated:**
+  - Database (`trustcue-database`):
+    - `database/migrations/00008_harden_sync_purge_and_allowlist.sql`
+    - `database/tests/sql/07_test_sync_purge_and_allowlist.sql`
+    - `database/tests/test_static_schema.py`
+    - `.github/workflows/database-ci.yml`
+  - Backend (`trustcue-backend`):
+    - `backend/contracts/openapi.yaml`
+    - `backend/src/trustcue_backend/api/schemas/sync.py`
+    - `backend/src/trustcue_backend/services/sync_service.py`
+    - `backend/src/trustcue_backend/api/routes/sync.py`
+    - `backend/src/trustcue_backend/state.py`
+    - `backend/tests/test_sync.py`
+  - Frontend (`trustcue-mobile`):
+    - `frontend/lib/app/routes/app_routes.dart`
+    - `frontend/lib/app/routes/app_pages.dart`
+    - `frontend/lib/app/startup_screen.dart`
+    - `frontend/lib/features/home/presentation/screens/home_screen.dart`
+    - `frontend/lib/features/about/presentation/screens/about_screen.dart`
+    - `frontend/lib/features/auth/presentation/screens/account_screen.dart`
+    - `frontend/lib/features/privacy/presentation/bindings/privacy_binding.dart`
+    - `frontend/lib/features/privacy/presentation/controllers/privacy_controller.dart`
+    - `frontend/lib/features/privacy/presentation/screens/privacy_screen.dart`
+    - `frontend/lib/features/privacy/presentation/widgets/scope_clear_confirmation_dialog.dart`
+    - `frontend/lib/features/reports/domain/models/retention_policy.dart`
+    - `frontend/lib/features/reports/data/services/retention_preferences.dart`
+    - `frontend/lib/features/reports/data/services/retention_service.dart`
+    - `frontend/lib/features/reports/domain/contracts/local_report_repository.dart`
+    - `frontend/lib/features/reports/data/repositories/sqlite_report_repository.dart`
+    - `frontend/lib/features/reports/presentation/controllers/history_controller.dart`
+    - `frontend/lib/features/reports/data/serialization/cloud_report_summary_codec.dart`
+    - `frontend/test/features/reports/data/services/retention_service_test.dart`
+    - `frontend/test/features/privacy/presentation/controllers/privacy_controller_test.dart`
+    - `frontend/test/features/privacy/presentation/screens/privacy_screen_test.dart`
+    - `frontend/test/features/privacy/domain/consent_decoupling_test.dart`
+    - `frontend/test/features/reports/mocks/fake_report_repository.dart`
+    - `frontend/test/features/analysis/presentation/controllers/analysis_results_controller_persistence_test.dart`
+    - `docs/DATA_LIFECYCLE.md`
+    - `docs/PROJECT_STATE.md`
+    - `docs/MODULE_LOG.md`
+- **Checks Performed:**
+  - Database schema tests: 13/13 static schema tests PASS (migration 00008 verified).
+  - Database SQL tests: 7 suites PASS.
+  - Backend test suite: 140/140 PASS (`pytest` clean, 100% passing).
+  - Backend linter: `ruff check` PASS (0 issues found).
+  - Full Flutter test suite: 790/790 PASS (14 new Module 40 tests, 0 failures).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `dart format lib test`: PASS.
+  - `flutter build apk --debug`: PASS.
+  - Physical Device Verification: Streamed install via `adb install -r` on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34).
+- **Status:** Complete. Database committed (`ad261b8`), Backend committed (`2f4c37d`), Frontend committed and pushed. Stopped before Module 41.

@@ -137,11 +137,11 @@ class SyncApiClient {
     }
 
     try {
-      final queryParams = <String, String>{
-        'limit': limit.toString(),
-        if (since != null) 'since': since.toUtc().toIso8601String(),
-      };
-      if (cursor != null && cursor.isNotEmpty) {
+      final queryParams = <String, String>{'limit': limit.toString()};
+      if (since != null) {
+        queryParams['since'] = since.toUtc().toIso8601String();
+      }
+      if (cursor != null) {
         queryParams['cursor'] = cursor;
       }
 

@@ -27,6 +27,8 @@ import 'package:trustcue_mobile/features/auth/presentation/screens/login_screen.
 import 'package:trustcue_mobile/features/auth/presentation/screens/register_screen.dart';
 import 'package:trustcue_mobile/features/auth/presentation/screens/reset_password_screen.dart';
 import 'package:trustcue_mobile/features/auth/presentation/screens/verify_email_screen.dart';
+import 'package:trustcue_mobile/features/privacy/presentation/bindings/privacy_binding.dart';
+import 'package:trustcue_mobile/features/privacy/presentation/screens/privacy_screen.dart';
 import 'package:trustcue_mobile/features/reports/presentation/bindings/history_binding.dart';
 import 'package:trustcue_mobile/features/reports/presentation/bindings/saved_report_detail_binding.dart';
 import 'package:trustcue_mobile/features/reports/presentation/screens/history_screen.dart';
@@ -123,6 +125,11 @@ class AppPages {
       name: AppRoutes.authResetPassword,
       page: () => const ResetPasswordScreen(),
       binding: ResetPasswordBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.privacy,
+      page: () => const PrivacyScreen(),
+      binding: PrivacyBinding(),
     ),
     unknownRoute,
   ];

@@ -666,6 +666,178 @@ class SqliteReportRepository implements LocalReportRepository {
     }
   }
 
+  @override
+  Future<Result<int>> deleteGuestReports() async {
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) {
+      return Result.failure(dbResult.failureOrNull!);
+    }
+    final db = dbResult.valueOrNull!;
+
+    try {
+      return await db.transaction<Result<int>>((txn) async {
+        final reportRows = await txn.query(
+          DatabaseConstants.tableReports,
+          columns: [
+            DatabaseConstants.colReportId,
+            DatabaseConstants.colReportSnapshotId,
+          ],
+          where: '${DatabaseConstants.colReportAccountId} IS NULL',
+        );
+
+        if (reportRows.isEmpty) {
+          return const Result.success(0);
+        }
+
+        final snapshotIds = reportRows
+            .map((r) => r[DatabaseConstants.colReportSnapshotId] as String?)
+            .whereType<String>()
+            .toSet();
+
+        final deletedCount = await txn.delete(
+          DatabaseConstants.tableReports,
+          where: '${DatabaseConstants.colReportAccountId} IS NULL',
+        );
+
+        for (final snapId in snapshotIds) {
+          final remaining = await txn.query(
+            DatabaseConstants.tableReports,
+            columns: [DatabaseConstants.colReportId],
+            where: '${DatabaseConstants.colReportSnapshotId} = ?',
+            whereArgs: [snapId],
+            limit: 1,
+          );
+          if (remaining.isEmpty) {
+            await txn.delete(
+              DatabaseConstants.tableSnapshots,
+              where: '${DatabaseConstants.colSnapshotId} = ?',
+              whereArgs: [snapId],
+            );
+          }
+        }
+
+        return Result.success(deletedCount);
+      });
+    } on DatabaseException catch (e) {
+      return Result.failure(
+        AnalysisFailure.storage(
+          'Database error deleting guest reports: ${e.toString()}',
+        ),
+      );
+    } catch (e) {
+      return Result.failure(
+        AnalysisFailure.storage(
+          'Unexpected error deleting guest reports: ${e.toString()}',
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<Result<int>> pruneReportsOlderThan(
+    DateTime cutoff, {
+    String? accountId,
+    bool includeGuest = false,
+  }) async {
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) {
+      return Result.failure(dbResult.failureOrNull!);
+    }
+    final db = dbResult.valueOrNull!;
+
+    try {
+      return await db.transaction<Result<int>>((txn) async {
+        final cutoffStr = cutoff.toUtc().toIso8601String();
+        String whereClause;
+        List<dynamic> whereArgs;
+
+        if (accountId != null && includeGuest) {
+          whereClause =
+              '${DatabaseConstants.colReportSavedAt} < ? AND (${DatabaseConstants.colReportAccountId} = ? OR ${DatabaseConstants.colReportAccountId} IS NULL)';
+          whereArgs = [cutoffStr, accountId];
+        } else if (accountId != null) {
+          whereClause =
+              '${DatabaseConstants.colReportSavedAt} < ? AND ${DatabaseConstants.colReportAccountId} = ?';
+          whereArgs = [cutoffStr, accountId];
+        } else if (includeGuest) {
+          whereClause = '${DatabaseConstants.colReportSavedAt} < ?';
+          whereArgs = [cutoffStr];
+        } else {
+          return const Result.success(0);
+        }
+
+        final reportRows = await txn.query(
+          DatabaseConstants.tableReports,
+          columns: [
+            DatabaseConstants.colReportId,
+            DatabaseConstants.colReportSnapshotId,
+          ],
+          where: whereClause,
+          whereArgs: whereArgs,
+        );
+
+        if (reportRows.isEmpty) {
+          return const Result.success(0);
+        }
+
+        final reportIds = reportRows
+            .map((r) => r[DatabaseConstants.colReportId] as String?)
+            .whereType<String>()
+            .toList();
+        final snapshotIds = reportRows
+            .map((r) => r[DatabaseConstants.colReportSnapshotId] as String?)
+            .whereType<String>()
+            .toSet();
+
+        final deletedCount = await txn.delete(
+          DatabaseConstants.tableReports,
+          where: whereClause,
+          whereArgs: whereArgs,
+        );
+
+        for (final snapId in snapshotIds) {
+          final remaining = await txn.query(
+            DatabaseConstants.tableReports,
+            columns: [DatabaseConstants.colReportId],
+            where: '${DatabaseConstants.colReportSnapshotId} = ?',
+            whereArgs: [snapId],
+            limit: 1,
+          );
+          if (remaining.isEmpty) {
+            await txn.delete(
+              DatabaseConstants.tableSnapshots,
+              where: '${DatabaseConstants.colSnapshotId} = ?',
+              whereArgs: [snapId],
+            );
+          }
+        }
+
+        // Clean up sync metadata for pruned reports without issuing tombstones
+        for (final repId in reportIds) {
+          await txn.delete(
+            DatabaseConstants.tableSyncMetadata,
+            where: '${DatabaseConstants.colSyncReportId} = ?',
+            whereArgs: [repId],
+          );
+        }
+
+        return Result.success(deletedCount);
+      });
+    } on DatabaseException catch (e) {
+      return Result.failure(
+        AnalysisFailure.storage(
+          'Database error during retention pruning: ${e.toString()}',
+        ),
+      );
+    } catch (e) {
+      return Result.failure(
+        AnalysisFailure.storage(
+          'Unexpected error during retention pruning: ${e.toString()}',
+        ),
+      );
+    }
+  }
+
   /// Sanitizes SQL LIKE wildcards (% and _) and backslash escape characters.
   ///
   /// Note on SQLite collation: SQLite `LIKE` operator is case-insensitive only

@@ -1,4 +1,5 @@
-// Data transfer and domain models for Module 39 Cloud Report Synchronization.
+/// Data transfer and domain models for Module 39 Cloud Report Synchronization.
+library;
 
 class CloudReportItem {
   final String clientReportId;

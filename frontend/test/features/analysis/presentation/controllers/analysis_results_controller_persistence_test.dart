@@ -140,6 +140,41 @@ class FakeLocalReportRepository implements LocalReportRepository {
       const Result.success(null);
 
   @override
+  Future<Result<int>> deleteGuestReports() async {
+    final toRemove = storage.entries
+        .where((entry) => entry.value.accountId == null)
+        .map((entry) => entry.key)
+        .toList();
+    for (final id in toRemove) {
+      storage.remove(id);
+    }
+    return Result.success(toRemove.length);
+  }
+
+  @override
+  Future<Result<int>> pruneReportsOlderThan(
+    DateTime cutoff, {
+    String? accountId,
+    bool includeGuest = false,
+  }) async {
+    final toRemove = <String>[];
+    for (final entry in storage.entries) {
+      final rep = entry.value;
+      if (rep.savedAt.isBefore(cutoff)) {
+        if (accountId != null && rep.accountId == accountId) {
+          toRemove.add(entry.key);
+        } else if (includeGuest && rep.accountId == null) {
+          toRemove.add(entry.key);
+        }
+      }
+    }
+    for (final id in toRemove) {
+      storage.remove(id);
+    }
+    return Result.success(toRemove.length);
+  }
+
+  @override
   Future<void> close() async {}
 }
 

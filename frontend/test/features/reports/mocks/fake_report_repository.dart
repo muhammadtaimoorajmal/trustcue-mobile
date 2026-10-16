@@ -213,6 +213,51 @@ class FakeReportRepository implements LocalReportRepository {
   }
 
   @override
+  Future<Result<int>> deleteGuestReports() async {
+    deleteCallCount++;
+    if (shouldFailDelete) {
+      return Result.failure(AnalysisFailure.storage(failureMessage));
+    }
+    final toRemove = storage.entries
+        .where((e) => e.value.accountId == null)
+        .map((e) => e.key)
+        .toList();
+    for (final key in toRemove) {
+      storage.remove(key);
+      syncedReportIds.remove(key);
+    }
+    return Result.success(toRemove.length);
+  }
+
+  @override
+  Future<Result<int>> pruneReportsOlderThan(
+    DateTime cutoff, {
+    String? accountId,
+    bool includeGuest = false,
+  }) async {
+    deleteCallCount++;
+    if (shouldFailDelete) {
+      return Result.failure(AnalysisFailure.storage(failureMessage));
+    }
+    final toRemove = <String>[];
+    for (final entry in storage.entries) {
+      final rep = entry.value;
+      if (rep.savedAt.isBefore(cutoff)) {
+        if (accountId != null && rep.accountId == accountId) {
+          toRemove.add(entry.key);
+        } else if (includeGuest && rep.accountId == null) {
+          toRemove.add(entry.key);
+        }
+      }
+    }
+    for (final key in toRemove) {
+      storage.remove(key);
+      syncedReportIds.remove(key);
+    }
+    return Result.success(toRemove.length);
+  }
+
+  @override
   Future<Result<List<SavedReportSummary>>> getPendingUploadReportSummaries(
     String accountId,
   ) async {

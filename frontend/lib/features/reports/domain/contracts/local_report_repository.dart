@@ -97,6 +97,24 @@ abstract class LocalReportRepository {
   /// records are strictly preserved.
   Future<Result<int>> deleteReportsForAccount(String accountId);
 
+  /// Permanently deletes all unauthenticated guest reports (`accountId == null`).
+  ///
+  /// Prunes unreferenced snapshots. Does not touch authenticated account data.
+  Future<Result<int>> deleteGuestReports();
+
+  /// Prunes reports saved prior to [cutoff] according to local retention policy.
+  ///
+  /// Guarantees:
+  /// - Prunes unreferenced snapshots.
+  /// - Does NOT generate cloud tombstones (local retention pruning only).
+  /// - If [accountId] is provided, only prunes reports for that account.
+  /// - If [includeGuest] is true, also prunes guest reports older than [cutoff].
+  Future<Result<int>> pruneReportsOlderThan(
+    DateTime cutoff, {
+    String? accountId,
+    bool includeGuest = false,
+  });
+
   /// Retrieves pending upload reports for the specified account.
   Future<Result<List<SavedReportSummary>>> getPendingUploadReportSummaries(
     String accountId,

@@ -124,6 +124,43 @@ class AccountScreen extends GetView<AuthController> {
             ],
           ),
         ),
+        const SizedBox(height: AppSpacing.pagePaddingMedium),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.shield_outlined,
+                    color: theme.colorScheme.primary,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Privacy & Retention',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Manage local data retention policies, clear cached images, and delete guest reports stored on this device.',
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              AppButton.secondary(
+                label: 'Open Privacy Center',
+                icon: Icons.privacy_tip_outlined,
+                onPressed: () => Get.toNamed(AppRoutes.privacy),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -475,6 +512,45 @@ class AccountScreen extends GetView<AuthController> {
                     }),
                   ),
                 ],
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.pagePaddingMedium),
+
+          // Privacy & Data Controls Card (Module 40)
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.shield_outlined,
+                      color: theme.colorScheme.primary,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Privacy & Data Controls',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Manage local report retention periods, purge cloud backups, clear cached images, and review data boundaries.',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                AppButton.secondary(
+                  label: 'Open Privacy Center',
+                  icon: Icons.privacy_tip_outlined,
+                  onPressed: () => Get.toNamed(AppRoutes.privacy),
+                ),
               ],
             ),
           ),

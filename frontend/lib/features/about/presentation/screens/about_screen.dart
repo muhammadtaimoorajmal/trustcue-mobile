@@ -62,12 +62,22 @@ class AboutScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             AppButton.secondary(
               label: 'Review safe-use guidance',
               onPressed: () {
                 if (Get.currentRoute != AppRoutes.guidance) {
                   Get.toNamed(AppRoutes.guidance);
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+            AppButton.secondary(
+              label: 'Privacy & Data Controls',
+              icon: Icons.shield_outlined,
+              onPressed: () {
+                if (Get.currentRoute != AppRoutes.privacy) {
+                  Get.toNamed(AppRoutes.privacy);
                 }
               },
             ),

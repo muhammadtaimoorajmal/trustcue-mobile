@@ -8,6 +8,7 @@ import 'package:trustcue_mobile/features/auth/domain/models/auth_state.dart';
 import 'package:trustcue_mobile/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/reports/data/database/app_database.dart';
+import 'package:trustcue_mobile/features/reports/data/services/retention_service.dart';
 import 'package:trustcue_mobile/features/reports/domain/contracts/local_report_repository.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report_summary.dart';
 import 'package:trustcue_mobile/features/reports/presentation/widgets/delete_confirmation_dialog.dart';
@@ -22,10 +23,15 @@ import 'package:trustcue_mobile/features/reports/presentation/widgets/delete_con
 class HistoryController extends GetxController {
   final LocalReportRepository? repository;
   final AuthRepository? authRepository;
+  final RetentionService? retentionService;
 
   static const int pageSize = 20;
 
-  HistoryController({this.repository, this.authRepository});
+  HistoryController({
+    this.repository,
+    this.authRepository,
+    this.retentionService,
+  });
 
   final TextEditingController searchController = TextEditingController();
 
@@ -74,7 +80,26 @@ class HistoryController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _pruneExpiredReportsOnOpen();
     loadInitial();
+  }
+
+  void _pruneExpiredReportsOnOpen() {
+    try {
+      final service =
+          retentionService ??
+          (Get.isRegistered<RetentionService>()
+              ? Get.find<RetentionService>()
+              : null);
+      if (service != null) {
+        unawaited(
+          service.pruneExpiredReports(
+            currentAccountId: currentAccountId,
+            includeGuest: true,
+          ),
+        );
+      }
+    } catch (_) {}
   }
 
   @override
