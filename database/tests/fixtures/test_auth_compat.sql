@@ -54,6 +54,18 @@ $$;
 
 COMMENT ON FUNCTION auth.uid() IS 'Test compatibility simulator for Supabase auth.uid() JWT extraction.';
 
+-- 4b. Implement Supabase-compatible auth.role() function
+-- Extracts the JWT role string from standard request.jwt.claim.role setting
+CREATE OR REPLACE FUNCTION auth.role()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT NULLIF(current_setting('request.jwt.claim.role', true), '')::TEXT;
+$$;
+
+COMMENT ON FUNCTION auth.role() IS 'Test compatibility simulator for Supabase auth.role() JWT extraction.';
+
 -- 5. Test Helper Function to switch simulated authentication context
 CREATE OR REPLACE FUNCTION auth.set_test_user(p_user_id UUID, p_role TEXT DEFAULT 'authenticated')
 RETURNS void
@@ -65,6 +77,11 @@ BEGIN
         PERFORM set_config('request.jwt.claim.sub', '', false);
     ELSE
         PERFORM set_config('request.jwt.claim.sub', p_user_id::text, false);
+    END IF;
+    IF p_role IS NULL THEN
+        PERFORM set_config('request.jwt.claim.role', '', false);
+    ELSE
+        PERFORM set_config('request.jwt.claim.role', p_role, false);
     END IF;
     IF p_role IS NOT NULL AND p_role <> 'postgres' THEN
         EXECUTE format('SET ROLE %I', p_role);
@@ -80,6 +97,7 @@ AS $$
 BEGIN
     RESET ROLE;
     PERFORM set_config('request.jwt.claim.sub', '', false);
+    PERFORM set_config('request.jwt.claim.role', '', false);
 END;
 $$;
 

@@ -217,6 +217,7 @@ class TestSQLRegressionSuites(unittest.TestCase):
         self.assertIn("CREATE SCHEMA IF NOT EXISTS auth;", content)
         self.assertIn("CREATE TABLE IF NOT EXISTS auth.users", content)
         self.assertIn("CREATE OR REPLACE FUNCTION auth.uid()", content)
+        self.assertIn("CREATE OR REPLACE FUNCTION auth.role()", content)
         self.assertIn("CREATE OR REPLACE FUNCTION auth.set_test_user", content)
         self.assertIn("CREATE OR REPLACE FUNCTION auth.reset_test_user", content)
 

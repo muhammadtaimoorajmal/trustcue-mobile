@@ -35,7 +35,7 @@ INSERT INTO public.synced_reports (
     'snap-cascade-001',
     1,
     1,
-    '{"verdict": "benign"}'::jsonb,
+    '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText"}'::jsonb,
     now()
 );
 

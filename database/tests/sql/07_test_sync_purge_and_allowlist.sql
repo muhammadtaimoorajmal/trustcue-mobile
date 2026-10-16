@@ -130,4 +130,37 @@ BEGIN
     END IF;
 END $$;
 
+-- 7. Service Role Purge for User B
+SELECT auth.set_test_user(NULL, 'service_role');
+
+DO $$
+DECLARE
+    v_purged INT;
+    v_gen INT;
+    v_b_remaining INT;
+BEGIN
+    SELECT public.purge_synced_reports('d0000000-0000-0000-0000-000000000002'::uuid) INTO v_purged;
+    IF v_purged <> 1 THEN
+        RAISE EXCEPTION 'Expected 1 report purged for User B via service_role, got %', v_purged;
+    END IF;
+
+    SELECT sync_generation INTO v_gen
+    FROM public.profiles
+    WHERE id = 'd0000000-0000-0000-0000-000000000002';
+
+    IF v_gen <> 2 THEN
+        RAISE EXCEPTION 'Expected User B sync_generation to be 2 after service_role purge, got %', v_gen;
+    END IF;
+
+    SELECT count(*) INTO v_b_remaining
+    FROM public.synced_reports
+    WHERE user_id = 'd0000000-0000-0000-0000-000000000002';
+
+    IF v_b_remaining <> 0 THEN
+        RAISE EXCEPTION 'Expected 0 reports remaining for User B, got %', v_b_remaining;
+    END IF;
+END $$;
+
+SELECT auth.reset_test_user();
+
 ROLLBACK;

@@ -59,7 +59,7 @@ INSERT INTO public.synced_reports (
     'c0000000-0000-0000-0000-000000000002',
     'rep-allowed-001',
     'snap-002',
-    '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": true, "indicatorCount": 2}'::jsonb,
+    '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": true, "indicatorCount": 2, "categories": ["urgency"], "source": "messageText"}'::jsonb,
     now()
 );
 

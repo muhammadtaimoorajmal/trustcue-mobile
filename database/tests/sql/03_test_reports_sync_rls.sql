@@ -16,6 +16,13 @@ VALUES
     ('b0000000-0000-0000-0000-000000000002', 'user_b@test.com')
 ON CONFLICT (id) DO NOTHING;
 
+-- Ensure profiles exist and User A is opted into sync (Module 39 requirement)
+INSERT INTO public.profiles (id, display_name, sync_enabled)
+VALUES
+    ('a0000000-0000-0000-0000-000000000001', 'User A', TRUE),
+    ('b0000000-0000-0000-0000-000000000002', 'User B', FALSE)
+ON CONFLICT (id) DO UPDATE SET sync_enabled = EXCLUDED.sync_enabled;
+
 -- 2. Verify Anonymous (anon) Role Cannot Read or Insert Reports
 SELECT auth.set_test_user(NULL, 'anon');
 
@@ -43,7 +50,7 @@ BEGIN
             'a0000000-0000-0000-0000-000000000001',
             'rep-anon-001',
             'snap-anon-001',
-            '{"verdict": "suspicious"}'::jsonb,
+            '{"formatVersion": 1, "outcomeState": "suspicious", "hasAiAnalysis": false, "indicatorCount": 1, "categories": ["urgency"], "source": "messageText"}'::jsonb,
             now()
         );
         RAISE EXCEPTION 'RLS Failure: Anonymous user was allowed to insert a synced report!';
@@ -67,7 +74,7 @@ INSERT INTO public.synced_reports (
     'snap-a-001',
     1,
     1,
-    '{"verdict": "suspicious", "indicators": ["urgent_language"]}'::jsonb,
+    '{"formatVersion": 1, "outcomeState": "indicatorsDetected", "hasAiAnalysis": false, "indicatorCount": 1, "categories": ["urgency"], "source": "messageText"}'::jsonb,
     now()
 );
 
@@ -140,7 +147,7 @@ BEGIN
             'a0000000-0000-0000-0000-000000000001', -- Trying to inject as User A
             'rep-b-spoof',
             'snap-b-spoof',
-            '{"spoofed": true}'::jsonb,
+            '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText"}'::jsonb,
             now()
         );
         RAISE EXCEPTION 'RLS Failure: User B inserted report assigned to User A!';
@@ -157,8 +164,15 @@ DO $$
 DECLARE
     v_oversized JSONB;
 BEGIN
-    -- Construct payload exceeding 500,000 bytes
-    v_oversized := jsonb_build_object('data', repeat('A', 500050));
+    -- Construct payload exceeding 500,000 bytes with allowlisted schema keys
+    v_oversized := jsonb_build_object(
+        'formatVersion', 1,
+        'outcomeState', 'indicatorsDetected',
+        'hasAiAnalysis', false,
+        'indicatorCount', 1,
+        'categories', jsonb_build_array(repeat('A', 500050)),
+        'source', 'messageText'
+    );
     BEGIN
         INSERT INTO public.synced_reports (
             user_id, client_report_id, snapshot_id, report_payload, client_updated_at
@@ -251,7 +265,7 @@ BEGIN
             'a0000000-0000-0000-0000-000000000001',
             'rep-a-001', -- Already exists
             'snap-a-005',
-            '{"status": "duplicate"}'::jsonb,
+            '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText"}'::jsonb,
             now()
         );
         RAISE EXCEPTION 'Constraint Failure: Duplicate (user_id, client_report_id) was allowed!';

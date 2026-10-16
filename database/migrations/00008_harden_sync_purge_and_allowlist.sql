@@ -22,6 +22,8 @@ COMMENT ON COLUMN public.profiles.sync_generation IS 'Monotonically increasing g
 COMMENT ON COLUMN public.profiles.sync_purged_at IS 'UTC timestamp when cloud backup was last purged.';
 
 -- 2. Enhanced purge_synced_reports supporting service-role and user token execution paths
+DROP FUNCTION IF EXISTS public.purge_synced_reports();
+
 CREATE OR REPLACE FUNCTION public.purge_synced_reports(target_user_id UUID DEFAULT NULL)
 RETURNS integer
 LANGUAGE plpgsql
@@ -35,14 +37,16 @@ DECLARE
 BEGIN
     caller_role := auth.role();
 
-    IF caller_role = 'service_role' OR current_user = 'postgres' THEN
+    IF caller_role = 'service_role' OR (session_user = 'postgres' AND (caller_role IS NULL OR caller_role = 'service_role')) THEN
         effective_user_id := COALESCE(target_user_id, auth.uid());
-    ELSE
+    ELSIF caller_role = 'authenticated' THEN
         effective_user_id := auth.uid();
         -- If an authenticated user explicitly supplied target_user_id, it MUST match auth.uid()
         IF target_user_id IS NOT NULL AND target_user_id <> auth.uid() THEN
             RAISE EXCEPTION 'Access denied: cannot purge cloud backups for another user';
         END IF;
+    ELSE
+        RAISE EXCEPTION 'Access denied: insufficient privileges to purge cloud backups';
     END IF;
 
     IF effective_user_id IS NULL THEN
