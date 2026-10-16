@@ -116,7 +116,24 @@ BEGIN
     END IF;
 END $$;
 
--- 6. User B's reports remain intact
+-- 6. User A cannot observe User B's reports (RLS isolation), and User B's reports remain intact
+DO $$
+DECLARE
+    v_b_count_seen_by_a INT;
+BEGIN
+    -- User A observes 0 rows for User B due to RLS
+    SELECT count(*) INTO v_b_count_seen_by_a
+    FROM public.synced_reports
+    WHERE user_id = 'd0000000-0000-0000-0000-000000000002';
+
+    IF v_b_count_seen_by_a <> 0 THEN
+        RAISE EXCEPTION 'RLS Isolation Failure: User A was able to observe User B report (count=%)', v_b_count_seen_by_a;
+    END IF;
+END $$;
+
+-- Switch to User B to confirm their report was not deleted by User A's purge
+SELECT auth.set_test_user('d0000000-0000-0000-0000-000000000002'::uuid, 'authenticated');
+
 DO $$
 DECLARE
     v_b_count INT;
