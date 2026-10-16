@@ -1,4 +1,4 @@
-"""Integration and unit tests for Module 39 Optional Cloud Report Synchronization."""
+"""Integration and unit tests for Module 39 and Module 40 Cloud Report Synchronization."""
 
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -44,6 +44,25 @@ def get_auth_headers(user_id: str, email: str = "sync_user@example.com") -> dict
     return {"Authorization": f"Bearer {token}"}
 
 
+def make_summary_payload(
+    format_version: int = 1,
+    outcome_state: str = "indicatorsDetected",
+    has_ai_analysis: bool = False,
+    indicator_count: int = 1,
+    categories: list[str] | None = None,
+    source: str = "messageText",
+) -> dict:
+    """Create a strictly allowlisted report summary payload."""
+    return {
+        "formatVersion": format_version,
+        "outcomeState": outcome_state,
+        "hasAiAnalysis": has_ai_analysis,
+        "indicatorCount": indicator_count,
+        "categories": categories or ["urgency"],
+        "source": source,
+    }
+
+
 def test_sync_routes_require_authorization(auth_client: TestClient) -> None:
     """Ensure GET, POST, and DELETE /api/v1/sync/reports require valid Bearer token."""
     res_get = auth_client.get("/api/v1/sync/reports")
@@ -81,11 +100,7 @@ def test_sync_gated_on_sync_opt_in(auth_client: TestClient) -> None:
                 "clientReportId": "rep-001",
                 "snapshotId": "snap-001",
                 "clientUpdatedAt": datetime.now(UTC).isoformat(),
-                "reportPayload": {
-                    "formatVersion": 1,
-                    "outcomeState": "suspicious",
-                    "hasAiAnalysis": False,
-                },
+                "reportPayload": make_summary_payload(outcome_state="suspicious"),
             }
         ]
     }
@@ -108,32 +123,29 @@ def test_enabling_sync_in_profile_allows_sync_operations(auth_client: TestClient
     assert patch_res.status_code == 200
     assert patch_res.json()["syncEnabled"] is True
 
-    # Now GET /api/v1/sync/reports succeeds with empty list
-    get_res = auth_client.get("/api/v1/sync/reports", headers=headers)
-    assert get_res.status_code == 200
-    data = get_res.json()
-    assert data["reports"] == []
-    assert data["hasMore"] is False
+    # Pull reports now succeeds
+    pull_res = auth_client.get("/api/v1/sync/reports", headers=headers)
+    assert pull_res.status_code == 200
+    assert pull_res.json()["reports"] == []
 
 
-def test_sync_rejects_forbidden_content_keys(auth_client: TestClient) -> None:
-    """Verify sync payload rejects raw text, excerpts, screenshots, and hashes."""
+def test_sync_privacy_validation_rejects_raw_text_and_excerpts(auth_client: TestClient) -> None:
+    """Verify that any attempt to push forbidden keys like text, excerpt, screenshot is rejected with 422."""
     user_id = str(uuid.uuid4())
     headers = get_auth_headers(user_id)
     auth_client.patch("/api/v1/account/profile", headers=headers, json={"syncEnabled": True})
 
     forbidden_payloads = [
-        {"formatVersion": 1, "text": "Your bank account has been locked!"},
-        {"formatVersion": 1, "rawText": "Urgent verification needed"},
-        {"formatVersion": 1, "excerpt": "Call this number immediately"},
-        {"formatVersion": 1, "evidence": ["suspicious text excerpt"]},
-        {"formatVersion": 1, "screenshot": "base64encodedbytes..."},
-        {"formatVersion": 1, "hash": "sha256hashofrawmessage"},
-        {"formatVersion": 1, "nested": {"excerpt": "leaked string"}},
+        {"formatVersion": 1, "text": "sensitive account number 1234", "outcomeState": "suspicious", "hasAiAnalysis": False, "indicatorCount": 1, "categories": ["payment"], "source": "messageText"},
+        {"formatVersion": 1, "rawText": "hello world", "outcomeState": "cautious", "hasAiAnalysis": False, "indicatorCount": 1, "categories": ["urgency"], "source": "messageText"},
+        {"formatVersion": 1, "excerpt": "click here immediately", "outcomeState": "cautious", "hasAiAnalysis": False, "indicatorCount": 1, "categories": ["urgency"], "source": "messageText"},
+        {"formatVersion": 1, "screenshot": "base64bytes...", "outcomeState": "cautious", "hasAiAnalysis": False, "indicatorCount": 1, "categories": ["urgency"], "source": "messageText"},
+        {"formatVersion": 1, "hash": "abc12345", "outcomeState": "cautious", "hasAiAnalysis": False, "indicatorCount": 1, "categories": ["urgency"], "source": "messageText"},
+        {"formatVersion": 1, "unauthorized_extra_field": "leak", "outcomeState": "cautious", "hasAiAnalysis": False, "indicatorCount": 1, "categories": ["urgency"], "source": "messageText"},
     ]
 
     for bad_payload in forbidden_payloads:
-        push_body = {
+        req = {
             "reports": [
                 {
                     "clientReportId": "rep-privacy-test",
@@ -143,8 +155,8 @@ def test_sync_rejects_forbidden_content_keys(auth_client: TestClient) -> None:
                 }
             ]
         }
-        res = auth_client.post("/api/v1/sync/reports", headers=headers, json=push_body)
-        assert res.status_code in (400, 422), f"Expected rejection for payload with key in {bad_payload.keys()}"
+        res = auth_client.post("/api/v1/sync/reports", headers=headers, json=req)
+        assert res.status_code == 422, f"Expected 422 for payload {bad_payload}, got {res.status_code}"
 
 
 def test_sync_push_and_pull_lifecycle(auth_client: TestClient) -> None:
@@ -162,25 +174,25 @@ def test_sync_push_and_pull_lifecycle(auth_client: TestClient) -> None:
                 "clientReportId": "rep-001",
                 "snapshotId": "snap-001",
                 "clientUpdatedAt": t1.isoformat(),
-                "reportPayload": {
-                    "formatVersion": 1,
-                    "outcomeState": "suspicious",
-                    "hasAiAnalysis": False,
-                    "indicatorCount": 2,
-                    "categories": ["urgency", "credential_harvesting"],
-                },
+                "reportPayload": make_summary_payload(
+                    outcome_state="suspicious",
+                    has_ai_analysis=False,
+                    indicator_count=2,
+                    categories=["urgency", "credential_harvesting"],
+                    source="messageText",
+                ),
             },
             {
                 "clientReportId": "rep-002",
                 "snapshotId": "snap-002",
                 "clientUpdatedAt": t2.isoformat(),
-                "reportPayload": {
-                    "formatVersion": 1,
-                    "outcomeState": "cautious",
-                    "hasAiAnalysis": True,
-                    "indicatorCount": 1,
-                    "categories": ["job_offer"],
-                },
+                "reportPayload": make_summary_payload(
+                    outcome_state="cautious",
+                    has_ai_analysis=True,
+                    indicator_count=1,
+                    categories=["job_offer"],
+                    source="screenshot",
+                ),
             },
         ]
     }
@@ -228,10 +240,7 @@ def test_sync_tombstone_and_revisions(auth_client: TestClient) -> None:
                     "clientReportId": "rep-tombstone-test",
                     "snapshotId": "snap-tombstone",
                     "clientUpdatedAt": now.isoformat(),
-                    "reportPayload": {
-                        "formatVersion": 1,
-                        "outcomeState": "suspicious",
-                    },
+                    "reportPayload": make_summary_payload(outcome_state="suspicious"),
                 }
             ]
         },
@@ -247,10 +256,7 @@ def test_sync_tombstone_and_revisions(auth_client: TestClient) -> None:
                 "clientUpdatedAt": del_time.isoformat(),
                 "isDeleted": True,
                 "deletedAt": del_time.isoformat(),
-                "reportPayload": {
-                    "formatVersion": 1,
-                    "outcomeState": "deleted",
-                },
+                "reportPayload": {},
             }
         ]
     }
@@ -285,13 +291,13 @@ def test_purge_synced_reports(auth_client: TestClient) -> None:
                     "clientReportId": "rep-purge-1",
                     "snapshotId": "snap-1",
                     "clientUpdatedAt": now.isoformat(),
-                    "reportPayload": {"formatVersion": 1, "outcomeState": "cautious"},
+                    "reportPayload": make_summary_payload(outcome_state="cautious"),
                 },
                 {
                     "clientReportId": "rep-purge-2",
                     "snapshotId": "snap-2",
                     "clientUpdatedAt": now.isoformat(),
-                    "reportPayload": {"formatVersion": 1, "outcomeState": "suspicious"},
+                    "reportPayload": make_summary_payload(outcome_state="suspicious"),
                 },
             ]
         },
@@ -303,7 +309,143 @@ def test_purge_synced_reports(auth_client: TestClient) -> None:
     del_data = del_res.json()
     assert del_data["purgedCount"] == 2
 
-    # Pull reports now yields empty list
+    # Pull reports now yields empty list (note: user must re-enable sync to pull)
+    auth_client.patch("/api/v1/account/profile", headers=headers, json={"syncEnabled": True})
     pull_res = auth_client.get("/api/v1/sync/reports", headers=headers)
     assert pull_res.status_code == 200
     assert pull_res.json()["reports"] == []
+
+
+def test_purge_available_when_sync_is_disabled(auth_client: TestClient) -> None:
+    """Verify cloud purge works even when user has sync disabled."""
+    user_id = str(uuid.uuid4())
+    headers = get_auth_headers(user_id)
+
+    # Enable sync and upload 1 report
+    auth_client.patch("/api/v1/account/profile", headers=headers, json={"syncEnabled": True})
+    now = datetime.now(UTC)
+    auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-dis-1",
+                    "snapshotId": "snap-dis-1",
+                    "clientUpdatedAt": now.isoformat(),
+                    "reportPayload": make_summary_payload(),
+                }
+            ]
+        },
+    )
+
+    # User disables sync
+    auth_client.patch("/api/v1/account/profile", headers=headers, json={"syncEnabled": False})
+
+    # User purges while sync is disabled -> succeeds!
+    del_res = auth_client.delete("/api/v1/sync/reports", headers=headers)
+    assert del_res.status_code == 200
+    assert del_res.json()["purgedCount"] == 1
+
+
+def test_resurrection_prevention_after_purge(auth_client: TestClient) -> None:
+    """Verify that stale uploads created before purge cannot resurrect purged reports."""
+    user_id = str(uuid.uuid4())
+    headers = get_auth_headers(user_id)
+
+    # Enable sync and upload report 1
+    auth_client.patch("/api/v1/account/profile", headers=headers, json={"syncEnabled": True})
+    t_old = datetime.now(UTC) - timedelta(minutes=10)
+    auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-stale-1",
+                    "snapshotId": "snap-stale-1",
+                    "clientUpdatedAt": t_old.isoformat(),
+                    "syncGeneration": 1,
+                    "reportPayload": make_summary_payload(),
+                }
+            ]
+        },
+    )
+
+    # Purge reports
+    auth_client.delete("/api/v1/sync/reports", headers=headers)
+
+    # Re-enable sync
+    auth_client.patch("/api/v1/account/profile", headers=headers, json={"syncEnabled": True})
+
+    # Stale second client attempts to push old report with generation 1 and old timestamp
+    stale_res = auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-stale-1",
+                    "snapshotId": "snap-stale-1",
+                    "clientUpdatedAt": t_old.isoformat(),
+                    "syncGeneration": 1,
+                    "reportPayload": make_summary_payload(),
+                }
+            ]
+        },
+    )
+    assert stale_res.status_code == 200
+
+    # Pull reports: the stale report must NOT have been resurrected!
+    pull_res = auth_client.get("/api/v1/sync/reports", headers=headers)
+    assert pull_res.status_code == 200
+    assert len(pull_res.json()["reports"]) == 0
+
+
+def test_pull_cursor_tie_breaker_with_identical_timestamps(auth_client: TestClient) -> None:
+    """Verify pagination with identical timestamps using cursor tie-breaker."""
+    user_id = str(uuid.uuid4())
+    headers = get_auth_headers(user_id)
+    auth_client.patch("/api/v1/account/profile", headers=headers, json={"syncEnabled": True})
+
+    shared_time = datetime.now(UTC)
+
+    # Push two reports with the exact same timestamp
+    auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-aaa",
+                    "snapshotId": "snap-1",
+                    "clientUpdatedAt": shared_time.isoformat(),
+                    "reportPayload": make_summary_payload(),
+                },
+                {
+                    "clientReportId": "rep-bbb",
+                    "snapshotId": "snap-2",
+                    "clientUpdatedAt": shared_time.isoformat(),
+                    "reportPayload": make_summary_payload(),
+                },
+            ]
+        },
+    )
+
+    # Pull page 1 with limit=1
+    page1 = auth_client.get("/api/v1/sync/reports?limit=1", headers=headers)
+    assert page1.status_code == 200
+    data1 = page1.json()
+    assert len(data1["reports"]) == 1
+    assert data1["reports"][0]["clientReportId"] == "rep-aaa"
+    assert data1["hasMore"] is True
+    cursor = data1["nextCursor"]
+    assert cursor is not None
+    assert "|" in cursor
+
+    # Pull page 2 using cursor
+    page2 = auth_client.get(f"/api/v1/sync/reports?limit=1&cursor={cursor}", headers=headers)
+    assert page2.status_code == 200
+    data2 = page2.json()
+    assert len(data2["reports"]) == 1
+    assert data2["reports"][0]["clientReportId"] == "rep-bbb"

@@ -37,6 +37,30 @@ def check_privacy_keys(obj: Any) -> None:
             check_privacy_keys(item)
 
 
+class ReportSummaryPayload(BaseModel):
+    """
+    Strict allowlist schema for report summary payloads stored in cloud backup.
+    Strictly forbids raw text, OCR, evidence quotes, screenshots, or content hashes.
+    """
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    format_version: int = Field(alias="formatVersion", ge=1, le=10)
+    outcome_state: str = Field(alias="outcomeState", min_length=1, max_length=64)
+    has_ai_analysis: bool = Field(alias="hasAiAnalysis")
+    indicator_count: int = Field(alias="indicatorCount", ge=0, le=1000)
+    categories: list[str] = Field(default_factory=list, max_length=50)
+    source: str = Field(alias="source", min_length=1, max_length=64)
+
+    @field_validator("categories")
+    @classmethod
+    def validate_category_bounds(cls, v: list[str]) -> list[str]:
+        for cat in v:
+            if len(cat) > 64:
+                raise ValueError("Category name exceeds 64 characters.")
+        return v
+
+
 class SyncedReportItem(BaseModel):
     """Client-submitted sync item."""
 
@@ -60,7 +84,13 @@ class SyncedReportItem(BaseModel):
         alias="schemaVersion",
         description="Version of report summary schema.",
     )
-    report_payload: dict[str, Any] = Field(
+    sync_generation: int = Field(
+        default=1,
+        ge=1,
+        alias="syncGeneration",
+        description="Client synchronization generation counter.",
+    )
+    report_payload: ReportSummaryPayload | dict[str, Any] = Field(
         alias="reportPayload",
         description="Structured non-sensitive summary payload (outcomeState, categories, timestamps).",
     )
@@ -81,8 +111,16 @@ class SyncedReportItem(BaseModel):
 
     @field_validator("report_payload")
     @classmethod
-    def validate_payload_privacy_and_bounds(cls, v: dict[str, Any]) -> dict[str, Any]:
+    def validate_payload_privacy_and_bounds(cls, v: Any) -> Any:
         """Enforce strict size limits and verify zero raw content fields."""
+        if isinstance(v, ReportSummaryPayload):
+            return v
+
+        if not isinstance(v, dict):
+            raise ValueError("Report payload must be an object.")
+
+        check_privacy_keys(v)
+
         try:
             serialized = json.dumps(v, ensure_ascii=False)
         except Exception as exc:
@@ -91,18 +129,25 @@ class SyncedReportItem(BaseModel):
         if len(serialized.encode("utf-8")) > 500_000:
             raise ValueError("Report payload exceeds maximum allowed size (500 KB).")
 
-        check_privacy_keys(v)
         return v
 
     @model_validator(mode="after")
     def validate_tombstone_consistency(self) -> "SyncedReportItem":
-        """Verify tombstone flag and deletedAt consistency."""
+        """Verify tombstone flag and strict allowlist for active reports."""
         if self.is_deleted:
             if self.deleted_at is None:
                 self.deleted_at = datetime.now(UTC)
         else:
             if self.deleted_at is not None:
                 raise ValueError("deletedAt must be null when isDeleted is false.")
+            if isinstance(self.report_payload, dict):
+                try:
+                    parsed = ReportSummaryPayload.model_validate(self.report_payload)
+                    self.report_payload = parsed.model_dump(by_alias=True)
+                except Exception as exc:
+                    raise ValueError(f"Active report payload violates allowlist: {exc}") from exc
+            elif isinstance(self.report_payload, ReportSummaryPayload):
+                self.report_payload = self.report_payload.model_dump(by_alias=True)
         return self
 
 

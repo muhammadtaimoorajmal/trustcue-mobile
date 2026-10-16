@@ -849,6 +849,41 @@ components:
         error:
           $ref: '#/components/schemas/ErrorDetail'
 
+    ReportSummaryPayload:
+      type: object
+      required:
+        - formatVersion
+        - outcomeState
+        - hasAiAnalysis
+        - indicatorCount
+        - categories
+        - source
+      properties:
+        formatVersion:
+          type: integer
+          minimum: 1
+          maximum: 10
+        outcomeState:
+          type: string
+          minLength: 1
+          maxLength: 64
+        hasAiAnalysis:
+          type: boolean
+        indicatorCount:
+          type: integer
+          minimum: 0
+          maximum: 1000
+        categories:
+          type: array
+          items:
+            type: string
+            maxLength: 64
+          maxItems: 50
+        source:
+          type: string
+          minLength: 1
+          maxLength: 64
+
     SyncedReportItem:
       type: object
       required:
@@ -869,9 +904,13 @@ components:
           type: integer
           default: 1
           minimum: 1
+        syncGeneration:
+          type: integer
+          default: 1
+          minimum: 1
         reportPayload:
           type: object
-          description: Bounded structured report JSON payload (max 500 KB). Excludes raw text, OCR, and excerpts.
+          description: Bounded structured report JSON payload (max 500 KB). Strictly adheres to ReportSummaryPayload allowlist for active reports.
         isDeleted:
           type: boolean
           default: false

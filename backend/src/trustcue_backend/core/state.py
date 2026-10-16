@@ -30,6 +30,8 @@ class AppState:
         self.deleted_users: set[str] = set()
         self.profile_display_names: dict[str, str | None] = {}
         self.profile_sync_enabled: dict[str, bool] = {}
+        self.sync_generations: dict[str, int] = {}
+        self.sync_purged_at: dict[str, datetime] = {}
         self.synced_reports: dict[str, dict[str, Any]] = {}
 
     def mark_user_deleted(self, user_id: str) -> None:
@@ -62,12 +64,31 @@ class AppState:
         """Store cloud sync preference for user."""
         self.profile_sync_enabled[str(user_id).strip()] = bool(enabled)
 
+    def get_sync_generation(self, user_id: str) -> int:
+        """Retrieve current sync generation for user (defaults to 1)."""
+        return self.sync_generations.get(str(user_id).strip().lower(), 1)
+
     def save_synced_reports(self, user_id: str, items: list[dict[str, Any]]) -> list[str]:
-        """Save or update reports for user in in-memory store."""
+        """Save or update reports for user in in-memory store, preventing resurrection after purge."""
         uid = str(user_id).strip().lower()
+        purged_at = self.sync_purged_at.get(uid)
+        current_gen = self.get_sync_generation(uid)
+
         synced_ids: list[str] = []
         for item in items:
             client_id = item["clientReportId"]
+            client_time_raw = item["clientUpdatedAt"]
+            client_time = (
+                client_time_raw
+                if isinstance(client_time_raw, datetime)
+                else datetime.fromisoformat(str(client_time_raw))
+            )
+
+            # Prevent resurrection: if report was modified before last purge or client has stale generation, skip
+            item_gen = item.get("syncGeneration", 1)
+            if purged_at is not None and client_time <= purged_at and item_gen < current_gen:
+                continue
+
             key = f"{uid}:{client_id}"
             existing = self.synced_reports.get(key)
             revision = (existing["revision"] + 1) if existing else 1
@@ -91,36 +112,68 @@ class AppState:
         return synced_ids
 
     def list_synced_reports(
-        self, user_id: str, since: datetime | None = None, limit: int = 50
+        self,
+        user_id: str,
+        since: datetime | None = None,
+        limit: int = 50,
+        cursor: str | None = None,
     ) -> tuple[list[dict[str, Any]], bool]:
-        """List synced reports for user modified after since."""
+        """List synced reports for user with deterministic tie-breaker cursor."""
         uid = str(user_id).strip().lower()
         records: list[dict[str, Any]] = []
+
+        # Parse tie-breaker cursor if provided: "{iso_ts}|{client_report_id}"
+        cursor_ts: datetime | None = None
+        cursor_id: str | None = None
+        if cursor and "|" in cursor:
+            parts = cursor.split("|", 1)
+            try:
+                cursor_ts = datetime.fromisoformat(parts[0].replace(" ", "+"))
+                cursor_id = parts[1]
+            except Exception:
+                cursor_ts = None
+                cursor_id = None
+
         for _key, record in self.synced_reports.items():
             if record["userId"] != uid:
                 continue
-            if since is not None:
-                record_time = record["clientUpdatedAt"]
-                if isinstance(record_time, str):
-                    record_time = datetime.fromisoformat(record_time)
+
+            record_time = record["clientUpdatedAt"]
+            if isinstance(record_time, str):
+                record_time = datetime.fromisoformat(record_time)
+
+            if cursor_ts is not None and cursor_id is not None:
+                if record_time < cursor_ts:
+                    continue
+                if record_time == cursor_ts and record["clientReportId"] <= cursor_id:
+                    continue
+            elif since is not None:
                 if record_time <= since:
                     continue
+
             records.append(record)
 
-        records.sort(
-            key=lambda r: r["clientUpdatedAt"]
-            if isinstance(r["clientUpdatedAt"], datetime)
-            else datetime.fromisoformat(str(r["clientUpdatedAt"]))
-        )
+        # Sort stably by (clientUpdatedAt, clientReportId)
+        def sort_key(r: dict[str, Any]) -> tuple[datetime, str]:
+            rt = r["clientUpdatedAt"]
+            ts = rt if isinstance(rt, datetime) else datetime.fromisoformat(str(rt))
+            return (ts, str(r.get("clientReportId", "")))
+
+        records.sort(key=sort_key)
         has_more = len(records) > limit
         return records[:limit], has_more
 
     def purge_synced_reports(self, user_id: str) -> int:
-        """Purge all cloud synced reports for user."""
+        """Purge all cloud synced reports for user and increment generation to block resurrection."""
         uid = str(user_id).strip().lower()
         to_delete = [k for k in self.synced_reports if k.startswith(f"{uid}:")]
         for k in to_delete:
             self.synced_reports.pop(k, None)
+
+        # Increment generation and record purge timestamp
+        self.sync_generations[uid] = self.sync_generations.get(uid, 1) + 1
+        self.sync_purged_at[uid] = datetime.now(UTC)
+        self.profile_sync_enabled[str(user_id).strip()] = False
         return len(to_delete)
 
 

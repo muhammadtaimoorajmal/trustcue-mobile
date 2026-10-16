@@ -167,9 +167,15 @@ class SyncService:
             close_client = self._http_client is None
             try:
                 base_url = self.settings.SUPABASE_URL.rstrip("/")
-                query = f"user_id=eq.{user_id}&order=client_updated_at.asc&limit={clamped_limit + 1}"
-                if since is not None:
-                    query += f"&client_updated_at=gt.{since.isoformat()}"
+                order_clause = "order=client_updated_at.asc,client_report_id.asc"
+                if cursor and "|" in cursor:
+                    c_ts, c_id = cursor.split("|", 1)
+                    c_ts = c_ts.replace(" ", "+")
+                    query = f"user_id=eq.{user_id}&or=(client_updated_at.gt.{c_ts},and(client_updated_at.eq.{c_ts},client_report_id.gt.{c_id}))&{order_clause}&limit={clamped_limit + 1}"
+                elif since is not None:
+                    query = f"user_id=eq.{user_id}&client_updated_at.gt.{since.isoformat()}&{order_clause}&limit={clamped_limit + 1}"
+                else:
+                    query = f"user_id=eq.{user_id}&{order_clause}&limit={clamped_limit + 1}"
 
                 resp = await client.get(
                     f"{base_url}/rest/v1/synced_reports?{query}",
@@ -198,9 +204,14 @@ class SyncService:
                                     updatedAt=row["updated_at"],
                                 )
                             )
+                        next_cursor = (
+                            f"{records[-1].client_updated_at.isoformat()}|{records[-1].client_report_id}"
+                            if (has_more and records)
+                            else None
+                        )
                         return SyncReportsPullResponse(
                             reports=records,
-                            nextCursor=records[-1].client_updated_at.isoformat() if (has_more and records) else None,
+                            nextCursor=next_cursor,
                             hasMore=has_more,
                             serverTimestamp=datetime.now(UTC),
                         )
@@ -212,7 +223,7 @@ class SyncService:
 
         # Fallback to in-memory state
         in_mem_records, has_more = self.app_state.list_synced_reports(
-            user_id, since=since, limit=clamped_limit
+            user_id, since=since, limit=clamped_limit, cursor=cursor
         )
         for r in in_mem_records:
             records.append(
@@ -231,15 +242,20 @@ class SyncService:
                 )
             )
 
+        next_cursor = (
+            f"{records[-1].client_updated_at.isoformat()}|{records[-1].client_report_id}"
+            if (has_more and records)
+            else None
+        )
         return SyncReportsPullResponse(
             reports=records,
-            nextCursor=records[-1].client_updated_at.isoformat() if (has_more and records) else None,
+            nextCursor=next_cursor,
             hasMore=has_more,
             serverTimestamp=datetime.now(UTC),
         )
 
     async def purge_reports(self, user_id: str) -> SyncPurgeResponse:
-        """Purge all cloud synced reports for the specified user."""
+        """Purge all cloud synced reports for the specified user and disable cloud sync."""
         in_mem_purged = self.app_state.purge_synced_reports(user_id)
         db_purged = 0
 
@@ -251,6 +267,7 @@ class SyncService:
                 resp = await client.post(
                     f"{base_url}/rest/v1/rpc/purge_synced_reports",
                     headers=self._get_auth_headers(),
+                    json={"target_user_id": user_id},
                 )
                 if resp.status_code == 200:
                     try:
@@ -265,6 +282,13 @@ class SyncService:
                     )
                     if del_resp.status_code in (200, 204):
                         db_purged = in_mem_purged
+
+                # Explicitly disable sync_enabled on profile
+                await client.patch(
+                    f"{base_url}/rest/v1/profiles?id=eq.{user_id}",
+                    headers=self._get_auth_headers(),
+                    json={"sync_enabled": False},
+                )
             except Exception as exc:
                 logger.warning("PostgREST purge_reports failed for user %s: %s", user_id, str(exc))
             finally:

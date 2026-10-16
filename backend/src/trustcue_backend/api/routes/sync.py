@@ -76,11 +76,15 @@ async def list_synced_reports(
                 status_code=status.HTTP_400_BAD_REQUEST,
             ) from None
 
+    clean_cursor: str | None = None
+    if cursor is not None:
+        clean_cursor = cursor.replace(" ", "+")
+
     return await sync_service.pull_reports(
         user_id=current_user.user_id,
         since=parsed_since,
         limit=limit,
-        cursor=cursor,
+        cursor=clean_cursor,
     )
 
 
