@@ -71,6 +71,9 @@ class LocalDatabaseMigrator {
       case 1:
         await _applyMigrationV1(db);
         break;
+      case 2:
+        await _applyMigrationV2(db);
+        break;
       default:
         throw ArgumentError(
           'Unrecognized migration target version: $targetVersion',
@@ -130,6 +133,27 @@ class LocalDatabaseMigrator {
     await db.execute('''
       CREATE INDEX IF NOT EXISTS idx_reports_snapshot_id
       ON ${DatabaseConstants.tableReports} (${DatabaseConstants.colReportSnapshotId});
+    ''');
+  }
+
+  Future<void> _applyMigrationV2(DatabaseExecutor db) async {
+    // 3. Report sync metadata table for Module 39 cloud backup tracking
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${DatabaseConstants.tableSyncMetadata} (
+        ${DatabaseConstants.colSyncReportId} TEXT PRIMARY KEY NOT NULL,
+        ${DatabaseConstants.colSyncAccountId} TEXT NOT NULL,
+        ${DatabaseConstants.colSyncStatus} TEXT NOT NULL,
+        ${DatabaseConstants.colSyncClientUpdatedAt} TEXT NOT NULL,
+        ${DatabaseConstants.colSyncLastSyncedAt} TEXT
+      );
+    ''');
+
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_sync_metadata_account_status
+      ON ${DatabaseConstants.tableSyncMetadata} (
+        ${DatabaseConstants.colSyncAccountId},
+        ${DatabaseConstants.colSyncStatus}
+      );
     ''');
   }
 }

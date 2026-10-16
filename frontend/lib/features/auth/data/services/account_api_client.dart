@@ -105,9 +105,10 @@ class AccountApiClient {
     }
   }
 
-  /// Updates profile display name for the authenticated session.
+  /// Updates profile display name and/or cloud sync preference for the authenticated session.
   Future<Result<UserProfile>> updateProfile({
-    required String? displayName,
+    String? displayName,
+    bool? syncEnabled,
   }) async {
     final token = await tokenProvider();
     if (token == null || token.trim().isEmpty) {
@@ -120,6 +121,16 @@ class AccountApiClient {
 
     try {
       final uri = Uri.parse('$baseUrl/api/v1/account/profile');
+      final payload = <String, dynamic>{};
+      if (displayName != null) {
+        payload['displayName'] = displayName.trim().isEmpty
+            ? null
+            : displayName.trim();
+      }
+      if (syncEnabled != null) {
+        payload['syncEnabled'] = syncEnabled;
+      }
+
       final response = await _httpClient
           .patch(
             uri,
@@ -128,11 +139,7 @@ class AccountApiClient {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
             },
-            body: jsonEncode({
-              'displayName': displayName?.trim().isEmpty ?? true
-                  ? null
-                  : displayName!.trim(),
-            }),
+            body: jsonEncode(payload),
           )
           .timeout(timeout);
 

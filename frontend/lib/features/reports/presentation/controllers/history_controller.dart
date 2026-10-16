@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/features/auth/domain/contracts/auth_repository.dart';
 import 'package:trustcue_mobile/features/auth/domain/models/auth_state.dart';
+import 'package:trustcue_mobile/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/reports/data/database/app_database.dart';
 import 'package:trustcue_mobile/features/reports/domain/contracts/local_report_repository.dart';
@@ -15,7 +16,6 @@ import 'package:trustcue_mobile/features/reports/presentation/widgets/delete_con
 /// metadata filtering, account scoping, and transactional deletion.
 ///
 /// Invariants & Guarantees:
-/// - 100% offline; zero network calls during all history and deletion operations.
 /// - Scoped to authenticated user ID or guest (null) boundary.
 /// - Debounced search queries (300ms) with stale-result protection.
 /// - Confirmation-gated single report deletion immediately removing data from SQLite.
@@ -54,6 +54,14 @@ class HistoryController extends GetxController {
       return auth.currentUser?.id;
     }
     return null;
+  }
+
+  bool get isSyncEnabled {
+    if (Get.isRegistered<AuthController>()) {
+      final auth = Get.find<AuthController>();
+      return auth.isAuthenticated && (auth.profile.value?.syncEnabled ?? false);
+    }
+    return false;
   }
 
   LocalReportRepository get _repo {
@@ -220,14 +228,20 @@ class HistoryController extends GetxController {
     SavedReportSummary summary,
     BuildContext context,
   ) async {
-    final confirmed = await DeleteConfirmationDialog.show(context);
-    if (!confirmed) return;
+    final syncActive = isSyncEnabled && summary.accountId != null;
+    final choice = await DeleteConfirmationDialog.show(
+      context,
+      isSyncEnabled: syncActive,
+    );
+    if (choice == DeleteReportChoice.cancel) return;
 
+    final shouldTombstone = choice == DeleteReportChoice.deviceAndCloud;
     final accountId = currentAccountId;
     final result = await _repo.deleteReport(
       summary.id,
       accountId: accountId,
       enforceAccountScope: true,
+      tombstoneForCloud: shouldTombstone,
     );
 
     if (result.isSuccess && (result.valueOrNull ?? false)) {
@@ -235,11 +249,19 @@ class HistoryController extends GetxController {
       totalCount.value = (totalCount.value - 1).clamp(0, 999999);
       hasMore.value = summaries.length < totalCount.value;
 
+      if (shouldTombstone && Get.isRegistered<AuthController>()) {
+        unawaited(Get.find<AuthController>().syncNow());
+      }
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Report deleted from this device.'),
-            duration: Duration(seconds: 3),
+          SnackBar(
+            content: Text(
+              shouldTombstone
+                  ? 'Report deleted from device and cloud backup.'
+                  : 'Report deleted from this device.',
+            ),
+            duration: const Duration(seconds: 3),
           ),
         );
       }

@@ -186,6 +186,17 @@ class SqliteReportRepository implements LocalReportRepository {
               where: '${DatabaseConstants.colReportId} = ?',
               whereArgs: [report.id],
             );
+
+            if (report.accountId != null) {
+              await txn.insert(DatabaseConstants.tableSyncMetadata, {
+                DatabaseConstants.colSyncReportId: report.id,
+                DatabaseConstants.colSyncAccountId: report.accountId!,
+                DatabaseConstants.colSyncStatus: 'pending_upload',
+                DatabaseConstants.colSyncClientUpdatedAt: DateTime.now()
+                    .toUtc()
+                    .toIso8601String(),
+              }, conflictAlgorithm: ConflictAlgorithm.replace);
+            }
             return Result.success(report);
           } else {
             return Result.failure(
@@ -232,6 +243,17 @@ class SqliteReportRepository implements LocalReportRepository {
           DatabaseConstants.colReportPreviewText: report.previewText,
           DatabaseConstants.colReportPayload: payloadJson,
         }, conflictAlgorithm: ConflictAlgorithm.abort);
+
+        if (report.accountId != null) {
+          await txn.insert(DatabaseConstants.tableSyncMetadata, {
+            DatabaseConstants.colSyncReportId: report.id,
+            DatabaseConstants.colSyncAccountId: report.accountId!,
+            DatabaseConstants.colSyncStatus: 'pending_upload',
+            DatabaseConstants.colSyncClientUpdatedAt: DateTime.now()
+                .toUtc()
+                .toIso8601String(),
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
 
         return Result.success(report);
       });
@@ -449,6 +471,7 @@ class SqliteReportRepository implements LocalReportRepository {
     String id, {
     String? accountId,
     bool enforceAccountScope = false,
+    bool tombstoneForCloud = false,
   }) async {
     final dbResult = await _getOpenDatabase();
     if (dbResult.isFailure) {
@@ -478,7 +501,10 @@ class SqliteReportRepository implements LocalReportRepository {
 
         final existing = await txn.query(
           DatabaseConstants.tableReports,
-          columns: [DatabaseConstants.colReportSnapshotId],
+          columns: [
+            DatabaseConstants.colReportSnapshotId,
+            DatabaseConstants.colReportAccountId,
+          ],
           where: whereClause,
           whereArgs: whereArgs,
         );
@@ -487,8 +513,10 @@ class SqliteReportRepository implements LocalReportRepository {
           return const Result.success(false);
         }
 
-        final snapshotId =
-            existing.first[DatabaseConstants.colReportSnapshotId] as String;
+        final row = existing.first;
+        final snapshotId = row[DatabaseConstants.colReportSnapshotId] as String;
+        final effectiveAccountId =
+            accountId ?? (row[DatabaseConstants.colReportAccountId] as String?);
 
         // 1. Delete the report record
         await txn.delete(
@@ -512,6 +540,24 @@ class SqliteReportRepository implements LocalReportRepository {
             DatabaseConstants.tableSnapshots,
             where: '${DatabaseConstants.colSnapshotId} = ?',
             whereArgs: [snapshotId],
+          );
+        }
+
+        // 4. Update sync metadata for tombstone if requested for account
+        if (tombstoneForCloud && effectiveAccountId != null) {
+          await txn.insert(DatabaseConstants.tableSyncMetadata, {
+            DatabaseConstants.colSyncReportId: id,
+            DatabaseConstants.colSyncAccountId: effectiveAccountId,
+            DatabaseConstants.colSyncStatus: 'pending_delete',
+            DatabaseConstants.colSyncClientUpdatedAt: DateTime.now()
+                .toUtc()
+                .toIso8601String(),
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
+        } else {
+          await txn.delete(
+            DatabaseConstants.tableSyncMetadata,
+            where: '${DatabaseConstants.colSyncReportId} = ?',
+            whereArgs: [id],
           );
         }
 
@@ -595,6 +641,13 @@ class SqliteReportRepository implements LocalReportRepository {
             );
           }
         }
+
+        // 4. Delete sync metadata for this account
+        await txn.delete(
+          DatabaseConstants.tableSyncMetadata,
+          where: '${DatabaseConstants.colSyncAccountId} = ?',
+          whereArgs: [cleanId],
+        );
 
         return Result.success(deletedCount);
       });
@@ -817,6 +870,202 @@ class SqliteReportRepository implements LocalReportRepository {
         AnalysisFailure.storage(
           'Unexpected error while counting reports: ${e.toString()}',
         ),
+      );
+    }
+  }
+
+  @override
+  Future<Result<List<SavedReportSummary>>> getPendingUploadReportSummaries(
+    String accountId,
+  ) async {
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) return Result.failure(dbResult.failureOrNull!);
+    final db = dbResult.valueOrNull!;
+
+    try {
+      final rows = await db.rawQuery(
+        '''
+        SELECT r.${DatabaseConstants.colReportId},
+               r.${DatabaseConstants.colReportSchemaVersion},
+               r.${DatabaseConstants.colReportSnapshotId},
+               r.${DatabaseConstants.colReportAccountId},
+               r.${DatabaseConstants.colReportAnalyzedAt},
+               r.${DatabaseConstants.colReportSavedAt},
+               r.${DatabaseConstants.colReportHasAiAnalysis},
+               r.${DatabaseConstants.colReportAiProvider},
+               r.${DatabaseConstants.colReportAiModel},
+               r.${DatabaseConstants.colReportFindingsCount},
+               r.${DatabaseConstants.colReportOutcomeState},
+               r.${DatabaseConstants.colReportPreviewText},
+               s.${DatabaseConstants.colSnapshotInputSource}
+        FROM ${DatabaseConstants.tableReports} r
+        JOIN ${DatabaseConstants.tableSnapshots} s
+          ON r.${DatabaseConstants.colReportSnapshotId} = s.${DatabaseConstants.colSnapshotId}
+        JOIN ${DatabaseConstants.tableSyncMetadata} m
+          ON r.${DatabaseConstants.colReportId} = m.${DatabaseConstants.colSyncReportId}
+        WHERE m.${DatabaseConstants.colSyncAccountId} = ?
+          AND m.${DatabaseConstants.colSyncStatus} = 'pending_upload'
+        ORDER BY r.${DatabaseConstants.colReportAnalyzedAt} DESC
+      ''',
+        [accountId],
+      );
+
+      final summaries = rows.map((row) {
+        return SavedReportSummary(
+          id: row[DatabaseConstants.colReportId] as String,
+          schemaVersion: row[DatabaseConstants.colReportSchemaVersion] as int,
+          snapshotId: row[DatabaseConstants.colReportSnapshotId] as String,
+          accountId: row[DatabaseConstants.colReportAccountId] as String?,
+          inputSource: InputSource.values.byName(
+            row[DatabaseConstants.colSnapshotInputSource] as String,
+          ),
+          analyzedAt: DateTime.parse(
+            row[DatabaseConstants.colReportAnalyzedAt] as String,
+          ).toUtc(),
+          savedAt: DateTime.parse(
+            row[DatabaseConstants.colReportSavedAt] as String,
+          ).toUtc(),
+          hasAiAnalysis:
+              (row[DatabaseConstants.colReportHasAiAnalysis] as int) == 1,
+          aiProvider: row[DatabaseConstants.colReportAiProvider] as String?,
+          aiModel: row[DatabaseConstants.colReportAiModel] as String?,
+          findingsCount: row[DatabaseConstants.colReportFindingsCount] as int,
+          outcomeState: AssessmentOutcomeState.values.byName(
+            row[DatabaseConstants.colReportOutcomeState] as String,
+          ),
+          previewText: row[DatabaseConstants.colReportPreviewText] as String,
+        );
+      }).toList();
+
+      return Result.success(summaries);
+    } catch (e) {
+      return Result.failure(
+        AnalysisFailure.storage('Error fetching pending upload reports: $e'),
+      );
+    }
+  }
+
+  @override
+  Future<Result<List<String>>> getPendingTombstones(String accountId) async {
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) return Result.failure(dbResult.failureOrNull!);
+    final db = dbResult.valueOrNull!;
+
+    try {
+      final rows = await db.query(
+        DatabaseConstants.tableSyncMetadata,
+        columns: [DatabaseConstants.colSyncReportId],
+        where:
+            '${DatabaseConstants.colSyncAccountId} = ? AND ${DatabaseConstants.colSyncStatus} = ?',
+        whereArgs: [accountId, 'pending_delete'],
+      );
+
+      final ids = rows
+          .map((r) => r[DatabaseConstants.colSyncReportId] as String)
+          .toList();
+      return Result.success(ids);
+    } catch (e) {
+      return Result.failure(
+        AnalysisFailure.storage('Error fetching pending tombstones: $e'),
+      );
+    }
+  }
+
+  @override
+  Future<Result<void>> markReportsSynced(
+    String accountId,
+    List<String> reportIds,
+    DateTime syncedAt,
+  ) async {
+    if (reportIds.isEmpty) return const Result.success(null);
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) return Result.failure(dbResult.failureOrNull!);
+    final db = dbResult.valueOrNull!;
+
+    try {
+      await db.transaction((txn) async {
+        final nowIso = syncedAt.toUtc().toIso8601String();
+        for (final id in reportIds) {
+          await txn.update(
+            DatabaseConstants.tableSyncMetadata,
+            {
+              DatabaseConstants.colSyncStatus: 'synced',
+              DatabaseConstants.colSyncLastSyncedAt: nowIso,
+            },
+            where:
+                '${DatabaseConstants.colSyncReportId} = ? AND ${DatabaseConstants.colSyncAccountId} = ?',
+            whereArgs: [id, accountId],
+          );
+        }
+      });
+      return const Result.success(null);
+    } catch (e) {
+      return Result.failure(
+        AnalysisFailure.storage('Error marking reports synced: $e'),
+      );
+    }
+  }
+
+  @override
+  Future<Result<void>> clearTombstones(
+    String accountId,
+    List<String> reportIds,
+  ) async {
+    if (reportIds.isEmpty) return const Result.success(null);
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) return Result.failure(dbResult.failureOrNull!);
+    final db = dbResult.valueOrNull!;
+
+    try {
+      await db.transaction((txn) async {
+        for (final id in reportIds) {
+          await txn.delete(
+            DatabaseConstants.tableSyncMetadata,
+            where:
+                '${DatabaseConstants.colSyncReportId} = ? AND ${DatabaseConstants.colSyncAccountId} = ? AND ${DatabaseConstants.colSyncStatus} = ?',
+            whereArgs: [id, accountId, 'pending_delete'],
+          );
+        }
+      });
+      return const Result.success(null);
+    } catch (e) {
+      return Result.failure(
+        AnalysisFailure.storage('Error clearing tombstones: $e'),
+      );
+    }
+  }
+
+  @override
+  Future<Result<void>> applyRemoteTombstone(
+    String accountId,
+    String reportId,
+  ) async {
+    final delResult = await deleteReport(
+      reportId,
+      accountId: accountId,
+      enforceAccountScope: true,
+      tombstoneForCloud: false,
+    );
+    if (delResult.isFailure) return Result.failure(delResult.failureOrNull!);
+    return const Result.success(null);
+  }
+
+  @override
+  Future<Result<void>> clearSyncMetadata(String accountId) async {
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) return Result.failure(dbResult.failureOrNull!);
+    final db = dbResult.valueOrNull!;
+
+    try {
+      await db.delete(
+        DatabaseConstants.tableSyncMetadata,
+        where: '${DatabaseConstants.colSyncAccountId} = ?',
+        whereArgs: [accountId],
+      );
+      return const Result.success(null);
+    } catch (e) {
+      return Result.failure(
+        AnalysisFailure.storage('Error clearing sync metadata: $e'),
       );
     }
   }

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_finding.dart';
 import 'package:trustcue_mobile/features/analysis/presentation/widgets/analyzed_text_evidence_viewer.dart';
 import 'package:trustcue_mobile/features/auth/domain/contracts/auth_repository.dart';
 import 'package:trustcue_mobile/features/auth/domain/models/auth_state.dart';
+import 'package:trustcue_mobile/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:trustcue_mobile/features/reports/data/database/app_database.dart';
 import 'package:trustcue_mobile/features/reports/domain/contracts/local_report_repository.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report.dart';
@@ -51,6 +54,14 @@ class SavedReportDetailController extends GetxController {
       return auth.currentUser?.id;
     }
     return null;
+  }
+
+  bool get isSyncEnabled {
+    if (Get.isRegistered<AuthController>()) {
+      final auth = Get.find<AuthController>();
+      return auth.isAuthenticated && (auth.profile.value?.syncEnabled ?? false);
+    }
+    return false;
   }
 
   LocalReportRepository get _repo {
@@ -127,24 +138,38 @@ class SavedReportDetailController extends GetxController {
     final currentReport = report.value;
     if (currentReport == null) return false;
 
-    final confirmed = await DeleteConfirmationDialog.show(context);
-    if (!confirmed) return false;
+    final syncActive = isSyncEnabled && currentReport.accountId != null;
+    final choice = await DeleteConfirmationDialog.show(
+      context,
+      isSyncEnabled: syncActive,
+    );
+    if (choice == DeleteReportChoice.cancel) return false;
 
+    final shouldTombstone = choice == DeleteReportChoice.deviceAndCloud;
     final accountId = currentAccountId;
     final result = await _repo.deleteReport(
       currentReport.id,
       accountId: accountId,
       enforceAccountScope: true,
+      tombstoneForCloud: shouldTombstone,
     );
 
     if (result.isSuccess && (result.valueOrNull ?? false)) {
+      if (shouldTombstone && Get.isRegistered<AuthController>()) {
+        unawaited(Get.find<AuthController>().syncNow());
+      }
+
       Get.back(result: true);
       final currentContext = Get.context;
       if (currentContext != null && currentContext.mounted) {
         ScaffoldMessenger.of(currentContext).showSnackBar(
-          const SnackBar(
-            content: Text('Report deleted from this device.'),
-            duration: Duration(seconds: 3),
+          SnackBar(
+            content: Text(
+              shouldTombstone
+                  ? 'Report deleted from device and cloud backup.'
+                  : 'Report deleted from this device.',
+            ),
+            duration: const Duration(seconds: 3),
           ),
         );
       }

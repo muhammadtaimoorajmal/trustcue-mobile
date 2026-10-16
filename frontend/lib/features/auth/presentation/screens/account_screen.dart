@@ -296,49 +296,185 @@ class AccountScreen extends GetView<AuthController> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Text(
-                  'Cloud Backup & Sync',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
+                  'Quotas reset daily at midnight UTC.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.hintColor,
                   ),
                 ),
-                const SizedBox(height: 6),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.pagePaddingMedium),
+
+          // Cloud Report Backup Card (Module 39)
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(
-                      syncEnabled
-                          ? Icons.cloud_done_outlined
-                          : Icons.cloud_off_outlined,
-                      size: 20,
-                      color: syncEnabled ? Colors.green : theme.hintColor,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Cloud Report Backup',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            syncEnabled
+                                ? 'Enabled (Summary backup)'
+                                : 'Disabled (Local only)',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: syncEnabled
+                                  ? Colors.green
+                                  : theme.hintColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      syncEnabled
-                          ? 'Sync enabled'
-                          : 'Disabled by default (Module 39)',
-                      style: theme.textTheme.bodyMedium,
-                    ),
+                    Obx(() {
+                      final isSyncing = controller.isSyncing.value;
+                      return Switch.adaptive(
+                        value: syncEnabled,
+                        onChanged: isSyncing
+                            ? null
+                            : (val) {
+                                if (val) {
+                                  controller.toggleCloudSync(true);
+                                } else {
+                                  _showDisableSyncDialog(context);
+                                }
+                              },
+                      );
+                    }),
                   ],
                 ),
                 const SizedBox(height: 12),
+
+                // Privacy Disclosure Banner
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withValues(
-                      alpha: 0.5,
+                    color: theme.colorScheme.primaryContainer.withValues(
+                      alpha: 0.25,
                     ),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                    ),
                   ),
-                  child: Text(
-                    'Quotas, roles, timestamps, and cloud sync policies are protected and cannot be modified.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.hintColor,
-                      fontStyle: FontStyle.italic,
-                    ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.privacy_tip_outlined,
+                        size: 20,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Strict Privacy Protection: Raw message text, images, and evidence quotes are NEVER uploaded. Only metadata summaries (timestamps, category, indicator count) are synced.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+
+                if (syncEnabled) ...[
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+
+                  // Last synced time & Sync Now button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Obx(() {
+                          final lastTime = controller.lastSyncTime.value;
+                          final text = lastTime != null
+                              ? 'Last synced: ${_formatDateTime(lastTime)}'
+                              : 'Not synced yet';
+                          return Text(
+                            text,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.hintColor,
+                            ),
+                          );
+                        }),
+                      ),
+                      Obx(() {
+                        final isSyncing = controller.isSyncing.value;
+                        return OutlinedButton.icon(
+                          onPressed: isSyncing
+                              ? null
+                              : () async {
+                                  final res = await controller.syncNow();
+                                  if (res != null) {
+                                    Get.snackbar(
+                                      'Sync Complete',
+                                      'Uploaded ${res.pushedCount} summaries, checked ${res.pulledCount} updates.',
+                                      snackPosition: SnackPosition.BOTTOM,
+                                    );
+                                  }
+                                },
+                          icon: isSyncing
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.sync, size: 16),
+                          label: Text(isSyncing ? 'Syncing...' : 'Sync Now'),
+                        );
+                      }),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Delete Cloud Backups action
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Obx(() {
+                      final isPurging = controller.isPurgingSync.value;
+                      return TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: theme.colorScheme.error,
+                          padding: EdgeInsets.zero,
+                        ),
+                        onPressed: isPurging
+                            ? null
+                            : () => _showPurgeCloudBackupsDialog(context),
+                        icon: isPurging
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.cloud_off, size: 16),
+                        label: const Text('Delete Cloud Backups'),
+                      );
+                    }),
+                  ),
+                ],
               ],
             ),
           ),
@@ -642,5 +778,82 @@ class AccountScreen extends GetView<AuthController> {
     final month = local.month.toString().padLeft(2, '0');
     final day = local.day.toString().padLeft(2, '0');
     return '$year-$month-$day';
+  }
+
+  String _formatDateTime(DateTime dt) {
+    final local = dt.toLocal();
+    final year = local.year.toString();
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$year-$month-$day $hour:$minute';
+  }
+
+  void _showDisableSyncDialog(BuildContext context) {
+    final theme = Theme.of(context);
+    Get.dialog<void>(
+      AlertDialog(
+        title: const Text('Turn Off Cloud Backup?'),
+        content: const Text(
+          'Choose what you would like to do with previously synchronized cloud report summaries:\n\n'
+          '• Keep cloud copies: Existing summaries remain stored in your cloud account.\n'
+          '• Delete cloud copies: Cloud summaries are permanently wiped. Your local reports on this device are untouched.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          OutlinedButton(
+            onPressed: () async {
+              Get.back();
+              await controller.toggleCloudSync(false, purgeCloud: false);
+            },
+            child: const Text('Keep Cloud Copies'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.error,
+            ),
+            onPressed: () async {
+              Get.back();
+              await controller.toggleCloudSync(false, purgeCloud: true);
+            },
+            child: const Text('Delete Cloud Copies'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPurgeCloudBackupsDialog(BuildContext context) {
+    final theme = Theme.of(context);
+    Get.dialog<void>(
+      AlertDialog(
+        title: const Text('Delete Cloud Backups?'),
+        content: const Text(
+          'This will permanently erase all synchronized report summaries from TrustCue cloud servers.\n\n'
+          'All reports saved locally on this device will be 100% preserved.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.error,
+            ),
+            onPressed: () async {
+              Get.back();
+              final success = await controller.purgeCloudBackups();
+              if (success) {
+                Get.snackbar(
+                  'Cloud Backups Deleted',
+                  'Cloud report summaries have been erased. Local reports remain intact.',
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              }
+            },
+            child: const Text('Delete Cloud Copies'),
+          ),
+        ],
+      ),
+    );
   }
 }

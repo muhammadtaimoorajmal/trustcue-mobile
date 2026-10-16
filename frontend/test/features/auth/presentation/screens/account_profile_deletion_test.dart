@@ -31,6 +31,7 @@ void main() {
     late AuthController authController;
     late AuthUser testUser;
     String? currentDisplayName;
+    bool syncEnabledState = false;
     bool deleteAccountCalled = false;
 
     setUp(() {
@@ -40,6 +41,7 @@ void main() {
       fakeAuth = FakeAuthRepository();
       fakeRepo = FakeReportRepository();
       currentDisplayName = 'Original Name';
+      syncEnabledState = false;
       deleteAccountCalled = false;
 
       testUser = AuthUser(
@@ -60,7 +62,7 @@ void main() {
                 'emailVerified': true,
                 'createdAt': (testUser.createdAt ?? DateTime.utc(2026, 10, 1))
                     .toIso8601String(),
-                'syncEnabled': false,
+                'syncEnabled': syncEnabledState,
                 'quotaRemainingToday': 14,
               }),
               200,
@@ -68,7 +70,12 @@ void main() {
           }
           if (request.method == 'PATCH') {
             final body = jsonDecode(request.body) as Map<String, dynamic>;
-            currentDisplayName = body['displayName'] as String?;
+            if (body.containsKey('displayName')) {
+              currentDisplayName = body['displayName'] as String?;
+            }
+            if (body.containsKey('syncEnabled')) {
+              syncEnabledState = body['syncEnabled'] as bool;
+            }
             return http.Response(
               jsonEncode({
                 'userId': testUser.id,
@@ -77,7 +84,7 @@ void main() {
                 'emailVerified': true,
                 'createdAt': (testUser.createdAt ?? DateTime.utc(2026, 10, 1))
                     .toIso8601String(),
-                'syncEnabled': false,
+                'syncEnabled': syncEnabledState,
                 'quotaRemainingToday': 14,
               }),
               200,
@@ -111,9 +118,9 @@ void main() {
         reportRepository: fakeRepo,
       );
 
-      Get.put<AuthRepository>(fakeAuth);
-      Get.put<LocalReportRepository>(fakeRepo);
-      Get.put<AuthController>(authController);
+      Get.put<AuthRepository>(fakeAuth, permanent: true);
+      Get.put<LocalReportRepository>(fakeRepo, permanent: true);
+      Get.put<AuthController>(authController, permanent: true);
     });
 
     tearDown(() {
@@ -124,7 +131,15 @@ void main() {
       return GetMaterialApp(
         initialRoute: AppRoutes.account,
         getPages: [
-          GetPage(name: AppRoutes.account, page: () => const AccountScreen()),
+          GetPage(
+            name: AppRoutes.account,
+            page: () => const AccountScreen(),
+            binding: BindingsBuilder(() {
+              if (!Get.isRegistered<AuthController>()) {
+                Get.put<AuthController>(authController, permanent: true);
+              }
+            }),
+          ),
           GetPage(
             name: AppRoutes.home,
             page: () => const Scaffold(body: Text('Home Screen')),
@@ -149,11 +164,9 @@ void main() {
           find.textContaining('14 of 15 analysis queries remaining today'),
           findsOneWidget,
         );
-        expect(find.text('Disabled by default (Module 39)'), findsOneWidget);
+        expect(find.text('Disabled (Local only)'), findsOneWidget);
         expect(
-          find.textContaining(
-            'Quotas, roles, timestamps, and cloud sync policies are protected',
-          ),
+          find.textContaining('Strict Privacy Protection: Raw message text'),
           findsOneWidget,
         );
       },
@@ -291,6 +304,76 @@ void main() {
 
         // State reset to guest/unauthenticated
         expect(fakeAuth.currentStatus, equals(AuthStatus.unauthenticated));
+      },
+    );
+
+    testWidgets(
+      'displays Cloud Report Backup card with switch disabled and privacy disclosure banner',
+      (tester) async {
+        syncEnabledState = false;
+        fakeAuth.setStatus(AuthStatus.authenticated, user: testUser);
+
+        await tester.pumpWidget(createTestApp());
+        await tester.pumpAndSettle();
+
+        expect(find.text('Cloud Report Backup'), findsOneWidget);
+        expect(find.text('Disabled (Local only)'), findsOneWidget);
+        expect(
+          find.textContaining('Strict Privacy Protection: Raw message text'),
+          findsOneWidget,
+        );
+        expect(find.byType(Switch), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'toggling Cloud Report Backup switch enables sync and shows Sync Now',
+      (tester) async {
+        syncEnabledState = false;
+        fakeAuth.setStatus(AuthStatus.authenticated, user: testUser);
+
+        await tester.pumpWidget(createTestApp());
+        await tester.pumpAndSettle();
+
+        final switchFinder = find.byType(Switch);
+        await tester.ensureVisible(switchFinder);
+        await tester.tap(switchFinder);
+        await tester.pumpAndSettle();
+
+        expect(syncEnabledState, isTrue);
+        expect(find.text('Enabled (Summary backup)'), findsOneWidget);
+        expect(find.text('Sync Now'), findsOneWidget);
+        expect(find.text('Delete Cloud Backups'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'toggling switch off presents confirmation dialog with keep or delete cloud copies',
+      (tester) async {
+        syncEnabledState = true;
+        fakeAuth.setStatus(AuthStatus.authenticated, user: testUser);
+        await authController.fetchProfile();
+
+        await tester.pumpWidget(createTestApp());
+        await tester.pumpAndSettle();
+
+        expect(find.text('Enabled (Summary backup)'), findsOneWidget);
+
+        final switchFinder = find.byType(Switch);
+        await tester.ensureVisible(switchFinder);
+        await tester.tap(switchFinder);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Turn Off Cloud Backup?'), findsOneWidget);
+        expect(find.text('Keep Cloud Copies'), findsOneWidget);
+        expect(find.text('Delete Cloud Copies'), findsOneWidget);
+
+        // Tap Keep Cloud Copies
+        await tester.tap(find.text('Keep Cloud Copies'));
+        await tester.pumpAndSettle();
+
+        expect(syncEnabledState, isFalse);
+        expect(find.text('Disabled (Local only)'), findsOneWidget);
       },
     );
   });

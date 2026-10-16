@@ -1135,3 +1135,84 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Database schema tests: 11/11 PASS.
   - Whitespace audit: PASS (`git diff --check` clean).
 - **Status:** Complete. Backend committed and pushed (`49b42b7`). Frontend committed and pushed. Proceeding to Module 39.
+
+## Module 39: Optional Cloud Report Synchronization
+- **Scope:** Full-stack implementation of optional cloud report synchronization across Database, Backend, and Frontend. Strict default-off policy (`sync_enabled = false`), privacy-preserving cloud summary schema (zero raw text, OCR, evidence quotes, screenshots, or message hashes), PostgreSQL migration 00007 (`chk_report_payload_privacy`, RLS `profiles.sync_enabled = true`, atomic purge RPC), FastAPI sync endpoints (`GET`, `POST`, `DELETE /api/v1/sync/reports` and `PATCH /api/v1/account/profile`), Flutter SQLite V2 migration (`report_sync_metadata`), `CloudReportSummaryCodec` with recursive privacy validation, `ReportSyncService`, `SyncApiClient`, and comprehensive UI in `/account` with backup controls, manual sync, cloud backup purge, and differentiated deletion dialogs ("Delete from device only" vs "Delete from device & cloud").
+- **Branch:** `frontend` / `backend` / `database`
+- **Key Deliverables & Architectural Invariants:**
+  - **Strict Opt-In & Privacy Invariants:**
+    - Cloud report synchronization strictly defaults to disabled (`sync_enabled = false`).
+    - Guest reports (`accountId = null`) are strictly excluded from synchronization.
+    - Cloud payloads are strictly restricted to high-level metadata summaries: `formatVersion`, `outcomeState`, `hasAiAnalysis`, `indicatorCount`, `categories`, `source`, `createdAt`, `updatedAt`, `isTombstone`.
+    - Zero raw message text, zero OCR output, zero evidence quotes/excerpts, zero screenshots or images, and zero message hashes are ever uploaded or stored in the cloud.
+    - Re-authentication or user consent is required to activate sync.
+  - **Database Migration 00007 (`00007_enforce_sync_opt_in.sql`):**
+    - Check constraint `chk_report_payload_privacy` on `public.synced_reports` rejecting forbidden keys (`text`, `reviewedText`, `rawText`, `excerpt`, `quotes`, `message`, `ocr`, `image`, `screenshot`, `hash`).
+    - Hardened Row Level Security (RLS) on `public.synced_reports`: SELECT, INSERT, UPDATE, and DELETE policies require `EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.sync_enabled = true)`.
+    - Delta sync indexes: `idx_synced_reports_account_updated` (`account_id, updated_at ASC`) and `idx_synced_reports_account_tombstone` (`account_id, is_tombstone`).
+    - Stored procedure `public.purge_synced_reports()` providing atomic deletion of all synced reports for `auth.uid()`.
+  - **Backend Synchronization API (`SyncService`, `/api/v1/sync/reports`):**
+    - Verifies user `sync_enabled` status before executing pull, push, or purge operations.
+    - Rejects disallowed keys recursively in request payload schemas.
+    - `GET /api/v1/sync/reports`: Delta pull endpoint using `since` timestamp, returning updated reports and tombstones.
+    - `POST /api/v1/sync/reports`: Batch push endpoint upserting summaries and recording tombstones.
+    - `DELETE /api/v1/sync/reports`: Purges cloud backups for the user while leaving local device SQLite reports intact.
+    - `PATCH /api/v1/account/profile`: Updates `syncEnabled` status with opt-in tracking.
+  - **Frontend Persistence V2 & Synchronization (`ReportSyncService`):**
+    - SQLite schema version incremented to `PRAGMA user_version = 2`.
+    - New `report_sync_metadata` table tracking sync state, last synced timestamp, server update timestamp, and tombstone markers.
+    - Idempotent migration step in `LocalDatabaseMigrator` preserving V1 local user data without data loss.
+    - `CloudReportSummaryCodec`: Pure-Dart serialization with recursive privacy invariant checks preventing forbidden key leaks.
+    - Bounded sync client (`SyncApiClient`) and service coordinator (`ReportSyncService`) managing bidirectional push/pull delta sync with retryable network handling.
+  - **UI Controls & Workflow Integration (`AccountScreen`, `DeleteConfirmationDialog`):**
+    - Cloud Report Backup settings card in `/account` with toggle switch, clear privacy disclosure banner, "Sync Now" button with spinner, last sync timestamp, and "Delete Cloud Backups" action.
+    - Disabling sync prompts user with option to keep or delete existing cloud copies.
+    - History and Report Details deletion dialogs dynamically offer "Delete from device only" vs "Delete from device & cloud" when sync is enabled, or single device deletion when sync is disabled.
+- **Components Created / Updated:**
+  - Database (`trustcue-database`):
+    - `database/migrations/00007_enforce_sync_opt_in.sql`
+    - `database/tests/sql/06_test_sync_opt_in_rls.sql`
+    - `database/tests/test_static_schema.py`
+  - Backend (`trustcue-backend`):
+    - `backend/contracts/openapi.yaml`
+    - `backend/src/trustcue_backend/api/schemas/sync.py`
+    - `backend/src/trustcue_backend/api/schemas/account.py`
+    - `backend/src/trustcue_backend/services/sync_service.py`
+    - `backend/src/trustcue_backend/api/routes/sync.py`
+    - `backend/src/trustcue_backend/api/routes/account.py`
+    - `backend/src/trustcue_backend/main.py`
+    - `backend/tests/test_sync.py`
+  - Frontend (`trustcue-mobile`):
+    - `frontend/lib/features/reports/data/database/database_constants.dart`
+    - `frontend/lib/features/reports/data/database/local_database_migrator.dart`
+    - `frontend/lib/features/reports/domain/models/cloud_sync_models.dart`
+    - `frontend/lib/features/reports/data/serialization/cloud_report_summary_codec.dart`
+    - `frontend/lib/features/reports/data/services/sync_api_client.dart`
+    - `frontend/lib/features/reports/data/services/report_sync_service.dart`
+    - `frontend/lib/features/reports/domain/contracts/local_report_repository.dart`
+    - `frontend/lib/features/reports/data/repositories/sqlite_report_repository.dart`
+    - `frontend/lib/features/auth/data/services/account_api_client.dart`
+    - `frontend/lib/features/auth/presentation/bindings/auth_binding.dart`
+    - `frontend/lib/features/auth/presentation/controllers/auth_controller.dart`
+    - `frontend/lib/features/auth/presentation/screens/account_screen.dart`
+    - `frontend/lib/features/reports/presentation/widgets/delete_confirmation_dialog.dart`
+    - `frontend/lib/features/reports/presentation/controllers/history_controller.dart`
+    - `frontend/lib/features/reports/presentation/controllers/saved_report_detail_controller.dart`
+    - `frontend/test/features/reports/data/serialization/cloud_report_summary_codec_test.dart`
+    - `frontend/test/features/reports/data/services/sync_api_client_test.dart`
+    - `frontend/test/features/reports/data/services/report_sync_service_test.dart`
+    - `frontend/test/features/reports/data/repositories/sqlite_report_repository_test.dart`
+    - `frontend/test/features/reports/mocks/fake_report_repository.dart`
+    - `frontend/test/features/auth/presentation/screens/account_profile_deletion_test.dart`
+    - `frontend/test/features/analysis/presentation/controllers/analysis_results_controller_persistence_test.dart`
+    - `docs/PROJECT_STATE.md`, `docs/MODULE_LOG.md`
+- **Checks Performed:**
+  - Full Flutter test suite: 776/776 PASS (21 new unit/service/serialization tests added, 0 failures).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `dart format lib test`: PASS (252 files formatted, 0 changes needed).
+  - Backend test suite: 137/137 PASS (7 new tests in `test_sync.py`, 100% passing).
+  - `ruff check`: PASS (0 issues found).
+  - Database schema tests: 12/12 PASS (migration 00007 verified).
+  - `flutter build apk --debug`: PASS (`build/app/outputs/flutter-apk/app-debug.apk` built).
+  - Physical Device Verification: Streamed install via `adb install -r` on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34), verified clean app launch with Impeller rendering backend and no crashes.
+- **Status:** Complete. Database committed (`9b9028a`), Backend committed (`c1507b7`), Frontend committed and pushed. Stopped before Module 40.

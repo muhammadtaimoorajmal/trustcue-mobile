@@ -141,11 +141,15 @@ class FakeReportRepository implements LocalReportRepository {
     return Result.success(paged);
   }
 
+  final Set<String> syncedReportIds = {};
+  final Set<String> pendingTombstoneIds = {};
+
   @override
   Future<Result<bool>> deleteReport(
     String id, {
     String? accountId,
     bool enforceAccountScope = false,
+    bool tombstoneForCloud = false,
   }) async {
     deleteCallCount++;
     if (shouldFailDelete) {
@@ -160,6 +164,10 @@ class FakeReportRepository implements LocalReportRepository {
     }
 
     storage.remove(id);
+    syncedReportIds.remove(id);
+    if (tombstoneForCloud && accountId != null) {
+      pendingTombstoneIds.add(id);
+    }
     return const Result.success(true);
   }
 
@@ -198,8 +206,91 @@ class FakeReportRepository implements LocalReportRepository {
         .toList();
     for (final key in toRemove) {
       storage.remove(key);
+      syncedReportIds.remove(key);
     }
+    pendingTombstoneIds.clear();
     return Result.success(toRemove.length);
+  }
+
+  @override
+  Future<Result<List<SavedReportSummary>>> getPendingUploadReportSummaries(
+    String accountId,
+  ) async {
+    if (shouldFailLoad) {
+      return Result.failure(AnalysisFailure.storage(failureMessage));
+    }
+    final pending = storage.values
+        .where(
+          (rep) =>
+              rep.accountId == accountId && !syncedReportIds.contains(rep.id),
+        )
+        .map(
+          (rep) => SavedReportSummary(
+            id: rep.id,
+            schemaVersion: rep.schemaVersion,
+            snapshotId: rep.snapshot.id,
+            accountId: rep.accountId,
+            inputSource: rep.snapshot.source,
+            analyzedAt: rep.analyzedAt,
+            savedAt: rep.savedAt,
+            hasAiAnalysis: rep.hasAiAnalysis,
+            aiProvider: rep.aiReport?.provider,
+            aiModel: rep.aiReport?.model,
+            findingsCount: rep.totalFindingsCount,
+            outcomeState: rep.outcomeState,
+            previewText: rep.previewText,
+          ),
+        )
+        .toList();
+    return Result.success(pending);
+  }
+
+  @override
+  Future<Result<List<String>>> getPendingTombstones(String accountId) async {
+    if (shouldFailLoad) {
+      return Result.failure(AnalysisFailure.storage(failureMessage));
+    }
+    return Result.success(pendingTombstoneIds.toList());
+  }
+
+  @override
+  Future<Result<void>> markReportsSynced(
+    String accountId,
+    List<String> reportIds,
+    DateTime syncedAt,
+  ) async {
+    syncedReportIds.addAll(reportIds);
+    return const Result.success(null);
+  }
+
+  @override
+  Future<Result<void>> clearTombstones(
+    String accountId,
+    List<String> reportIds,
+  ) async {
+    pendingTombstoneIds.removeAll(reportIds);
+    return const Result.success(null);
+  }
+
+  @override
+  Future<Result<void>> applyRemoteTombstone(
+    String accountId,
+    String reportId,
+  ) async {
+    final report = storage[reportId];
+    if (report != null && report.accountId == accountId) {
+      storage.remove(reportId);
+    }
+    pendingTombstoneIds.remove(reportId);
+    syncedReportIds.remove(reportId);
+    return const Result.success(null);
+  }
+
+  @override
+  Future<Result<void>> clearSyncMetadata(String accountId) async {
+    syncedReportIds.clear();
+    pendingTombstoneIds.clear();
+    return const Result.success(null);
   }
 
   @override

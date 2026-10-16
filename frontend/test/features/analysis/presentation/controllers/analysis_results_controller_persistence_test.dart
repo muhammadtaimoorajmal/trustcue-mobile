@@ -73,6 +73,7 @@ class FakeLocalReportRepository implements LocalReportRepository {
     String id, {
     String? accountId,
     bool enforceAccountScope = false,
+    bool tombstoneForCloud = false,
   }) async {
     final report = storage[id];
     if (report == null) return const Result.success(false);
@@ -102,6 +103,41 @@ class FakeLocalReportRepository implements LocalReportRepository {
     }
     return Result.success(toRemove.length);
   }
+
+  @override
+  Future<Result<List<SavedReportSummary>>> getPendingUploadReportSummaries(
+    String accountId,
+  ) async => const Result.success([]);
+
+  @override
+  Future<Result<List<String>>> getPendingTombstones(String accountId) async =>
+      const Result.success([]);
+
+  @override
+  Future<Result<void>> markReportsSynced(
+    String accountId,
+    List<String> reportIds,
+    DateTime syncedAt,
+  ) async => const Result.success(null);
+
+  @override
+  Future<Result<void>> clearTombstones(
+    String accountId,
+    List<String> reportIds,
+  ) async => const Result.success(null);
+
+  @override
+  Future<Result<void>> applyRemoteTombstone(
+    String accountId,
+    String reportId,
+  ) async {
+    storage.remove(reportId);
+    return const Result.success(null);
+  }
+
+  @override
+  Future<Result<void>> clearSyncMetadata(String accountId) async =>
+      const Result.success(null);
 
   @override
   Future<void> close() async {}

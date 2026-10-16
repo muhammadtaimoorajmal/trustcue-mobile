@@ -876,5 +876,138 @@ void main() {
       expect(loadedB.hasAiAnalysis, isFalse);
       expect(loadedB.aiReport, isNull);
     });
+
+    group('Module 39 Cloud Sync Metadata Tests', () {
+      test('guest reports never insert sync metadata', () async {
+        final guestReport = createSavedReport(
+          id: 'rep-guest-sync',
+          accountId: null,
+        );
+        await repository.saveReport(guestReport);
+
+        final pending = await repository.getPendingUploadReportSummaries(
+          'usr-1',
+        );
+        expect(pending.valueOrNull, isEmpty);
+      });
+
+      test('account reports track pending_upload and markReportsSynced transitions state', () async {
+        const testAccount = 'usr-sync-test';
+        final rep1 = createSavedReport(
+          id: 'rep-sync-1',
+          accountId: testAccount,
+        );
+        final rep2 = createSavedReport(
+          id: 'rep-sync-2',
+          accountId: testAccount,
+        );
+
+        await repository.saveReport(rep1);
+        await repository.saveReport(rep2);
+
+        final pendingRes = await repository.getPendingUploadReportSummaries(
+          testAccount,
+        );
+        expect(pendingRes.isSuccess, isTrue);
+        final pending = pendingRes.valueOrNull!;
+        expect(pending.length, equals(2));
+
+        // Mark rep-sync-1 as synced
+        final now = DateTime.now().toUtc();
+        final markRes = await repository.markReportsSynced(testAccount, [
+          'rep-sync-1',
+        ], now);
+        expect(markRes.isSuccess, isTrue);
+
+        // Only rep-sync-2 should remain pending
+        final updatedPending =
+            (await repository.getPendingUploadReportSummaries(testAccount))
+                .valueOrNull!;
+        expect(updatedPending.length, equals(1));
+        expect(updatedPending.first.id, equals('rep-sync-2'));
+      });
+
+      test(
+        'deleteReport with tombstoneForCloud records pending tombstone',
+        () async {
+          const testAccount = 'usr-tomb-test';
+          final rep = createSavedReport(
+            id: 'rep-tomb-1',
+            accountId: testAccount,
+          );
+          await repository.saveReport(rep);
+
+          final delRes = await repository.deleteReport(
+            'rep-tomb-1',
+            accountId: testAccount,
+            enforceAccountScope: true,
+            tombstoneForCloud: true,
+          );
+          expect(delRes.isSuccess, isTrue);
+
+          final tombstonesRes = await repository.getPendingTombstones(
+            testAccount,
+          );
+          expect(tombstonesRes.isSuccess, isTrue);
+          expect(tombstonesRes.valueOrNull, contains('rep-tomb-1'));
+
+          // Clear tombstone
+          final clearRes = await repository.clearTombstones(testAccount, [
+            'rep-tomb-1',
+          ]);
+          expect(clearRes.isSuccess, isTrue);
+
+          final afterClear = (await repository.getPendingTombstones(
+            testAccount,
+          )).valueOrNull!;
+          expect(afterClear, isEmpty);
+        },
+      );
+
+      test('applyRemoteTombstone purges local report', () async {
+        const testAccount = 'usr-remote-tomb';
+        final rep = createSavedReport(
+          id: 'rep-remote-1',
+          accountId: testAccount,
+        );
+        await repository.saveReport(rep);
+
+        expect(
+          (await repository.getReportById('rep-remote-1')).valueOrNull,
+          isNotNull,
+        );
+
+        await repository.applyRemoteTombstone(testAccount, 'rep-remote-1');
+
+        expect(
+          (await repository.getReportById('rep-remote-1')).valueOrNull,
+          isNull,
+        );
+      });
+
+      test(
+        'clearSyncMetadata wipes metadata for target account only',
+        () async {
+          await repository.saveReport(
+            createSavedReport(id: 'rep-a', accountId: 'acc-a'),
+          );
+          await repository.saveReport(
+            createSavedReport(id: 'rep-b', accountId: 'acc-b'),
+          );
+
+          await repository.clearSyncMetadata('acc-a');
+
+          final pendingA = (await repository.getPendingUploadReportSummaries(
+            'acc-a',
+          )).valueOrNull!;
+          expect(pendingA, isEmpty);
+
+          final pendingB = (await repository.getPendingUploadReportSummaries(
+            'acc-b',
+          )).valueOrNull!;
+          expect(pendingB.length, equals(1));
+        },
+      );
+    });
   });
 }

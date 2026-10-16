@@ -72,11 +72,14 @@ abstract class LocalReportRepository {
   /// If [enforceAccountScope] is true:
   /// - If [accountId] is null, only deletes reports with `accountId == null` (guest).
   /// - If [accountId] is provided, only deletes reports with matching `accountId`.
+  /// If [tombstoneForCloud] is true and [accountId] is provided, records a pending
+  /// tombstone in sync metadata so cloud sync purges the cloud record.
   /// Returns `true` if a record was deleted, `false` if not found or unauthorized.
   Future<Result<bool>> deleteReport(
     String id, {
     String? accountId,
     bool enforceAccountScope = false,
+    bool tombstoneForCloud = false,
   });
 
   /// Returns the total count of saved reports, optionally filtered by [accountId],
@@ -93,6 +96,34 @@ abstract class LocalReportRepository {
   /// Guarantees that guest reports (`accountId == null`) and other accounts'
   /// records are strictly preserved.
   Future<Result<int>> deleteReportsForAccount(String accountId);
+
+  /// Retrieves pending upload reports for the specified account.
+  Future<Result<List<SavedReportSummary>>> getPendingUploadReportSummaries(
+    String accountId,
+  );
+
+  /// Retrieves list of report IDs pending cloud tombstone deletion.
+  Future<Result<List<String>>> getPendingTombstones(String accountId);
+
+  /// Marks reports as successfully synced to the cloud.
+  Future<Result<void>> markReportsSynced(
+    String accountId,
+    List<String> reportIds,
+    DateTime syncedAt,
+  );
+
+  /// Clears tombstone records after successful deletion synchronization.
+  Future<Result<void>> clearTombstones(
+    String accountId,
+    List<String> reportIds,
+  );
+
+  /// Applies a remote cloud tombstone to local storage, deleting the local report
+  /// if owned by [accountId].
+  Future<Result<void>> applyRemoteTombstone(String accountId, String reportId);
+
+  /// Clears sync metadata tracking for the specified account.
+  Future<Result<void>> clearSyncMetadata(String accountId);
 
   /// Releases database connections and resources cleanly.
   Future<void> close();
