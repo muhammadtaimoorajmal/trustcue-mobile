@@ -1269,14 +1269,24 @@ This log tracks the progress of TrustCue's implementation across approximately 1
     - `docs/DATA_LIFECYCLE.md`
     - `docs/PROJECT_STATE.md`
     - `docs/MODULE_LOG.md`
-- **Checks Performed:**
-  - Database schema tests: 13/13 static schema tests PASS (migration 00008 verified).
-  - Database SQL tests: 7 suites PASS.
-  - Backend test suite: 140/140 PASS (`pytest` clean, 100% passing).
-  - Backend linter: `ruff check` PASS (0 issues found).
-  - Full Flutter test suite: 790/790 PASS (14 new Module 40 tests, 0 failures).
-  - `flutter analyze --no-pub`: PASS (0 issues found).
-  - `dart format lib test`: PASS.
-  - `flutter build apk --debug`: PASS.
-  - Physical Device Verification: Streamed install via `adb install -r` on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34).
-- **Status:** Complete. Database committed (`ad261b8`), Backend committed (`2f4c37d`), Frontend committed and pushed. Stopped before Module 41.
+- **Checks Performed & CI Reconciliation:**
+  - **Original Failed Database CI Run:** Run ID `38941089893` on commit `ad261b8` failed at Step 11 (`Run SQL Regression Test 03 - Synced Reports RLS`, process exit code 3).
+  - **Root Cause Analysis:**
+    1. Outdated test expectations in `03_test_reports_sync_rls.sql`: User A had `sync_enabled = false` by default (violating Migration 00007 opt-in RLS) and used payload lacking mandatory allowlist keys (violating Migration 00008 `chk_report_payload_privacy`).
+    2. Outdated payloads in `04_test_cascade_deletion.sql` and `06_test_sync_opt_in_rls.sql` lacking mandatory allowlist keys (`categories`, `source`).
+    3. Missing `auth.role()` shim and role JWT claim in test fixture `test_auth_compat.sql`.
+    4. Migration 00008 function overload conflict with Migration 00007 `public.purge_synced_reports()`, and flawed `SECURITY DEFINER` caller check relying on `current_user = 'postgres'`.
+    5. Test suite `07_test_sync_purge_and_allowlist.sql` Section 6 attempted to assert User B report count from User A authenticated context, where RLS correctly returns 0 rows.
+  - **Repairs Applied:**
+    - Repaired `test_auth_compat.sql` with `auth.role()` and `request.jwt.claim.role`.
+    - Repaired `00008_harden_sync_purge_and_allowlist.sql` with explicit `DROP FUNCTION IF EXISTS public.purge_synced_reports();` and strict `caller_role = 'authenticated'` isolation.
+    - Updated `03_test_reports_sync_rls.sql`, `04_test_cascade_deletion.sql`, and `06_test_sync_opt_in_rls.sql` with valid allowlist schemas and opt-in setup.
+    - Updated `07_test_sync_purge_and_allowlist.sql` to verify User A RLS isolation, User B survival in User B context, and backend `service_role` purge.
+    - Database repair commits: `20b278a`, `ff2b3ae`, and docs `6cada28`.
+  - **Successful Replacement Database CI Run:** Run ID `38950670761` on commit `ff2b3ae` completed with 100% SUCCESS (`Static Schema & Policy Validation` passed, `PostgreSQL 16 Migration & RLS Enforcement` passed all 15 steps).
+  - **Fresh-Install vs Upgrade Verification:** All migrations 00001–00008 execute cleanly from scratch on fresh PostgreSQL 16 container, and upgrade safely drops the obsolete 0-arg function overload without data loss.
+  - **Hosted Migration Application Status:** Hosted Supabase remains on Module 38 baseline; migrations 00007 and 00008 are staged on branch `database` ready for out-of-band execution. No test shims or seeds are deployed to hosted Supabase.
+  - **Backend Test Suite:** 140/140 PASS (`pytest` clean), `ruff check` clean.
+  - **Full Flutter Test Suite:** 790/790 PASS (`flutter test`), `flutter analyze --no-pub` clean, `dart format` clean.
+  - **Physical Device Verification Scope Notice:** Streamed install via `adb install -r` on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34). The 6 passing device smoke tests confirm app stability, OCR, text redaction, link inspection, and local analysis. They do NOT exercise the new Privacy Center UI, retention auto-pruning, or live cloud summary purge on the physical device; those specific checks remain pending manual walkthrough.
+- **Status:** Complete. Database committed (`6cada28`), Backend committed (`2f4c37d`), Frontend committed and pushed. Stopped before Module 41.
