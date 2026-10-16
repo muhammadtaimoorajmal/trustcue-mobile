@@ -14,6 +14,7 @@ from trustcue_backend.core.state import AppState
 from trustcue_backend.providers.base import AiProvider
 from trustcue_backend.providers.service import ProtectedAiService
 from trustcue_backend.services.account_service import AccountService
+from trustcue_backend.services.sync_service import SyncService
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -99,6 +100,17 @@ def get_account_service(
         settings=settings,
         app_state=app_state,
         quota_store=quota_store,
+    )
+
+
+def get_sync_service(
+    settings: Annotated[Settings, Depends(get_app_settings)],
+    app_state: Annotated[AppState, Depends(get_app_state)],
+) -> SyncService:
+    """Retrieve or construct the SyncService instance."""
+    return SyncService(
+        settings=settings,
+        app_state=app_state,
     )
 
 

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from trustcue_backend import __version__
-from trustcue_backend.api.routes import account, analysis, health
+from trustcue_backend.api.routes import account, analysis, health, sync
 from trustcue_backend.core.body_limiter import RequestBodyLimitMiddleware
 from trustcue_backend.core.config import Settings, get_settings
 from trustcue_backend.core.errors import (
@@ -105,6 +105,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(account.router)
     app.include_router(analysis.router)
+    app.include_router(sync.router)
 
     return app
 

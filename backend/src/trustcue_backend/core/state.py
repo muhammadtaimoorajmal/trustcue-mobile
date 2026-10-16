@@ -1,7 +1,8 @@
 """Application lifecycle and operational readiness state management."""
 
 import time
-from typing import TYPE_CHECKING, Literal
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, Literal
 
 from trustcue_backend.core.quota import InMemoryQuotaStore, QuotaStore
 from trustcue_backend.core.rate_limit import ConcurrencyLimiter, SlidingWindowRateLimiter
@@ -28,11 +29,18 @@ class AppState:
         self.ai_provider = ai_provider
         self.deleted_users: set[str] = set()
         self.profile_display_names: dict[str, str | None] = {}
+        self.profile_sync_enabled: dict[str, bool] = {}
+        self.synced_reports: dict[str, dict[str, Any]] = {}
 
     def mark_user_deleted(self, user_id: str) -> None:
         """Record user UUID as permanently deleted to immediately reject subsequent sessions."""
-        self.deleted_users.add(str(user_id).strip().lower())
+        uid = str(user_id).strip().lower()
+        self.deleted_users.add(uid)
         self.profile_display_names.pop(str(user_id).strip(), None)
+        self.profile_sync_enabled.pop(str(user_id).strip(), None)
+        to_delete = [k for k in self.synced_reports if k.startswith(f"{uid}:")]
+        for k in to_delete:
+            self.synced_reports.pop(k, None)
 
     def is_user_deleted(self, user_id: str) -> bool:
         """Check whether user UUID has been marked deleted."""
@@ -45,6 +53,75 @@ class AppState:
     def set_display_name(self, user_id: str, display_name: str | None) -> None:
         """Store local in-memory display name."""
         self.profile_display_names[str(user_id).strip()] = display_name
+
+    def get_sync_enabled(self, user_id: str) -> bool:
+        """Retrieve whether cloud sync is enabled for user (defaults to False)."""
+        return self.profile_sync_enabled.get(str(user_id).strip(), False)
+
+    def set_sync_enabled(self, user_id: str, enabled: bool) -> None:
+        """Store cloud sync preference for user."""
+        self.profile_sync_enabled[str(user_id).strip()] = bool(enabled)
+
+    def save_synced_reports(self, user_id: str, items: list[dict[str, Any]]) -> list[str]:
+        """Save or update reports for user in in-memory store."""
+        uid = str(user_id).strip().lower()
+        synced_ids: list[str] = []
+        for item in items:
+            client_id = item["clientReportId"]
+            key = f"{uid}:{client_id}"
+            existing = self.synced_reports.get(key)
+            revision = (existing["revision"] + 1) if existing else 1
+            now = datetime.now(UTC)
+            record = {
+                "id": existing["id"] if existing else f"syn-{client_id}",
+                "userId": uid,
+                "clientReportId": client_id,
+                "snapshotId": item["snapshotId"],
+                "schemaVersion": item.get("schemaVersion", 1),
+                "revision": revision,
+                "reportPayload": item["reportPayload"],
+                "isDeleted": item.get("isDeleted", False),
+                "deletedAt": item.get("deletedAt"),
+                "clientUpdatedAt": item["clientUpdatedAt"],
+                "createdAt": existing["createdAt"] if existing else now,
+                "updatedAt": now,
+            }
+            self.synced_reports[key] = record
+            synced_ids.append(client_id)
+        return synced_ids
+
+    def list_synced_reports(
+        self, user_id: str, since: datetime | None = None, limit: int = 50
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """List synced reports for user modified after since."""
+        uid = str(user_id).strip().lower()
+        records: list[dict[str, Any]] = []
+        for _key, record in self.synced_reports.items():
+            if record["userId"] != uid:
+                continue
+            if since is not None:
+                record_time = record["clientUpdatedAt"]
+                if isinstance(record_time, str):
+                    record_time = datetime.fromisoformat(record_time)
+                if record_time <= since:
+                    continue
+            records.append(record)
+
+        records.sort(
+            key=lambda r: r["clientUpdatedAt"]
+            if isinstance(r["clientUpdatedAt"], datetime)
+            else datetime.fromisoformat(str(r["clientUpdatedAt"]))
+        )
+        has_more = len(records) > limit
+        return records[:limit], has_more
+
+    def purge_synced_reports(self, user_id: str) -> int:
+        """Purge all cloud synced reports for user."""
+        uid = str(user_id).strip().lower()
+        to_delete = [k for k in self.synced_reports if k.startswith(f"{uid}:")]
+        for k in to_delete:
+            self.synced_reports.pop(k, None)
+        return len(to_delete)
 
 
     @property

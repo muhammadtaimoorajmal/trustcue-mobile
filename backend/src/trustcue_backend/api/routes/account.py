@@ -103,6 +103,7 @@ async def update_account_profile(
         email=current_user.email,
         email_verified=current_user.email_verified,
         fallback_created_at=created_at,
+        sync_enabled=payload.sync_enabled,
     )
 
 

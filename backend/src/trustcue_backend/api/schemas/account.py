@@ -55,6 +55,11 @@ class UpdateUserProfileRequest(BaseModel):
         alias="displayName",
         description="Sanitized user display name (max 64 characters, trimmed).",
     )
+    sync_enabled: bool | None = Field(
+        default=None,
+        alias="syncEnabled",
+        description="Toggle encrypted cloud report sync.",
+    )
 
     @field_validator("display_name")
     @classmethod

@@ -47,6 +47,40 @@ class AuthenticationError(TrustCueError):
         )
 
 
+class SyncOptInRequiredError(TrustCueError):
+    """Exception raised when report sync is attempted while cloud sync is disabled."""
+
+    def __init__(
+        self,
+        code: str = "sync_opt_in_required",
+        message: str = "Cloud report synchronization is disabled. Enable sync in account settings to upload or retrieve reports.",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(
+            code=code,
+            message=message,
+            status_code=status.HTTP_403_FORBIDDEN,
+            details=details,
+        )
+
+
+class SyncPayloadPrivacyError(TrustCueError):
+    """Exception raised when a report payload contains forbidden raw text, excerpts, or images."""
+
+    def __init__(
+        self,
+        code: str = "sync_payload_privacy_violation",
+        message: str = "Payload contains forbidden content fields. Cloud synchronization is strictly restricted to non-sensitive report summaries.",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(
+            code=code,
+            message=message,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            details=details,
+        )
+
+
 def get_request_id(request: Request) -> str:
     """Extract or generate a validated server-controlled request ID."""
     req_id = getattr(request.state, "request_id", None)

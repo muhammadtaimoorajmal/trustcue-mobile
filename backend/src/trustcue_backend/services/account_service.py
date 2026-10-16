@@ -61,7 +61,7 @@ class AccountService:
         remaining_quota = await self.quota_store.get_remaining_quota(user_id)
         display_name: str | None = self.app_state.get_display_name(user_id)
         created_at: datetime = fallback_created_at
-        sync_enabled: bool = False
+        sync_enabled: bool = self.app_state.get_sync_enabled(user_id)
 
         if self.settings.SUPABASE_URL and self.settings.SUPABASE_SERVICE_ROLE_KEY:
             client = self._http_client or httpx.AsyncClient(timeout=5.0)
@@ -78,6 +78,9 @@ class AccountService:
                         row = data[0]
                         display_name = row.get("display_name")
                         sync_enabled = bool(row.get("sync_enabled", False))
+                        self.app_state.set_sync_enabled(user_id, sync_enabled)
+                        if display_name is not None:
+                            self.app_state.set_display_name(user_id, display_name)
                         raw_created = row.get("created_at")
                         if raw_created:
                             try:
@@ -115,15 +118,21 @@ class AccountService:
         email: str | None,
         email_verified: bool,
         fallback_created_at: datetime,
+        sync_enabled: bool | None = None,
     ) -> UserProfileResponse:
         """
-        Update user profile display name with bounds enforcement and PostgREST persistence.
+        Update user profile display name and sync settings with PostgREST persistence.
         """
-        self.app_state.set_display_name(user_id, display_name)
+        if display_name is not None:
+            self.app_state.set_display_name(user_id, display_name)
+        if sync_enabled is not None:
+            self.app_state.set_sync_enabled(user_id, sync_enabled)
+
+        effective_display_name = self.app_state.get_display_name(user_id)
+        effective_sync_enabled = self.app_state.get_sync_enabled(user_id)
         user_email = email or f"{user_id}@trustcue.local"
         remaining_quota = await self.quota_store.get_remaining_quota(user_id)
         created_at: datetime = fallback_created_at
-        sync_enabled: bool = False
 
         if self.settings.SUPABASE_URL and self.settings.SUPABASE_SERVICE_ROLE_KEY:
             client = self._http_client or httpx.AsyncClient(timeout=5.0)
@@ -137,9 +146,13 @@ class AccountService:
                     json={"p_user_id": user_id},
                 )
                 patch_payload: dict[str, Any] = {
-                    "display_name": display_name,
                     "updated_at": datetime.now(UTC).isoformat(),
                 }
+                if display_name is not None:
+                    patch_payload["display_name"] = display_name
+                if sync_enabled is not None:
+                    patch_payload["sync_enabled"] = sync_enabled
+
                 resp = await client.patch(
                     f"{base_url}/rest/v1/profiles?id=eq.{user_id}",
                     headers=self._get_auth_headers(),
@@ -155,11 +168,11 @@ class AccountService:
 
         return UserProfileResponse(
             userId=user_id,
-            displayName=display_name,
+            displayName=effective_display_name,
             email=user_email,
             emailVerified=email_verified,
             createdAt=created_at,
-            syncEnabled=sync_enabled,
+            syncEnabled=effective_sync_enabled,
             quotaRemainingToday=remaining_quota,
         )
 

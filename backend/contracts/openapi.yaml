@@ -346,41 +346,98 @@ paths:
 
   /api/v1/sync/reports:
     get:
-      summary: '[PLANNED - Module 39] List Synced Reports'
+      summary: List Synced Reports
       description: >
-        PLANNED (Module 39). Not implemented yet in this version.
-        When implemented, retrieves metadata and encrypted payloads for user-opted synced reports.
+        Retrieves user-opted report summaries modified after the optional 'since' timestamp.
+        Strictly gated on user profile having syncEnabled=true.
       operationId: listSyncedReports
-      deprecated: false
+      parameters:
+        - name: since
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: UTC timestamp filter. Only reports updated after this time are returned.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Maximum number of reports to return per batch.
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional pagination cursor.
       responses:
-        '501':
-          description: Endpoint planned for Module 39; not implemented in Module 27/28.
+        '200':
+          description: Report summaries retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncReportsPullResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          description: Forbidden. Cloud synchronization is disabled for this user.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-              examples:
-                notImplemented:
-                  value:
-                    error:
-                      code: 'not_implemented'
-                      message: 'Cloud sync is planned for Module 39. Local report storage remains active.'
-                      requestId: 'req-err-501-001'
-                      timestamp: '2026-10-15T12:00:00Z'
     post:
-      summary: '[PLANNED - Module 39] Batch Sync Reports'
+      summary: Batch Sync Reports
       description: >
-        PLANNED (Module 39). Not implemented yet in this version.
-        When implemented, uploads user-selected encrypted reports under explicit account opt-in.
+        Uploads a batch of non-sensitive report summaries and tombstones for the authenticated user.
+        Strictly rejects raw message text, excerpts, screenshots, and hashes.
+        Requires syncEnabled=true on the user's profile.
       operationId: syncReportsBatch
-      deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncReportsPushRequest'
       responses:
-        '501':
-          description: Endpoint planned for Module 39; not implemented in Module 27/28.
+        '200':
+          description: Batch report ingestion processed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncReportsPushResponse'
+        '400':
+          description: Bad request. Payload contains forbidden fields or invalid format.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          description: Forbidden. Cloud synchronization is disabled for this user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      summary: Purge All Cloud Synced Reports
+      description: >
+        Purges all cloud-backed report summaries for the authenticated user.
+        Local device reports remain unaffected.
+      operationId: purgeSyncedReports
+      responses:
+        '200':
+          description: All cloud synced reports purged.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncPurgeResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
 
 components:
   securitySchemes:
@@ -723,6 +780,10 @@ components:
           maxLength: 64
           pattern: '^\S(.*\S)?$'
           description: Sanitized user display name (max 64 characters, trimmed).
+        syncEnabled:
+          type: boolean
+          nullable: true
+          description: Toggle encrypted cloud report sync.
 
 
     AccountDeletionResponse:
@@ -763,6 +824,8 @@ components:
             - rate_limit_exceeded
             - ai_provider_unavailable
             - ai_grounding_failed
+            - sync_opt_in_required
+            - sync_payload_privacy_violation
             - not_implemented
             - internal_error
         message:
@@ -785,3 +848,143 @@ components:
       properties:
         error:
           $ref: '#/components/schemas/ErrorDetail'
+
+    SyncedReportItem:
+      type: object
+      required:
+        - clientReportId
+        - snapshotId
+        - reportPayload
+        - clientUpdatedAt
+      properties:
+        clientReportId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        snapshotId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        schemaVersion:
+          type: integer
+          default: 1
+          minimum: 1
+        reportPayload:
+          type: object
+          description: Bounded structured report JSON payload (max 500 KB). Excludes raw text, OCR, and excerpts.
+        isDeleted:
+          type: boolean
+          default: false
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        clientUpdatedAt:
+          type: string
+          format: date-time
+
+    SyncReportsPushRequest:
+      type: object
+      required:
+        - reports
+      properties:
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncedReportItem'
+          maxItems: 50
+
+    SyncReportsPushResponse:
+      type: object
+      required:
+        - acceptedCount
+        - syncedReportIds
+        - serverTimestamp
+      properties:
+        acceptedCount:
+          type: integer
+        syncedReportIds:
+          type: array
+          items:
+            type: string
+        serverTimestamp:
+          type: string
+          format: date-time
+
+    SyncedReportRecord:
+      type: object
+      required:
+        - id
+        - clientReportId
+        - snapshotId
+        - schemaVersion
+        - revision
+        - reportPayload
+        - isDeleted
+        - clientUpdatedAt
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        clientReportId:
+          type: string
+        snapshotId:
+          type: string
+        schemaVersion:
+          type: integer
+        revision:
+          type: integer
+        reportPayload:
+          type: object
+        isDeleted:
+          type: boolean
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        clientUpdatedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SyncReportsPullResponse:
+      type: object
+      required:
+        - reports
+        - hasMore
+        - serverTimestamp
+      properties:
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncedReportRecord'
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
+        serverTimestamp:
+          type: string
+          format: date-time
+
+    SyncPurgeResponse:
+      type: object
+      required:
+        - purgedCount
+        - message
+        - serverTimestamp
+      properties:
+        purgedCount:
+          type: integer
+        message:
+          type: string
+        serverTimestamp:
+          type: string
+          format: date-time

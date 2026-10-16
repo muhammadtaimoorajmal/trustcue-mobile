@@ -48,15 +48,13 @@ def test_runtime_schema_implements_exact_foundation_subset() -> None:
 
     runtime_paths = set(runtime_schema.get("paths", {}).keys())
 
-    # Implemented routes in Module 30 & 32 must be present
+    # Implemented routes in Modules 28, 30, 32, 35, 38, 39 must be present
     assert "/health" in runtime_paths
     assert "/ready" in runtime_paths
     assert "/api/v1/account/profile" in runtime_paths
     assert "/api/v1/account" in runtime_paths
     assert "/api/v1/analysis/ai" in runtime_paths
-
-    # Planned routes must NOT be registered in the runtime application yet
-    assert "/api/v1/sync/reports" not in runtime_paths
+    assert "/api/v1/sync/reports" in runtime_paths
 
 
 def test_runtime_endpoints_match_design_contract_definitions() -> None:
@@ -74,6 +72,7 @@ def test_runtime_endpoints_match_design_contract_definitions() -> None:
         "/api/v1/account/profile": "get",
         "/api/v1/account": "delete",
         "/api/v1/analysis/ai": "post",
+        "/api/v1/sync/reports": "post",
     }
 
     for path, method in expected_endpoints.items():
