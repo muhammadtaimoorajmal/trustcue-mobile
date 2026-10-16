@@ -26,6 +26,7 @@ class TestDatabaseMigrations(unittest.TestCase):
             "00004_create_rls_and_policies.sql",
             "00005_create_auth_trigger.sql",
             "00006_create_quota_reservation.sql",
+            "00007_enforce_sync_opt_in.sql",
         ]
         actual_files = sorted([f.name for f in MIGRATIONS_DIR.glob("*.sql")])
         self.assertEqual(actual_files, expected_migrations)
@@ -135,6 +136,21 @@ class TestDatabaseMigrations(unittest.TestCase):
         self.assertIn("CREATE TRIGGER on_auth_user_created", content)
         self.assertIn("AFTER INSERT ON auth.users", content)
 
+    def test_sync_opt_in_and_privacy_invariants(self):
+        """Validates migration 00007 sync_enabled opt-in RLS and payload privacy constraints."""
+        content = (MIGRATIONS_DIR / "00007_enforce_sync_opt_in.sql").read_text(encoding="utf-8")
+        self.assertIn("chk_report_payload_privacy", content)
+        self.assertIn("NOT (report_payload ? 'text')", content)
+        self.assertIn("NOT (report_payload ? 'rawText')", content)
+        self.assertIn("NOT (report_payload ? 'excerpt')", content)
+        self.assertIn("NOT (report_payload ? 'screenshot')", content)
+        self.assertIn("CREATE POLICY \"reports_insert_own\"", content)
+        self.assertIn("profiles.sync_enabled = TRUE", content)
+        self.assertIn("CREATE POLICY \"reports_update_own\"", content)
+        self.assertIn("FUNCTION public.purge_synced_reports()", content)
+        self.assertIn("SECURITY DEFINER", content)
+        self.assertIn("SET search_path = public, auth, pg_temp", content)
+
 
 class TestSQLRegressionSuites(unittest.TestCase):
     """Validates SQL regression test files for complete coverage and transaction safety."""
@@ -158,6 +174,7 @@ class TestSQLRegressionSuites(unittest.TestCase):
             "03_test_reports_sync_rls.sql",
             "04_test_cascade_deletion.sql",
             "05_test_quota_reservation.sql",
+            "06_test_sync_opt_in_rls.sql",
         ]
         actual_files = sorted([f.name for f in TESTS_SQL_DIR.glob("*.sql")])
         self.assertEqual(actual_files, expected_tests)
