@@ -111,6 +111,7 @@ void main() {
         await tester.pumpAndSettle();
 
         final signOutBtn = find.widgetWithText(OutlinedButton, 'Sign out');
+        await tester.ensureVisible(signOutBtn);
         await tester.tap(signOutBtn);
         await tester.pumpAndSettle();
 

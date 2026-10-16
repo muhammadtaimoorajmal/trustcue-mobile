@@ -183,10 +183,17 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(HistoryReportCard), findsOneWidget);
+      expect(find.text('Show snippet'), findsOneWidget);
+
+      // Tap Show snippet to reveal preview
+      await tester.tap(find.text('Show snippet'));
+      await tester.pumpAndSettle();
+
       expect(
         find.text('Congratulations! You won 100% free lottery prize!'),
         findsOneWidget,
       );
+      expect(find.text('Hide snippet'), findsOneWidget);
     });
 
     testWidgets(

@@ -92,6 +92,18 @@ class FakeLocalReportRepository implements LocalReportRepository {
   }) async => Result.success(storage.length);
 
   @override
+  Future<Result<int>> deleteReportsForAccount(String accountId) async {
+    final toRemove = storage.entries
+        .where((entry) => entry.value.accountId == accountId)
+        .map((entry) => entry.key)
+        .toList();
+    for (final id in toRemove) {
+      storage.remove(id);
+    }
+    return Result.success(toRemove.length);
+  }
+
+  @override
   Future<void> close() async {}
 }
 

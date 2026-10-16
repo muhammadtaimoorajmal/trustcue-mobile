@@ -532,6 +532,87 @@ class SqliteReportRepository implements LocalReportRepository {
     }
   }
 
+  @override
+  Future<Result<int>> deleteReportsForAccount(String accountId) async {
+    final cleanId = accountId.trim();
+    if (cleanId.isEmpty) {
+      return Result.failure(
+        const AnalysisFailure.storage(
+          'Cannot purge reports: invalid or empty account ID.',
+        ),
+      );
+    }
+
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) {
+      return Result.failure(dbResult.failureOrNull!);
+    }
+    final db = dbResult.valueOrNull!;
+
+    try {
+      return await db.transaction<Result<int>>((txn) async {
+        // 1. Identify snapshots referenced by reports owned by this account
+        final reportRows = await txn.query(
+          DatabaseConstants.tableReports,
+          columns: [
+            DatabaseConstants.colReportId,
+            DatabaseConstants.colReportSnapshotId,
+          ],
+          where: '${DatabaseConstants.colReportAccountId} = ?',
+          whereArgs: [cleanId],
+        );
+
+        if (reportRows.isEmpty) {
+          return const Result.success(0);
+        }
+
+        final snapshotIds = reportRows
+            .map((r) => r[DatabaseConstants.colReportSnapshotId] as String?)
+            .whereType<String>()
+            .toSet();
+
+        // 2. Delete all report rows for this account
+        final deletedCount = await txn.delete(
+          DatabaseConstants.tableReports,
+          where: '${DatabaseConstants.colReportAccountId} = ?',
+          whereArgs: [cleanId],
+        );
+
+        // 3. For each snapshot, check if any remaining reports (guest or other accounts) still reference it
+        for (final snapId in snapshotIds) {
+          final remaining = await txn.query(
+            DatabaseConstants.tableReports,
+            columns: [DatabaseConstants.colReportId],
+            where: '${DatabaseConstants.colReportSnapshotId} = ?',
+            whereArgs: [snapId],
+            limit: 1,
+          );
+          if (remaining.isEmpty) {
+            await txn.delete(
+              DatabaseConstants.tableSnapshots,
+              where: '${DatabaseConstants.colSnapshotId} = ?',
+              whereArgs: [snapId],
+            );
+          }
+        }
+
+        return Result.success(deletedCount);
+      });
+    } on DatabaseException catch (e) {
+      return Result.failure(
+        AnalysisFailure.storage(
+          'Database error deleting account reports: ${e.toString()}',
+        ),
+      );
+    } catch (e) {
+      return Result.failure(
+        AnalysisFailure.storage(
+          'Unexpected error deleting account reports: ${e.toString()}',
+        ),
+      );
+    }
+  }
+
   /// Sanitizes SQL LIKE wildcards (% and _) and backslash escape characters.
   ///
   /// Note on SQLite collation: SQLite `LIKE` operator is case-insensitive only

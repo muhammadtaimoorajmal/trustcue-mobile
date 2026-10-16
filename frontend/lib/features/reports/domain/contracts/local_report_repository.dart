@@ -88,6 +88,12 @@ abstract class LocalReportRepository {
     bool? hasAiAnalysis,
   });
 
+  /// Permanently deletes all reports and orphan snapshots owned by [accountId].
+  ///
+  /// Guarantees that guest reports (`accountId == null`) and other accounts'
+  /// records are strictly preserved.
+  Future<Result<int>> deleteReportsForAccount(String accountId);
+
   /// Releases database connections and resources cleanly.
   Future<void> close();
 }

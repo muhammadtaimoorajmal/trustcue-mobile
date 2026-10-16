@@ -7,21 +7,37 @@ import 'package:trustcue_mobile/features/reports/domain/models/saved_report_summ
 
 /// Card widget presenting a neutral summary of a locally saved analysis report.
 ///
-/// Invariants:
-/// - Displays metadata, outcome state, provenance badges, and preview text.
-/// - Never exposes raw unredacted sensitive values; relies on bounded [SavedReportSummary.previewText].
+/// Invariants & Privacy Controls:
+/// - Displays metadata, outcome state, and provenance badges.
+/// - To protect privacy in public spaces (shoulder surfing), preview text snippets
+///   are hidden by default behind an explicit user-controlled toggle.
 /// - Provides explicit actions to view full details or initiate confirmation-gated deletion.
-class HistoryReportCard extends StatelessWidget {
+class HistoryReportCard extends StatefulWidget {
   final SavedReportSummary summary;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final bool initialShowPreview;
 
   const HistoryReportCard({
     super.key,
     required this.summary,
     required this.onTap,
     required this.onDelete,
+    this.initialShowPreview = false,
   });
+
+  @override
+  State<HistoryReportCard> createState() => _HistoryReportCardState();
+}
+
+class _HistoryReportCardState extends State<HistoryReportCard> {
+  late bool _showPreview;
+
+  @override
+  void initState() {
+    super.initState();
+    _showPreview = widget.initialShowPreview;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +48,7 @@ class HistoryReportCard extends StatelessWidget {
 
     return AppCard(
       child: InkWell(
-        onTap: onTap,
+        onTap: widget.onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.pagePaddingSmall),
@@ -58,7 +74,7 @@ class HistoryReportCard extends StatelessWidget {
                       minWidth: 40,
                       minHeight: 40,
                     ),
-                    onPressed: onDelete,
+                    onPressed: widget.onDelete,
                   ),
                 ],
               ),
@@ -80,7 +96,7 @@ class HistoryReportCard extends StatelessWidget {
                       border: Border.all(color: theme.dividerColor),
                     ),
                     child: Text(
-                      '${summary.findingsCount} indicator(s)',
+                      '${widget.summary.findingsCount} indicator(s)',
                       style: theme.textTheme.labelSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -90,19 +106,84 @@ class HistoryReportCard extends StatelessWidget {
               ),
               const SizedBox(height: 10),
 
-              // Preview text snippet
-              Text(
-                summary.previewText.isNotEmpty
-                    ? summary.previewText
-                    : 'No preview text recorded.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: summary.previewText.isNotEmpty
-                      ? theme.textTheme.bodyMedium?.color
-                      : theme.hintColor,
+              // User-controlled preview text toggle (shoulder-surfing privacy)
+              if (_showPreview) ...[
+                Text(
+                  widget.summary.previewText.isNotEmpty
+                      ? widget.summary.previewText
+                      : 'No preview text recorded.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: widget.summary.previewText.isNotEmpty
+                        ? theme.textTheme.bodyMedium?.color
+                        : theme.hintColor,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: InkWell(
+                    onTap: () => setState(() => _showPreview = false),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 2,
+                        horizontal: 4,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.visibility_off_outlined,
+                            size: 14,
+                            color: theme.hintColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Hide snippet',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.hintColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: InkWell(
+                    onTap: () => setState(() => _showPreview = true),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 2,
+                        horizontal: 4,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.visibility_outlined,
+                            size: 14,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Show snippet',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
 
               // Footer: Date and View Details cue
@@ -110,7 +191,7 @@ class HistoryReportCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _formatTimestamp(summary.savedAt),
+                    _formatTimestamp(widget.summary.savedAt),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.hintColor,
                     ),
@@ -146,7 +227,7 @@ class HistoryReportCard extends StatelessWidget {
     final IconData icon;
     final String label;
 
-    switch (summary.inputSource) {
+    switch (widget.summary.inputSource) {
       case InputSource.messageText:
         icon = Icons.chat_bubble_outline;
         label = 'Text';
@@ -188,7 +269,7 @@ class HistoryReportCard extends StatelessWidget {
   }
 
   Widget _buildProvenanceBadge(ThemeData theme) {
-    if (summary.hasAiAnalysis) {
+    if (widget.summary.hasAiAnalysis) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
@@ -196,7 +277,7 @@ class HistoryReportCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
-          '[AI-Assisted: ${summary.aiProvider ?? 'Cloud'}]',
+          '[AI-Assisted: ${widget.summary.aiProvider ?? 'Cloud'}]',
           style: theme.textTheme.labelSmall?.copyWith(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onTertiaryContainer,
@@ -226,7 +307,7 @@ class HistoryReportCard extends StatelessWidget {
     final IconData icon;
     final String label;
 
-    switch (summary.outcomeState) {
+    switch (widget.summary.outcomeState) {
       case AssessmentOutcomeState.indicatorsDetected:
         color = theme.colorScheme.error;
         icon = Icons.warning_amber_rounded;

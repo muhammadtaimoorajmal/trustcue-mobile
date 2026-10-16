@@ -1078,3 +1078,60 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Physical Device Integration Test: 6/6 PASS on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34) via `tool/test.ps1 -Suite device`.
   - Whitespace audit: PASS (`git diff --check` clean).
 - **Status:** Complete. Pushed to `frontend`. Stopped before Module 38.
+
+## Module 38: Account Profile and Account Deletion
+- **Scope:** Complete account profile management view (`/account`), editable `displayName` bounded to 64 characters (`PATCH /api/v1/account/profile`), protected metadata indicators, destructive account deletion flow with 3-boundary disclosure modal, password re-authentication, GoTrue Admin user deletion, in-memory token revocation, transactional local SQLite report purging (`deleteReportsForAccount`), and previous module reconciliations (history card snippet privacy toggle, report enrichment isolation, and security copy accuracy).
+- **Branch:** `frontend` / `backend`
+- **Key Deliverables & Architectural Invariants:**
+  - **Account Profile Management (`/account`):**
+    - Authenticated view displaying verified identity (`userId`, `email`, `emailVerified`), creation timestamp, sync status, and remaining daily AI quota.
+    - Editable `displayName` bounded to 64 characters, trimmed, sanitizing input and rejecting extraneous properties (`extra="forbid"` via `UpdateUserProfileRequest`).
+    - Protected metadata indicators: Quotas, roles, creation timestamp, and sync status are communicated as protected non-editable fields.
+    - Backend persistence via PostgREST with `ensure_profile_exists(UUID)` fallback for seamless zero-failure profile backfills.
+  - **Destructive Account Deletion Flow:**
+    - Explicit confirmation modal presenting 3 distinct data storage boundaries: (1) hosted account data on server (`public.profiles`, `ai_usage_quotas`, `synced_reports`), (2) local device reports stored in app-private SQLite, and (3) third-party AI provider (Groq) diagnostic logs retained up to 30 days per official terms.
+    - Re-authentication security gate: Requires current password confirmation before permanent deletion.
+    - Administrative cascade deletion: GoTrue Admin API `DELETE /auth/v1/admin/users/{user_id}` invoked using service-role key, cascading via foreign keys across `profiles`, `ai_usage_quotas`, and `synced_reports`.
+    - Revoked token tracking: Deleted user registered in backend in-memory registry, immediately rejecting unexpired JWTs with HTTP 401.
+    - Local report purge: Transactional purge of account-scoped reports from device storage (`deleteReportsForAccount`), while strictly preserving guest reports (`accountId = null`) and unauthenticated local analysis capability. Immediate transition to guest mode.
+  - **Previous Module Reconciliations:**
+    - History cards: Converted to StatefulWidget with explicit user toggle ("Show snippet" / "Hide snippet") to keep preview text hidden by default for shoulder-surfing privacy.
+    - Report enrichment: AI findings enrichment only updates when matching identical analysis report ID, never overwriting distinct historical reports sharing snapshot.
+    - Security boundaries: Accurately distinguishes OS app-private sandboxed SQLite from transparent encryption, and clarifies `allowBackup="false"` boundaries.
+- **Components Created / Updated:**
+  - Frontend:
+    - `lib/features/auth/domain/models/user_profile.dart`
+    - `lib/features/auth/data/services/account_api_client.dart`
+    - `lib/features/auth/presentation/bindings/auth_binding.dart`
+    - `lib/features/auth/presentation/controllers/auth_controller.dart`
+    - `lib/features/auth/presentation/screens/account_screen.dart`
+    - `lib/features/reports/domain/contracts/local_report_repository.dart`
+    - `lib/features/reports/data/repositories/sqlite_report_repository.dart`
+    - `lib/features/reports/presentation/widgets/history_report_card.dart`
+    - `test/features/auth/domain/models/user_profile_test.dart`
+    - `test/features/auth/data/services/account_api_client_test.dart`
+    - `test/features/auth/presentation/screens/account_profile_deletion_test.dart`
+    - `test/features/auth/presentation/account_screen_test.dart`
+    - `test/features/reports/data/repositories/sqlite_report_repository_test.dart`
+    - `test/features/reports/mocks/fake_report_repository.dart`
+    - `test/features/reports/presentation/screens/history_screen_test.dart`
+    - `test/features/analysis/presentation/controllers/analysis_results_controller_persistence_test.dart`
+    - `integration_test/app_smoke_test.dart`
+    - `docs/ROADMAP.md`, `docs/PROJECT_STATE.md`, `docs/MODULE_LOG.md`
+  - Backend:
+    - `backend/contracts/openapi.yaml`
+    - `backend/src/trustcue_backend/api/schemas/account.py`
+    - `backend/src/trustcue_backend/core/state.py`
+    - `backend/src/trustcue_backend/services/account_service.py`
+    - `backend/src/trustcue_backend/api/dependencies.py`
+    - `backend/src/trustcue_backend/api/routes/account.py`
+    - `backend/tests/test_account.py`
+- **Checks Performed:**
+  - Full Flutter test suite: 755/755 PASS (13 new unit/widget/flow tests added, 0 failures).
+  - `flutter analyze --no-pub`: PASS (0 issues found).
+  - `dart format`: PASS (249 files formatted, 0 changes needed).
+  - Backend test suite: 130/130 PASS (15 tests in `test_account.py`).
+  - `ruff check`: PASS (0 issues found).
+  - Database schema tests: 11/11 PASS.
+  - Whitespace audit: PASS (`git diff --check` clean).
+- **Status:** Complete. Backend committed and pushed (`49b42b7`). Frontend committed and pushed. Proceeding to Module 39.

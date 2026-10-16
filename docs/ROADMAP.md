@@ -61,7 +61,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **35** | Mobile upload consent and optional AI workflow | Completed | `frontend` |
 | **36** | Local report persistence and migrations | Completed | `frontend` |
 | **37** | History, search, report details and deletion | Completed | `frontend` |
-| **38** | Account/profile settings and account deletion | Planned | `frontend` / `backend` |
+| **38** | Account/profile settings and account deletion | Completed | `frontend` / `backend` |
 | **39** | Optional account-owned backup/sync and isolation | Planned | `frontend` / `backend` / `database` |
 | **40** | Privacy, retention and consent controls | Planned | `frontend` |
 | **41** | Education, synthetic examples, feedback and localization | Planned | `frontend` |

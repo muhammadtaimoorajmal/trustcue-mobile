@@ -7,6 +7,7 @@ import 'package:trustcue_mobile/features/auth/presentation/controllers/login_con
 import 'package:trustcue_mobile/features/auth/presentation/controllers/register_controller.dart';
 import 'package:trustcue_mobile/features/auth/presentation/controllers/reset_password_controller.dart';
 import 'package:trustcue_mobile/features/auth/presentation/controllers/verify_email_controller.dart';
+import 'package:trustcue_mobile/features/reports/domain/contracts/local_report_repository.dart';
 
 class AuthBinding extends Bindings {
   AuthBinding({this.authRepository});
@@ -28,7 +29,12 @@ class AuthBinding extends Bindings {
 
     if (!Get.isRegistered<AuthController>()) {
       Get.lazyPut<AuthController>(
-        () => AuthController(authRepository: Get.find<AuthRepository>()),
+        () => AuthController(
+          authRepository: Get.find<AuthRepository>(),
+          reportRepository: Get.isRegistered<LocalReportRepository>()
+              ? Get.find<LocalReportRepository>()
+              : null,
+        ),
         fenix: true,
       );
     }

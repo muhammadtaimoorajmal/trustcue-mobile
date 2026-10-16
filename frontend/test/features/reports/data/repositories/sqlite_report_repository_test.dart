@@ -743,5 +743,138 @@ void main() {
         expect(check.valueOrNull, isNull);
       },
     );
+
+    test('deleteReportsForAccount purges only target account reports and preserves others and guests', () async {
+      final targetRep1 = createSavedReport(
+        id: 'rep-purge-1',
+        accountId: 'user-delete-me',
+      );
+      final targetRep2 = createSavedReport(
+        id: 'rep-purge-2',
+        accountId: 'user-delete-me',
+      );
+      final otherRep = createSavedReport(
+        id: 'rep-preserve-other',
+        accountId: 'user-keep-me',
+      );
+      final guestRep = createSavedReport(
+        id: 'rep-preserve-guest',
+        accountId: null,
+      );
+
+      await repository.saveReport(targetRep1);
+      await repository.saveReport(targetRep2);
+      await repository.saveReport(otherRep);
+      await repository.saveReport(guestRep);
+
+      final deleteResult = await repository.deleteReportsForAccount(
+        'user-delete-me',
+      );
+      expect(deleteResult.isSuccess, isTrue);
+      expect(deleteResult.valueOrNull, equals(2));
+
+      // Target account reports are deleted
+      expect(
+        (await repository.getReportById('rep-purge-1')).valueOrNull,
+        isNull,
+      );
+      expect(
+        (await repository.getReportById('rep-purge-2')).valueOrNull,
+        isNull,
+      );
+
+      // Other account report and guest report are intact
+      expect(
+        (await repository.getReportById('rep-preserve-other')).valueOrNull,
+        isNotNull,
+      );
+      expect(
+        (await repository.getReportById('rep-preserve-guest')).valueOrNull,
+        isNotNull,
+      );
+    });
+
+    test('report enrichment updates only the matching report ID and preserves separate reports sharing snapshot', () async {
+      final sharedSnapshot = TextSnapshot(
+        id: 'snap-shared-isolation',
+        text: 'Shared message text with suspicious link',
+        source: InputSource.messageText,
+        createdAt: DateTime.utc(2026, 10, 15, 12, 0, 0),
+      );
+
+      final localReportA = AnalysisReport(
+        id: 'rep-distinct-a',
+        snapshot: sharedSnapshot,
+        analyzedAt: DateTime.utc(2026, 10, 15, 12, 0, 0),
+        findings: const [],
+        limitations: const ['None'],
+        suggestedActions: const [],
+      );
+
+      final localReportB = AnalysisReport(
+        id: 'rep-distinct-b',
+        snapshot: sharedSnapshot,
+        analyzedAt: DateTime.utc(2026, 10, 15, 12, 1, 0),
+        findings: const [],
+        limitations: const ['None'],
+        suggestedActions: const [],
+      );
+
+      final savedA = SavedReport(
+        id: 'rep-distinct-a',
+        snapshot: sharedSnapshot,
+        analyzedAt: localReportA.analyzedAt,
+        savedAt: DateTime.utc(2026, 10, 15, 12, 0, 0),
+        localReport: localReportA,
+      );
+
+      final savedB = SavedReport(
+        id: 'rep-distinct-b',
+        snapshot: sharedSnapshot,
+        analyzedAt: localReportB.analyzedAt,
+        savedAt: DateTime.utc(2026, 10, 15, 12, 1, 0),
+        localReport: localReportB,
+      );
+
+      await repository.saveReport(savedA);
+      await repository.saveReport(savedB);
+
+      // Now enrich ONLY Report A with AI findings
+      final aiReportA = AiAnalysisReport(
+        reportId: 'ai-rep-a',
+        snapshotId: sharedSnapshot.id,
+        provider: 'groq-cloud',
+        model: 'llama-3.3-70b-versatile',
+        analyzedAt: DateTime.utc(2026, 10, 15, 12, 5, 0),
+        factualSummary: 'AI analysis evaluated text.',
+        findings: const [],
+        uncertaintyNotes: const ['Probabilistic'],
+        suggestedActions: const [],
+      );
+
+      final enrichedA = SavedReport(
+        id: savedA.id,
+        snapshot: savedA.snapshot,
+        analyzedAt: savedA.analyzedAt,
+        savedAt: DateTime.utc(2026, 10, 15, 12, 10, 0),
+        localReport: savedA.localReport,
+        aiReport: aiReportA,
+      );
+      final enrichResult = await repository.saveReport(enrichedA);
+
+      expect(enrichResult.isSuccess, isTrue);
+
+      // Verify Report A is enriched
+      final loadedA = (await repository.getReportById('rep-distinct-a'))
+          .valueOrNull!;
+      expect(loadedA.hasAiAnalysis, isTrue);
+      expect(loadedA.aiReport?.provider, equals('groq-cloud'));
+
+      // Verify Report B remains distinct, local-only, and untouched
+      final loadedB = (await repository.getReportById('rep-distinct-b'))
+          .valueOrNull!;
+      expect(loadedB.hasAiAnalysis, isFalse);
+      expect(loadedB.aiReport, isNull);
+    });
   });
 }
