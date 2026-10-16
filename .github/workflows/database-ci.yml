@@ -91,3 +91,9 @@ jobs:
 
       - name: Run SQL Regression Test 05 - Quota Reservation
         run: psql -v ON_ERROR_STOP=1 -f database/tests/sql/05_test_quota_reservation.sql
+
+      - name: Run SQL Regression Test 06 - Sync Opt-In RLS
+        run: psql -v ON_ERROR_STOP=1 -f database/tests/sql/06_test_sync_opt_in_rls.sql
+
+      - name: Run SQL Regression Test 07 - Sync Purge and Allowlist
+        run: psql -v ON_ERROR_STOP=1 -f database/tests/sql/07_test_sync_purge_and_allowlist.sql

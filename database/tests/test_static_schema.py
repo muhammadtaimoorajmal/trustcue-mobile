@@ -18,7 +18,7 @@ class TestDatabaseMigrations(unittest.TestCase):
     """Validates PostgreSQL migration files for correct DDL, constraints, and privacy."""
 
     def test_migration_files_present_and_ordered(self):
-        """Ensures all 6 migrations exist with valid sequential prefixes."""
+        """Ensures all migrations exist with valid sequential prefixes."""
         expected_migrations = [
             "00001_create_profiles.sql",
             "00002_create_ai_usage_quotas.sql",
@@ -27,6 +27,7 @@ class TestDatabaseMigrations(unittest.TestCase):
             "00005_create_auth_trigger.sql",
             "00006_create_quota_reservation.sql",
             "00007_enforce_sync_opt_in.sql",
+            "00008_harden_sync_purge_and_allowlist.sql",
         ]
         actual_files = sorted([f.name for f in MIGRATIONS_DIR.glob("*.sql")])
         self.assertEqual(actual_files, expected_migrations)
@@ -151,6 +152,20 @@ class TestDatabaseMigrations(unittest.TestCase):
         self.assertIn("SECURITY DEFINER", content)
         self.assertIn("SET search_path = public, auth, pg_temp", content)
 
+    def test_sync_purge_and_allowlist_invariants(self):
+        """Validates migration 8 sync generation, dual auth path purge, and payload allowlist."""
+        content = (MIGRATIONS_DIR / "00008_harden_sync_purge_and_allowlist.sql").read_text(encoding="utf-8")
+        self.assertIn("sync_generation INT NOT NULL DEFAULT 1", content)
+        self.assertIn("sync_purged_at TIMESTAMPTZ", content)
+        self.assertIn("FUNCTION public.purge_synced_reports(target_user_id UUID DEFAULT NULL)", content)
+        self.assertIn("chk_report_payload_privacy", content)
+        self.assertIn("(report_payload ? 'formatVersion')", content)
+        self.assertIn("(report_payload ? 'outcomeState')", content)
+        self.assertIn("(report_payload ? 'hasAiAnalysis')", content)
+        self.assertIn("(report_payload ? 'indicatorCount')", content)
+        self.assertIn("(report_payload ? 'categories')", content)
+        self.assertIn("(report_payload ? 'source')", content)
+
 
 class TestSQLRegressionSuites(unittest.TestCase):
     """Validates SQL regression test files for complete coverage and transaction safety."""
@@ -175,6 +190,7 @@ class TestSQLRegressionSuites(unittest.TestCase):
             "04_test_cascade_deletion.sql",
             "05_test_quota_reservation.sql",
             "06_test_sync_opt_in_rls.sql",
+            "07_test_sync_purge_and_allowlist.sql",
         ]
         actual_files = sorted([f.name for f in TESTS_SQL_DIR.glob("*.sql")])
         self.assertEqual(actual_files, expected_tests)
