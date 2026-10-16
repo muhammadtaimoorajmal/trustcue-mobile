@@ -21,7 +21,9 @@ trustcue-database/
 │   │   ├── 00003_create_synced_reports.sql   # public.synced_reports opt-in cloud backups
 │   │   ├── 00004_create_rls_and_policies.sql # RLS enablement, role grants & policies
 │   │   ├── 00005_create_auth_trigger.sql    # Trigger provisioning profiles on auth.users signup
-│   │   └── 00006_create_quota_reservation.sql# Server-side atomic quota reservation & profile recovery
+│   │   ├── 00006_create_quota_reservation.sql# Server-side atomic quota reservation & profile recovery
+│   │   ├── 00007_enforce_sync_opt_in.sql    # Sync opt-in write checks & purge RPC
+│   │   └── 00008_harden_sync_purge_and_allowlist.sql # Monotonic sync generation, dual auth purge & allowlist
 │   ├── seeds/
 │   │   └── 001_synthetic_test_seeds.sql      # Synthetic test seed data for test environments
 │   ├── tests/
@@ -32,7 +34,9 @@ trustcue-database/
 │   │   │   ├── 02_test_quotas_isolation.sql   # Quota read-only isolation regression tests
 │   │   │   ├── 03_test_reports_sync_rls.sql   # Synced reports RLS & tombstone regression tests
 │   │   │   ├── 04_test_cascade_deletion.sql   # ON DELETE CASCADE integrity regression tests
-│   │   │   └── 05_test_quota_reservation.sql  # Atomic reservation & release regression tests
+│   │   │   ├── 05_test_quota_reservation.sql  # Atomic reservation & release regression tests
+│   │   │   ├── 06_test_sync_opt_in_rls.sql    # Sync opt-in RLS and purge tests
+│   │   │   └── 07_test_sync_purge_and_allowlist.sql # Sync purge hardening, generation increment & allowlist
 │   │   └── test_static_schema.py        # Offline Python static schema and policy test suite
 │   └── pyproject.toml
 ├── .gitignore

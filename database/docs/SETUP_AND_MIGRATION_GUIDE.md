@@ -28,6 +28,8 @@ Migrations are located in `migrations/` and must be applied in strict numerical 
 | `00004_create_rls_and_policies.sql` | RLS and permission grants | RLS enabled/forced, role grants, policies |
 | `00005_create_auth_trigger.sql` | Automatic profile provisioning | `public.handle_new_user()` trigger on `auth.users` |
 | `00006_create_quota_reservation.sql` | Atomic quota & profile recovery | `public.reserve_ai_quota()`, `release_ai_quota()`, `ensure_profile_exists()` |
+| `00007_enforce_sync_opt_in.sql` | Enforce sync opt-in & purge RPC | `profiles.sync_enabled` RLS check, `chk_report_payload_privacy`, `public.purge_synced_reports()` |
+| `00008_harden_sync_purge_and_allowlist.sql` | Sync generation, purge auth & allowlist | `profiles.sync_generation`, `profiles.sync_purged_at`, hardened `public.purge_synced_reports(UUID)`, strict allowlist |
 
 ---
 
@@ -70,6 +72,9 @@ Migrations are located in `migrations/` and must be applied in strict numerical 
    psql -h localhost -U postgres -d trustcue_db -v ON_ERROR_STOP=1 -f tests/sql/02_test_quotas_isolation.sql
    psql -h localhost -U postgres -d trustcue_db -v ON_ERROR_STOP=1 -f tests/sql/03_test_reports_sync_rls.sql
    psql -h localhost -U postgres -d trustcue_db -v ON_ERROR_STOP=1 -f tests/sql/04_test_cascade_deletion.sql
+   psql -h localhost -U postgres -d trustcue_db -v ON_ERROR_STOP=1 -f tests/sql/05_test_quota_reservation.sql
+   psql -h localhost -U postgres -d trustcue_db -v ON_ERROR_STOP=1 -f tests/sql/06_test_sync_opt_in_rls.sql
+   psql -h localhost -U postgres -d trustcue_db -v ON_ERROR_STOP=1 -f tests/sql/07_test_sync_purge_and_allowlist.sql
    ```
 
 ### Option B: Local Supabase CLI

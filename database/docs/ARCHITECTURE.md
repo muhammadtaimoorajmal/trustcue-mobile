@@ -76,6 +76,8 @@ erDiagram
   - `chk_profile_display_name_len`: `display_name IS NULL OR (char_length(display_name) <= 64 AND display_name ~ '^\S(.*\S)?$')`.
   - `chk_profile_terms_version_len`: `char_length(terms_version) BETWEEN 1 AND 32`.
   - `sync_enabled`: Default `FALSE`. Requires explicit opt-in before client synchronizes reports.
+  - `sync_generation`: Monotonically increasing counter incremented on each cloud purge to invalidate stale client uploads.
+  - `sync_purged_at`: UTC timestamp recording when cloud backup was last purged.
   - Zero sensitive auth tokens or passwords stored.
 
 ### 3.2 `public.ai_usage_quotas`
@@ -94,6 +96,7 @@ erDiagram
 - **Invariants**:
   - `chk_report_payload_size`: `octet_length(report_payload::text) <= 500000` (~500 KB limit).
   - `chk_tombstone_consistency`: `(is_deleted = FALSE AND deleted_at IS NULL) OR (is_deleted = TRUE AND deleted_at IS NOT NULL)`.
+  - `chk_report_payload_privacy`: Strict JSON key allowlist ensuring only `formatVersion`, `outcomeState`, `hasAiAnalysis`, `indicatorCount`, `categories`, and `source` are stored for active reports. Forbids raw message text, excerpts, screenshots, and hashes.
   - No raw images, screenshots, or unredacted binary artifacts permitted.
 
 ---
