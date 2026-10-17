@@ -4,6 +4,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trustcue_mobile/app/routes/app_routes.dart';
+import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/core/widgets/app_text_field.dart';
 import 'package:trustcue_mobile/features/education/presentation/screens/education_screen.dart';
 import 'package:trustcue_mobile/features/education/presentation/screens/education_topic_detail_screen.dart';
@@ -111,6 +112,8 @@ void main() {
       // =========================================================================
       final tryExampleBtn = find.text('Practice with this example');
       expect(tryExampleBtn, findsOneWidget);
+      await tester.ensureVisible(tryExampleBtn);
+      await tester.pumpAndSettle();
 
       await tester.tap(tryExampleBtn);
       await tester.pumpAndSettle();
@@ -141,8 +144,13 @@ void main() {
       // =========================================================================
       // STEP 4: SAFE PRACTICE EXAMPLE (ACTIVE DRAFT -> DRAFT REPLACEMENT GUARD)
       // =========================================================================
-      inputController.textEditingController.text = 'My active custom draft message';
+      final activeInputController = Get.put<InputTextController>(
+        InputTextController(),
+      );
+      activeInputController.populateSharedText('My active custom draft message');
 
+      await tester.ensureVisible(tryExampleBtn);
+      await tester.pumpAndSettle();
       await tester.tap(tryExampleBtn);
       await tester.pumpAndSettle();
 
@@ -158,6 +166,8 @@ void main() {
       expect(Get.currentRoute, AppRoutes.educationTopic);
 
       // 4b. Re-tap and confirm replacement
+      await tester.ensureVisible(tryExampleBtn);
+      await tester.pumpAndSettle();
       await tester.tap(tryExampleBtn);
       await tester.pumpAndSettle();
       expect(find.byType(DraftReplacementDialog), findsOneWidget);
@@ -184,6 +194,8 @@ void main() {
 
       final feedbackBtn = find.text('Leave anonymous feedback');
       expect(feedbackBtn, findsOneWidget);
+      await tester.ensureVisible(feedbackBtn);
+      await tester.pumpAndSettle();
 
       await tester.tap(feedbackBtn);
       await tester.pumpAndSettle();
@@ -260,30 +272,40 @@ void main() {
       );
 
       // Switch to Urdu
-      await tester.tap(find.text('Urdu (اردو)'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (w) => w is RadioListTile<AppLanguage> && w.value == AppLanguage.urdu,
+        ),
+      );
       await tester.pumpAndSettle();
 
       final locController = Get.find<LocalizationController>();
       expect(locController.currentLanguage.value, equals(AppLanguage.urdu));
       expect(locController.isRtl.value, isTrue);
 
-      await tester.tap(find.text('Close'));
+      await tester.tap(find.widgetWithText(AppButton, 'close'.tr));
       await tester.pumpAndSettle();
 
       // Home Screen now reflects Urdu RTL interface
       expect(find.text('TrustCue'), findsWidgets); // App name preserved
 
-      // Open Education Screen in Urdu
+      // Open Language Dialog in Urdu
       await tester.tap(find.byTooltip('Language'));
       await tester.pumpAndSettle();
 
       // Switch back to English
-      await tester.tap(find.text('English'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (w) =>
+              w is RadioListTile<AppLanguage> &&
+              w.value == AppLanguage.english,
+        ),
+      );
       await tester.pumpAndSettle();
       expect(locController.currentLanguage.value, equals(AppLanguage.english));
       expect(locController.isRtl.value, isFalse);
 
-      await tester.tap(find.text('Close'));
+      await tester.tap(find.widgetWithText(AppButton, 'close'.tr));
       await tester.pumpAndSettle();
 
       // =========================================================================
@@ -316,8 +338,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Confirmation dialog
-      expect(find.text('Clear local feedback?'), findsOneWidget);
-      await tester.tap(find.text('Clear data'));
+      expect(
+        find.textContaining('delete all locally stored feedback records'),
+        findsOneWidget,
+      );
+      await tester.tap(find.widgetWithText(AppButton, 'Clear All'));
       await tester.pumpAndSettle();
 
       expect(privacyController.feedbackCount.value, equals(0));

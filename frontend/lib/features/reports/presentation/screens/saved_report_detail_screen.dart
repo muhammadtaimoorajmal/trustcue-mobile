@@ -6,6 +6,9 @@ import 'package:trustcue_mobile/core/widgets/app_card.dart';
 import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_finding.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/local_assessment.dart';
+import 'package:trustcue_mobile/features/export/domain/services/export_data_extractor.dart';
+import 'package:trustcue_mobile/features/export/presentation/controllers/export_controller.dart';
+import 'package:trustcue_mobile/features/export/presentation/widgets/export_report_sheet.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report.dart';
 import 'package:trustcue_mobile/features/reports/presentation/controllers/saved_report_detail_controller.dart';
@@ -23,14 +26,26 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
         title: const Text('Saved Report Details'),
         actions: [
           Obx(() {
-            if (controller.report.value == null) {
+            final report = controller.report.value;
+            if (report == null) {
               return const SizedBox.shrink();
             }
-            return IconButton(
-              icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-              tooltip: 'Delete report from device',
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              onPressed: () => controller.deleteCurrentReport(context),
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.ios_share_rounded),
+                  tooltip: 'export_action_tooltip'.tr,
+                  constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                  onPressed: () => _openExportSheet(context, report),
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+                  tooltip: 'Delete report from device',
+                  constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                  onPressed: () => controller.deleteCurrentReport(context),
+                ),
+              ],
             );
           }),
         ],
@@ -150,8 +165,14 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
           const SizedBox(height: AppSpacing.pagePaddingSmall),
         ],
 
-        // 8. Delete Button at bottom
+        // 8. Actions
         const SizedBox(height: AppSpacing.pagePaddingLarge),
+        AppButton.secondary(
+          label: 'export_report_title'.tr,
+          icon: Icons.ios_share_rounded,
+          onPressed: () => _openExportSheet(context, report),
+        ),
+        const SizedBox(height: 8),
         AppButton.secondary(
           label: 'Delete report from this device',
           icon: Icons.delete_outline,
@@ -160,6 +181,21 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
         const SizedBox(height: AppSpacing.pagePaddingLarge),
       ],
     );
+  }
+
+  void _openExportSheet(BuildContext context, SavedReport report) {
+    final exportController = ExportController(
+      hasSourceText: report.snapshot.text.isNotEmpty,
+      hasAiFindings: report.hasAiAnalysis,
+      hasEvidenceQuotes: report.localReport.findings.any((f) => f.evidence.isNotEmpty) ||
+          (report.aiReport?.findings.any((f) => f.evidence.isNotEmpty) ?? false),
+      dataFactory: (options) => ExportDataExtractor.fromSavedReport(
+        report: report,
+        options: options,
+      ),
+    );
+
+    ExportReportSheet.show(context, controller: exportController);
   }
 
   Widget _buildMetadataBanner(ThemeData theme, SavedReport report) {

@@ -109,6 +109,33 @@ class AppTranslations extends Translations {
     'privacy_clear_feedback_btn': 'Clear Local Feedback',
     'privacy_feedback_cleared': 'All local feedback records cleared.',
     'privacy_feedback_count': '@count feedback records saved locally',
+
+    // Export & Sharing
+    'export_report_title': 'Export & Share Report',
+    'export_format_label': 'Export Format',
+    'export_format_plain_text': 'Plain Text (.txt)',
+    'export_format_pdf': 'PDF Document (.pdf)',
+    'export_include_options_title': 'Information to Include',
+    'export_include_text': 'Include reviewed message text',
+    'export_include_text_desc':
+        'Exposes analyzed message content in the exported file.',
+    'export_include_evidence': 'Include evidence quotes',
+    'export_include_evidence_desc':
+        'Exposes specific text excerpts cited in findings.',
+    'export_include_ai': 'Include AI explanations',
+    'export_include_ai_desc':
+        'Exposes detailed server-assisted analysis reasoning.',
+    'export_privacy_warning':
+        'Warning: Exported reports may expose sensitive communication. Only share with parties you trust.',
+    'export_share_button': 'Share Report',
+    'export_copy_button': 'Copy Text',
+    'export_copied_toast': 'Report copied to clipboard',
+    'export_preview_title': 'Report Preview',
+    'export_generating': 'Preparing export file...',
+    'export_sharing': 'Opening share sheet...',
+    'export_pdf_urdu_notice':
+        'PDF uses Latin typography. Plain Text (.txt) is recommended for full Urdu and non-Latin script fidelity.',
+    'export_action_tooltip': 'Export or Share Report',
   };
 
   static const Map<String, String> urPK = {
@@ -207,5 +234,32 @@ class AppTranslations extends Translations {
     'privacy_clear_feedback_btn': 'مقامی رائے کا ڈیٹا صاف کریں',
     'privacy_feedback_cleared': 'مقامی رائے کے تمام ریکارڈ صاف کر دیے گئے۔',
     'privacy_feedback_count': '@count مقامی طور پر محفوظ شدہ رائے کے اندراجات',
+
+    // Export & Sharing
+    'export_report_title': 'رپورٹ ایکسپورٹ اور شیئر کریں',
+    'export_format_label': 'ایکسپورٹ فارمیٹ',
+    'export_format_plain_text': 'سادہ متن (.txt)',
+    'export_format_pdf': 'پی ڈی ایف (.pdf)',
+    'export_include_options_title': 'شامل کی جانے والی معلومات',
+    'export_include_text': 'جائزہ شدہ پیغام کا متن شامل کریں',
+    'export_include_text_desc':
+        'ایکسپورٹ شدہ فائل میں تجزیہ کردہ پیغام کا متن ظاہر کرتا ہے۔',
+    'export_include_evidence': 'شواہد کے اقتباسات شامل کریں',
+    'export_include_evidence_desc':
+        'نتائج میں حوالہ دیے گئے مخصوص متنی اقتباسات ظاہر کرتا ہے۔',
+    'export_include_ai': 'مصنوعی ذہانت کی وضاحتیں شامل کریں',
+    'export_include_ai_desc':
+        'سرور کے معاونتی تجزیے کی تفصیلی وجوہات ظاہر کرتا ہے۔',
+    'export_privacy_warning':
+        'انتباہ: ایکسپورٹ کردہ رپورٹ حساس معلومات ظاہر کر سکتی ہے۔ صرف قابل اعتماد افراد سے شیئر کریں۔',
+    'export_share_button': 'رپورٹ شیئر کریں',
+    'export_copy_button': 'متن کاپی کریں',
+    'export_copied_toast': 'رپورٹ کا متن کلپ بورڈ پر کاپی ہو گیا',
+    'export_preview_title': 'رپورٹ کا پیش نظارہ',
+    'export_generating': 'ایکسپورٹ فائل تیار ہو رہی ہے...',
+    'export_sharing': 'شیئر کا آپشن کھولا جا رہا ہے...',
+    'export_pdf_urdu_notice':
+        'پی ڈی ایف صرف لاطینی رسم الخط کو سپورٹ کرتا ہے۔ مکمل اردو رسم الخط کے لیے سادہ متن (.txt) تجویز کیا جاتا ہے۔',
+    'export_action_tooltip': 'رپورٹ ایکسپورٹ یا شیئر کریں',
   };
 }

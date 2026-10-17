@@ -12,6 +12,9 @@ import 'package:trustcue_mobile/features/analysis/domain/models/assessment_indic
 import 'package:trustcue_mobile/features/analysis/domain/models/finding_origin.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/local_assessment.dart';
 import 'package:trustcue_mobile/features/analysis/presentation/controllers/analysis_results_controller.dart';
+import 'package:trustcue_mobile/features/export/domain/services/export_data_extractor.dart';
+import 'package:trustcue_mobile/features/export/presentation/controllers/export_controller.dart';
+import 'package:trustcue_mobile/features/export/presentation/widgets/export_report_sheet.dart';
 import 'package:trustcue_mobile/features/feedback/domain/models/app_feedback.dart';
 import 'package:trustcue_mobile/features/feedback/presentation/widgets/feedback_dialog.dart';
 
@@ -43,6 +46,17 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
           tooltip: 'Return to review',
           onPressed: controller.returnToReview,
         ),
+        actions: [
+          Obx(() {
+            final assessment = controller.assessment.value;
+            if (assessment == null) return const SizedBox.shrink();
+            return IconButton(
+              icon: const Icon(Icons.ios_share_rounded),
+              tooltip: 'export_action_tooltip'.tr,
+              onPressed: () => _openExportSheet(context),
+            );
+          }),
+        ],
       ),
       body: AppPageBody(
         child: Obx(() {
@@ -193,7 +207,7 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
         const SizedBox(height: AppSpacing.pagePaddingLarge),
 
         // G. Navigation Actions
-        _buildNavigationActions(theme),
+        _buildNavigationActions(theme, context),
         const SizedBox(height: AppSpacing.pagePaddingLarge),
       ],
     );
@@ -1278,13 +1292,21 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
     );
   }
 
-  Widget _buildNavigationActions(ThemeData theme) {
+  Widget _buildNavigationActions(ThemeData theme, BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Local Save Action
         _buildLocalSaveAction(theme),
         const SizedBox(height: 12),
+
+        // Export / Share Action
+        AppButton.secondary(
+          label: 'export_report_title'.tr,
+          icon: Icons.ios_share_rounded,
+          onPressed: () => _openExportSheet(context),
+        ),
+        const SizedBox(height: 8),
 
         AppButton.secondary(
           label: 'Return to review and edit text',
@@ -1297,6 +1319,28 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
         ),
       ],
     );
+  }
+
+  void _openExportSheet(BuildContext context) {
+    final assessment = controller.assessment.value;
+    final snapshot = controller.args?.snapshot;
+    if (assessment == null || snapshot == null) return;
+
+    final exportController = ExportController(
+      hasSourceText: snapshot.text.isNotEmpty,
+      hasAiFindings: controller.aiReport.value != null,
+      hasEvidenceQuotes: assessment.groupedIndicators.any(
+        (g) => g.findings.any((f) => f.evidence.isNotEmpty),
+      ),
+      dataFactory: (options) => ExportDataExtractor.fromAssessment(
+        assessment: assessment,
+        snapshot: snapshot,
+        aiReport: controller.aiReport.value,
+        options: options,
+      ),
+    );
+
+    ExportReportSheet.show(context, controller: exportController);
   }
 
   Widget _buildLocalSaveAction(ThemeData theme) {

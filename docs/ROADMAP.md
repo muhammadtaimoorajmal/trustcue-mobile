@@ -65,7 +65,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **39** | Optional account-owned backup/sync and isolation | Completed (`56056b2`) | `frontend` / `backend` / `database` |
 | **40** | Privacy, retention and consent controls | Completed | `frontend` |
 | **41** | Education, synthetic examples, feedback and localization | Completed | `frontend` |
-| **42** | User-controlled privacy-reviewed export/sharing | Planned | `frontend` |
+| **42** | User-controlled privacy-reviewed export/sharing | Completed | `frontend` |
 | **43** | Complete workflow integration and offline/retry/lifecycle handling | Planned | `frontend` |
 | **44** | Security and privacy testing | Planned | `frontend` / `backend` |
 | **45** | Accessibility and usability verification | Planned | `frontend` |
@@ -186,10 +186,10 @@ To prevent divergent or conflicting project roadmaps across branches:
 
 ### Module 42: User-Controlled Privacy-Reviewed Export and Sharing
 - **Primary Branch:** `frontend`
-- **Deliverable:** Sanitized report export (plain text, JSON, or PDF), redaction re-verification modal prior to export, safe Android share intent integration.
+- **Deliverables:** Sanitized report export architecture (`/export`, `ExportReportData`, `ExportOptions`, `ExportFormat`), pure-local generation in UTF-8 Plain Text (`.txt`) and paginated PDF (`.pdf`) using `pdf: 3.13.1` with safe Unicode/Urdu escaping and prominent typography disclosures, dedicated `ExportDataExtractor` supporting in-memory assessments, saved reports, and cloud summaries, strict privacy-by-default bounds (reviewed text, evidence quotations, and AI reasoning strictly opt-in and off by default; zero raw OCR drafts, screenshots, account emails, tokens, or local DB paths), bounded temporary export storage in `<cacheDir>/exports/` with 2-hour automated pruning (`DefaultExportStorageService`), native Android ShareSheet integration via `share_plus: 13.3.1` (`DefaultShareLauncher`), reactive bottom sheet modal (`ExportReportSheet`) with live preview, copy-to-clipboard convenience, and integrations into `AnalysisResultsScreen` and `SavedReportDetailScreen`.
 - **Dependencies:** Modules 19, 26, 36.
-- **Acceptance Criteria:** Exported files never expose unredacted sensitive details; user explicitly approves exported content before external sharing.
-- **Necessary Human Actions:** Verify exported report on phone.
+- **Acceptance Criteria:** Exported files never expose unredacted sensitive details or unselected sections; generation works 100% locally and offline without authentication or cloud AI; 837 automated tests passing with 0 regressions; `flutter analyze --no-pub` clean (0 issues); debug APK built successfully.
+- **Necessary Human Actions:** Physical device smoke test walkthrough on phone (pending USB reconnect).
 
 ### Module 43: Complete Workflow Coordination, Progress, and Lifecycle
 - **Primary Branch:** `frontend`

@@ -1367,3 +1367,49 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Debug APK Compilation: PASS (`flutter build apk --debug`), built `build\app\outputs\flutter-apk\app-debug.apk` (179 MB).
   - Physical Device Verification Scope: Physical phone (Vivo V2207, `10AC9R1ABF0013A`) disconnected over USB during adb streaming; automated on-device test script is stored at `frontend/integration_test/module41_education_localization_feedback_test.dart` for execution upon physical reconnect.
 - **Status:** Complete on `frontend`. Stopped before Module 42.
+
+## Module 42: Report Export and Sharing
+- **Scope & Objectives:**
+  - Implemented offline report export and sharing in UTF-8 Plain Text (`.txt`) and paginated PDF (`.pdf`) using `pdf: 3.13.1` and `share_plus: 13.3.1`.
+  - Pure-local generation operates offline without authentication, network transmission, cloud AI, or third-party conversion services.
+  - Implemented dedicated domain export models (`ExportReportData`, `ExportFindingItem`, `ExportFormat`, `ExportOptions`) decoupling exported documents from raw SQLite rows or server API representations.
+  - Strict privacy-by-default configuration: summaries only by default; reviewed message text, evidence quotes/excerpts, and AI explanations are strictly opt-in and toggled OFF (`false`) by default.
+  - Zero sensitive leakage: raw OCR image drafts, unreviewed text, original screenshots, account email addresses, authentication tokens, SQLite database paths, and on-device feedback comments are strictly and unconditionally excluded from all export payloads.
+  - Honest presentation: distinguishes analysis time vs. export generation time; displays honest limitations, uncertainty notes, safe verification actions, and explicit disclosures that reports do not guarantee safety or prove fraudulent intent; never fabricates scam probability percentages or safety certifications.
+  - Multilingual & typography safeguards: Plain text preserves 100% UTF-8 fidelity (including Urdu Nastaliq and emojis); PDF builder sanitizes characters above code point U+00FF and literal bullets to avoid standard Type-1 font crashes, accompanied by a prominent notice advising users to use Plain Text (.txt) for full Urdu fidelity.
+  - Bounded temporary storage in `<appCacheDir>/exports/` with 2-hour automated pruning cycle on every export run (`DefaultExportStorageService`).
+  - Android ShareSheet integration via `DefaultShareLauncher` using `SharePlus.instance.share(ShareParams(...))` with explicit anchor positioning.
+  - Accessible reactive bottom sheet modal (`ExportReportSheet`) with format selector chips, granular privacy switches, real-time live text preview, copy-to-clipboard convenience, and integrations into `AnalysisResultsScreen` and `SavedReportDetailScreen`.
+- **Components Created / Updated:**
+  - Frontend (`trustcue-mobile`):
+    - `frontend/pubspec.yaml` & `frontend/pubspec.lock`: added `pdf: 3.13.1` and `share_plus: 13.3.1`.
+    - `frontend/lib/features/export/domain/models/export_format.dart`: `ExportFormat` enum (`plainText`, `pdf`) with file extensions and MIME types.
+    - `frontend/lib/features/export/domain/models/export_options.dart`: `ExportOptions` with strict false defaults for sensitive sections.
+    - `frontend/lib/features/export/domain/models/export_report_data.dart`: Dedicated `ExportReportData` and `ExportFindingItem`.
+    - `frontend/lib/features/export/domain/services/export_data_extractor.dart`: `ExportDataExtractor` extracting from `SavedReport`, `LocalAssessment`, and `SavedReportSummary`.
+    - `frontend/lib/features/export/domain/contracts/export_storage_service.dart`: `ExportStorageService` contract.
+    - `frontend/lib/features/export/domain/contracts/share_launcher.dart`: `ShareLauncher` contract.
+    - `frontend/lib/features/export/data/services/plain_text_export_formatter.dart`: UTF-8 structured text formatter with dividers and disclosures.
+    - `frontend/lib/features/export/data/services/pdf_export_builder.dart`: MultiPage PDF builder with safe Type-1 font escaping and dark-on-light theme.
+    - `frontend/lib/features/export/data/services/export_storage_service.dart`: `DefaultExportStorageService` with 2-hour pruning.
+    - `frontend/lib/features/export/data/services/share_launcher.dart`: `DefaultShareLauncher` using `SharePlus.instance.share`.
+    - `frontend/lib/features/export/presentation/controllers/export_controller.dart`: `ExportController` with reactive preview and file generation.
+    - `frontend/lib/features/export/presentation/widgets/export_report_sheet.dart`: `ExportReportSheet` modal wrapped in `Material`.
+    - `frontend/lib/features/localization/presentation/translations/app_translations.dart`: English and Urdu export dictionaries.
+    - `frontend/lib/features/analysis/presentation/screens/analysis_results_screen.dart`: Integrated export AppBar icon and bottom action button.
+    - `frontend/lib/features/reports/presentation/screens/saved_report_detail_screen.dart`: Integrated export AppBar icon and bottom action button.
+    - `frontend/test/features/export/domain/services/export_data_extractor_test.dart`: 4 tests.
+    - `frontend/test/features/export/data/services/plain_text_export_formatter_test.dart`: 5 tests.
+    - `frontend/test/features/export/data/services/pdf_export_builder_test.dart`: 4 tests.
+    - `frontend/test/features/export/data/services/export_storage_service_test.dart`: 4 tests.
+    - `frontend/test/features/export/presentation/controllers/export_controller_test.dart`: 4 tests.
+    - `frontend/test/features/export/presentation/widgets/export_report_sheet_test.dart`: 2 tests.
+    - `frontend/integration_test/module42_report_export_and_sharing_test.dart`: Dedicated integration test script.
+    - `docs/ROADMAP.md`, `docs/PROJECT_STATE.md`, `docs/MODULE_LOG.md`.
+- **Checks Performed:**
+  - Automated Unit & Widget Tests: 837/837 PASS (`flutter test`), 0 failures, 0 regressions across entire app.
+  - Static Analysis: PASS (`flutter analyze --no-pub`), 0 issues found.
+  - Code Formatting: PASS (`dart format`), clean.
+  - Debug APK Compilation: PASS (`flutter build apk --debug`), built `build\app\outputs\flutter-apk\app-debug.apk`.
+  - Physical Device Verification Scope: Physical phone (Vivo V2207, `10AC9R1ABF0013A`) disconnected over USB during adb streaming; automated on-device test script is stored at `frontend/integration_test/module42_report_export_and_sharing_test.dart` for execution upon physical reconnect.
+- **Status:** Complete on `frontend`. Stopped before Module 43.
