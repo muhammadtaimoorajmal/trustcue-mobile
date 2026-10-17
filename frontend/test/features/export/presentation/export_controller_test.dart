@@ -15,6 +15,7 @@ import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 class FakeExportStorageService implements ExportStorageService {
   String? lastWrittenContent;
   Uint8List? lastWrittenBytes;
+  final Set<String> leasedPaths = <String>{};
 
   @override
   Future<File> writePlainTextReport(
@@ -41,7 +42,23 @@ class FakeExportStorageService implements ExportStorageService {
   }) async => 0;
 
   @override
-  Future<int> cleanupAllExports() async => 0;
+  Future<int> cleanupAllExports({
+    bool force = false,
+    Duration activeGraceDuration = Duration.zero,
+  }) async => 0;
+
+  @override
+  void acquireLease(String filePath) {
+    leasedPaths.add(filePath);
+  }
+
+  @override
+  void releaseLease(String filePath) {
+    leasedPaths.remove(filePath);
+  }
+
+  @override
+  bool isLeased(String filePath) => leasedPaths.contains(filePath);
 }
 
 class FakeShareLauncher implements ShareLauncher {
@@ -223,6 +240,62 @@ void main() {
       expect(controller.wasCopied.value, isTrue);
       expect(copiedText, contains('TRUSTCUE SCAM ANALYSIS REPORT'));
     });
+
+    test('blocks PDF format when non-Latin/Urdu script is present', () async {
+      ExportReportData createUrduData(ExportOptions options) {
+        return ExportReportData(
+          reportId: 'tc-urdu-test',
+          analyzedAt: DateTime.utc(2026, 10, 15, 12, 0, 0),
+          exportedAt: DateTime.utc(2026, 10, 17, 10, 0, 0),
+          inputSource: InputSource.messageText,
+          hasAiAnalysis: false,
+          outcomeState: AssessmentOutcomeState.indicatorsDetected,
+          outcomeSummary: 'مشتبہ پیغام موصول ہوا۔',
+          findings: const [],
+          limitations: const ['Urdu rules.'],
+          suggestedActions: const [],
+          reviewedText: 'یہ ایک فراڈ ہے',
+        );
+      }
+
+      final controller = ExportController(
+        dataFactory: createUrduData,
+        storageService: fakeStorage,
+        shareLauncher: fakeLauncher,
+        initialOptions: const ExportOptions(format: ExportFormat.pdf),
+      );
+      controller.onInit();
+
+      expect(controller.isPdfSupported, isFalse);
+      expect(controller.pdfUnsupportedReason, isNotNull);
+      expect(controller.previewText.value, contains('[PDF EXPORT UNAVAILABLE'));
+
+      // Attempting to share PDF when unsupported must fail safely
+      final status = await controller.shareReport();
+      expect(status, ShareStatus.unavailable);
+      expect(fakeStorage.lastWrittenBytes, isNull);
+    });
+
+    test(
+      'guards copyPlainTextToClipboard against concurrent execution',
+      () async {
+        final controller = ExportController(
+          dataFactory: createTestData,
+          storageService: fakeStorage,
+          shareLauncher: fakeLauncher,
+        );
+        controller.onInit();
+
+        controller.isGenerating.value = true;
+        final copyWhileGenerating = await controller.copyPlainTextToClipboard();
+        expect(copyWhileGenerating, isFalse);
+
+        controller.isGenerating.value = false;
+        controller.isSharing.value = true;
+        final copyWhileSharing = await controller.copyPlainTextToClipboard();
+        expect(copyWhileSharing, isFalse);
+      },
+    );
 
     test('blocks PDF format when non-Latin/Urdu script is present', () async {
       ExportReportData createUrduData(ExportOptions options) {

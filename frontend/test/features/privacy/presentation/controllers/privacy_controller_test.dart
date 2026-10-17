@@ -23,7 +23,10 @@ class FakeExportStorageService implements ExportStorageService {
   int cleanedCount = 0;
 
   @override
-  Future<int> cleanupAllExports() async => cleanedCount;
+  Future<int> cleanupAllExports({
+    bool force = false,
+    Duration activeGraceDuration = Duration.zero,
+  }) async => cleanedCount;
 
   @override
   Future<int> pruneOldExports({
@@ -37,6 +40,15 @@ class FakeExportStorageService implements ExportStorageService {
   @override
   Future<File> writePlainTextReport(String content, {DateTime? timestamp}) =>
       throw UnimplementedError();
+
+  @override
+  void acquireLease(String filePath) {}
+
+  @override
+  void releaseLease(String filePath) {}
+
+  @override
+  bool isLeased(String filePath) => false;
 }
 
 class FakeRetentionPreferences implements RetentionPreferences {

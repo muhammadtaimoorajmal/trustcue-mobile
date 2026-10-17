@@ -119,6 +119,8 @@ class AnalysisResultsController extends GetxController {
   int _operationId = 0;
   int _aiOperationId = 0;
   StreamSubscription<AuthStatus>? _authSubscription;
+  String? originatingAccountId;
+  bool _sessionBound = false;
 
   @override
   void onInit() {
@@ -128,11 +130,24 @@ class AnalysisResultsController extends GetxController {
         (Get.isRegistered<AuthRepository>()
             ? Get.find<AuthRepository>()
             : null);
+    if (!_sessionBound && auth != null) {
+      originatingAccountId = auth.currentStatus == AuthStatus.authenticated
+          ? auth.currentUser?.id
+          : null;
+      _sessionBound = true;
+    }
     _authSubscription = auth?.statusStream.listen((_) {
       if (isClosed) return;
+      final currentId = auth.currentStatus == AuthStatus.authenticated
+          ? auth.currentUser?.id
+          : null;
       _aiOperationId++;
       invalidateConsent();
-      if (saveStatus.value == ReportSaveStatus.saved) {
+      if (_sessionBound && currentId != originatingAccountId) {
+        // Session boundary violated: lock saving to prevent cross-account or guest leakage
+        saveStatus.value = ReportSaveStatus.failed;
+        saveErrorMessage.value = 'Account session changed. Cannot save analysis results across session boundaries.';
+      } else if (saveStatus.value == ReportSaveStatus.saved) {
         saveStatus.value = ReportSaveStatus.notSaved;
       }
     });
@@ -378,6 +393,12 @@ class AnalysisResultsController extends GetxController {
       final accountId = auth?.currentStatus == AuthStatus.authenticated
           ? auth?.currentUser?.id
           : null;
+
+      if (_sessionBound && accountId != originatingAccountId) {
+        saveStatus.value = ReportSaveStatus.failed;
+        saveErrorMessage.value = 'Account session changed. Cannot save analysis results across session boundaries. Please re-run analysis under the active account.';
+        return;
+      }
 
       final now = DateTime.now().toUtc();
       final localFindings = currentAssessment.groupedIndicators

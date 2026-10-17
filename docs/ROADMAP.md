@@ -67,7 +67,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **41** | Education, synthetic examples, feedback and localization | Completed | `frontend` |
 | **42** | User-controlled privacy-reviewed export/sharing | Completed | `frontend` |
 | **43** | Complete workflow integration and offline/retry/lifecycle handling | Completed | `frontend` |
-| **44** | Security and privacy testing | Planned | `frontend` / `backend` |
+| **44** | Security and privacy testing | Completed | `frontend` / `backend` / `database` |
 | **45** | Accessibility and usability verification | Planned | `frontend` |
 | **46** | End-to-end, real-device, performance and storage verification | Planned | `frontend` / `backend` |
 | **47** | CI, deployment, migrations and recovery procedures | Planned | `frontend` / `backend` |

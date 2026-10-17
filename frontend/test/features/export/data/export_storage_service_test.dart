@@ -95,5 +95,48 @@ void main() {
       expect(f1.existsSync(), isFalse);
       expect(f2.existsSync(), isFalse);
     });
+
+    test('preserves actively leased files during cleanupAllExports unless force is set', () async {
+      final fLeased = File('${tempDir.path}/leased_report.pdf');
+      final fNormal = File('${tempDir.path}/normal_report.txt');
+      await fLeased.writeAsString('leased content');
+      await fNormal.writeAsString('normal content');
+
+      storageService.acquireLease(fLeased.path);
+      expect(storageService.isLeased(fLeased.path), isTrue);
+
+      final deletedCount = await storageService.cleanupAllExports();
+      expect(deletedCount, 1);
+      expect(fLeased.existsSync(), isTrue);
+      expect(fNormal.existsSync(), isFalse);
+
+      // Releasing lease allows cleanup
+      storageService.releaseLease(fLeased.path);
+      expect(storageService.isLeased(fLeased.path), isFalse);
+
+      final secondDeleted = await storageService.cleanupAllExports();
+      expect(secondDeleted, 1);
+      expect(fLeased.existsSync(), isFalse);
+    });
+
+    test('preserves files within activeGraceDuration during cleanupAllExports unless force is set', () async {
+      final recentFile = File('${tempDir.path}/recent_report.pdf');
+      await recentFile.writeAsString('recent');
+
+      // Attempt cleanup with 5-minute active grace duration
+      final deletedCount = await storageService.cleanupAllExports(
+        activeGraceDuration: const Duration(minutes: 5),
+      );
+      expect(deletedCount, 0);
+      expect(recentFile.existsSync(), isTrue);
+
+      // With force = true, grace duration is bypassed
+      final forceDeletedCount = await storageService.cleanupAllExports(
+        force: true,
+        activeGraceDuration: const Duration(minutes: 5),
+      );
+      expect(forceDeletedCount, 1);
+      expect(recentFile.existsSync(), isFalse);
+    });
   });
 }

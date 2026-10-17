@@ -29,7 +29,7 @@ class UnsupportedPdfScriptException implements Exception {
 class PdfExportBuilder {
   static const String urduNotice =
       'Notice: PDF formatting requires standard Latin typography. '
-      'For unredacted Urdu (اردو) or non-Latin script fidelity, export using Plain Text (.txt).';
+      'For unredacted Urdu or non-Latin script fidelity, export using Plain Text (.txt).';
 
   /// Verifies whether all text sections in [data] can be rendered faithfully in PDF.
   static bool canRenderFaithfully(ExportReportData data) {
@@ -644,8 +644,11 @@ class PdfExportBuilder {
             sb.write('...');
             break;
           default:
-            sb.writeCharCode(rune <= 255 ? rune : 0x3F); // '?' fallback
-            break;
+            throw UnsupportedPdfScriptException(
+              'Encountered unrenderable character U+${rune.toRadixString(16).toUpperCase().padLeft(4, '0')} in PDF export. '
+              'Standard PDF typography cannot faithfully render this character without data corruption. '
+              'Please export as Plain Text (.txt) for 100% complete, lossless fidelity.',
+            );
         }
       }
     }

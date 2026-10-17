@@ -33,10 +33,10 @@ void main() {
       // =========================================================================
       // STEP 1: VERIFY OFFLINE TEXT INPUT, REVIEW, AND LOCAL ANALYSIS PIPELINE
       // =========================================================================
-      final textCard = find.text('Message text');
-      await tester.ensureVisible(textCard);
+      final textBtn = find.widgetWithText(AppButton, 'Enter message');
+      await tester.ensureVisible(textBtn);
       await tester.pumpAndSettle();
-      await tester.tap(textCard);
+      await tester.tap(textBtn);
       await tester.pumpAndSettle();
 
       expect(Get.currentRoute, AppRoutes.inputText);
@@ -50,20 +50,32 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Proceed to Review
-      final reviewBtn = find.widgetWithText(AppButton, 'Review and continue');
-      await tester.ensureVisible(reviewBtn);
+      // Prepare text and proceed to review
+      final prepareBtn = find.widgetWithText(AppButton, 'Prepare text');
+      await tester.ensureVisible(prepareBtn);
       await tester.pumpAndSettle();
-      await tester.tap(reviewBtn);
+      await tester.tap(prepareBtn);
+      await tester.pumpAndSettle();
+
+      final reviewTextBtn = find.widgetWithText(AppButton, 'Review text');
+      await tester.ensureVisible(reviewTextBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(reviewTextBtn);
       await tester.pumpAndSettle();
 
       expect(Get.currentRoute, AppRoutes.inputReview);
 
-      // Run on-device analysis (operates offline without network)
-      final checkBtn = find.widgetWithText(AppButton, 'Check this text');
-      await tester.ensureVisible(checkBtn);
+      // Confirm reviewed text and run on-device analysis
+      final confirmBtn = find.widgetWithText(AppButton, 'Confirm reviewed text');
+      await tester.ensureVisible(confirmBtn);
       await tester.pumpAndSettle();
-      await tester.tap(checkBtn);
+      await tester.tap(confirmBtn);
+      await tester.pumpAndSettle();
+
+      final analyzeBtn = find.widgetWithText(AppButton, 'Analyze on this device');
+      await tester.ensureVisible(analyzeBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(analyzeBtn);
       await tester.pumpAndSettle();
 
       expect(Get.currentRoute, AppRoutes.analysisResults);

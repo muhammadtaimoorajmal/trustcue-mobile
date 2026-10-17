@@ -30,6 +30,9 @@ import 'package:trustcue_mobile/features/auth/domain/models/auth_user.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/input/domain/models/reviewed_text_result.dart';
 import 'package:trustcue_mobile/features/input/domain/models/text_snapshot.dart';
+import 'package:trustcue_mobile/features/reports/domain/contracts/local_report_repository.dart';
+import 'package:trustcue_mobile/features/reports/domain/models/saved_report.dart';
+import 'package:trustcue_mobile/features/reports/domain/models/saved_report_summary.dart';
 
 import '../../../auth/mocks/fake_auth_repository.dart';
 
@@ -651,7 +654,205 @@ void main() {
         controller.onClose();
       },
     );
+
+    testWidgets(
+      'locks save status and rejects saveReportOnDevice when account session changes after analysis was initiated',
+      (tester) async {
+        final authRepo = FakeAuthRepository(
+          initialStatus: AuthStatus.authenticated,
+          initialUser: AuthUser(
+            id: 'user-original',
+            email: 'orig@trustcue.com',
+            emailVerified: true,
+            createdAt: DateTime.now(),
+          ),
+        );
+
+        final fakeReportRepo = _FakeLocalReportRepository();
+
+        final controller = AnalysisResultsController(
+          pipeline: dummyPipeline,
+          args: AnalysisResultsArgs(reviewResult: reviewResult),
+          authRepository: authRepo,
+          reportRepository: fakeReportRepo,
+          apiClient: _FakeAnalysisApiClient(),
+        );
+        controller.onInit();
+        await tester.pump();
+
+        expect(controller.originatingAccountId, equals('user-original'));
+
+        // Complete initial local assessment
+        controller.assessment.value = _createSampleAssessment(
+          outcomeState: AssessmentOutcomeState.noIndicatorsMatched,
+          snapshotId: reviewResult.snapshot.id,
+        );
+
+        // User session changes (logs out or switches account)
+        authRepo.setStatus(AuthStatus.unauthenticated, user: null);
+        await tester.pump();
+
+        // Attempting to save report on device under the changed session
+        await controller.saveReportOnDevice();
+
+        expect(controller.saveStatus.value, equals(ReportSaveStatus.failed));
+        expect(
+          controller.saveErrorMessage.value,
+          contains(
+            'Account session changed. Cannot save analysis results across session boundaries.',
+          ),
+        );
+        expect(fakeReportRepo.lastSavedReport, isNull);
+
+        controller.onClose();
+      },
+    );
+
+    testWidgets(
+      'allows saveReportOnDevice when session remains matching originatingAccountId',
+      (tester) async {
+        final authRepo = FakeAuthRepository(
+          initialStatus: AuthStatus.authenticated,
+          initialUser: AuthUser(
+            id: 'user-matching',
+            email: 'match@trustcue.com',
+            emailVerified: true,
+            createdAt: DateTime.now(),
+          ),
+        );
+
+        final fakeReportRepo = _FakeLocalReportRepository();
+
+        final controller = AnalysisResultsController(
+          pipeline: dummyPipeline,
+          args: AnalysisResultsArgs(reviewResult: reviewResult),
+          authRepository: authRepo,
+          reportRepository: fakeReportRepo,
+          apiClient: _FakeAnalysisApiClient(),
+        );
+        controller.onInit();
+        await tester.pump();
+
+        controller.assessment.value = _createSampleAssessment(
+          outcomeState: AssessmentOutcomeState.noIndicatorsMatched,
+          snapshotId: reviewResult.snapshot.id,
+        );
+
+        await controller.saveReportOnDevice();
+
+        expect(controller.saveStatus.value, equals(ReportSaveStatus.saved));
+        expect(fakeReportRepo.lastSavedReport, isNotNull);
+        expect(
+          fakeReportRepo.lastSavedReport?.accountId,
+          equals('user-matching'),
+        );
+
+        controller.onClose();
+      },
+    );
   });
+}
+
+class _FakeLocalReportRepository implements LocalReportRepository {
+  SavedReport? lastSavedReport;
+
+  @override
+  Future<Result<SavedReport>> saveReport(SavedReport report) async {
+    lastSavedReport = report;
+    return Result.success(report);
+  }
+
+  @override
+  Future<Result<void>> initialize() async => Result.success(null);
+
+  @override
+  Future<Result<SavedReport?>> getReportById(
+    String id, {
+    String? accountId,
+    bool enforceAccountScope = false,
+  }) async => Result.success(lastSavedReport);
+
+  @override
+  Future<Result<List<SavedReportSummary>>> getReportSummaries({
+    String? accountId,
+    int limit = 50,
+    int offset = 0,
+  }) async => Result.success(const []);
+
+  @override
+  Future<Result<List<SavedReportSummary>>> searchReportSummaries({
+    required String query,
+    String? accountId,
+    InputSource? inputSource,
+    bool? hasAiAnalysis,
+    int limit = 50,
+    int offset = 0,
+  }) async => Result.success(const []);
+
+  @override
+  Future<Result<bool>> deleteReport(
+    String id, {
+    String? accountId,
+    bool enforceAccountScope = false,
+    bool tombstoneForCloud = false,
+  }) async => Result.success(true);
+
+  @override
+  Future<Result<int>> getReportCount({
+    String? accountId,
+    String? query,
+    InputSource? inputSource,
+    bool? hasAiAnalysis,
+  }) async => Result.success(0);
+
+  @override
+  Future<Result<int>> deleteReportsForAccount(String accountId) async =>
+      Result.success(0);
+
+  @override
+  Future<Result<int>> deleteGuestReports() async => Result.success(0);
+
+  @override
+  Future<Result<int>> pruneReportsOlderThan(
+    DateTime cutoff, {
+    String? accountId,
+    bool includeGuest = false,
+  }) async => Result.success(0);
+
+  @override
+  Future<Result<List<SavedReportSummary>>> getPendingUploadReportSummaries(
+    String accountId,
+  ) async => Result.success(const []);
+
+  @override
+  Future<Result<List<String>>> getPendingTombstones(String accountId) async =>
+      Result.success(const []);
+
+  @override
+  Future<Result<void>> markReportsSynced(
+    String accountId,
+    List<String> reportIds,
+    DateTime syncedAt,
+  ) async => Result.success(null);
+
+  @override
+  Future<Result<void>> clearTombstones(
+    String accountId,
+    List<String> reportIds,
+  ) async => Result.success(null);
+
+  @override
+  Future<Result<void>> applyRemoteTombstone(
+    String accountId,
+    String reportId,
+  ) async => Result.success(null);
+
+  @override
+  Future<Result<void>> clearSyncMetadata(String accountId) async =>
+      Result.success(null);
+
+  @override
+  Future<void> close() async {}
 }
 
 class _FakeAnalysisApiClient extends AnalysisApiClient {

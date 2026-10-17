@@ -147,6 +147,9 @@ class ExportController extends GetxController {
         exportedFile = await storageService.writePdfReport(pdfBytes);
       }
 
+      // Acquire active lease to protect file from cleanup while external apps read it
+      storageService.acquireLease(exportedFile.path);
+
       isGenerating.value = false;
       isSharing.value = true;
 
@@ -165,6 +168,14 @@ class ExportController extends GetxController {
     } finally {
       isGenerating.value = false;
       isSharing.value = false;
+      if (exportedFile != null) {
+        // Safe lease window: delay lease release by 2 minutes to allow external app
+        // (e.g. Gmail, Drive, WhatsApp) to finish reading via FileProvider
+        final path = exportedFile.path;
+        Future.delayed(const Duration(minutes: 2), () {
+          storageService.releaseLease(path);
+        });
+      }
     }
   }
 }

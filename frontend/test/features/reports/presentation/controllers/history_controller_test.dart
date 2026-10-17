@@ -368,5 +368,49 @@ void main() {
         expect(check.valueOrNull, isNotNull);
       },
     );
+
+    testWidgets(
+      'deleteReportWithConfirmation returns immediately when isDeleting is true',
+      (tester) async {
+        await fakeRepo.saveReport(
+          createReport(id: 'rep-hist-del', text: 'Text'),
+        );
+
+        controller = HistoryController(
+          repository: fakeRepo,
+          authRepository: fakeAuth,
+        );
+        await controller.loadInitial();
+        expect(controller.summaries.length, equals(1));
+
+        controller.isDeleting.value = true;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) {
+                return ElevatedButton(
+                  onPressed: () async {
+                    await controller.deleteReportWithConfirmation(
+                      controller.summaries.first,
+                      context,
+                    );
+                  },
+                  child: const Text('Delete'),
+                );
+              },
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Delete'));
+        await tester.pump();
+
+        // Summary must still be present in controller and repo
+        expect(controller.summaries.length, equals(1));
+        final check = await fakeRepo.getReportById('rep-hist-del');
+        expect(check.valueOrNull, isNotNull);
+      },
+    );
   });
 }

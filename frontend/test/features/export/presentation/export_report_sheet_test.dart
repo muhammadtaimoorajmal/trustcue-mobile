@@ -33,7 +33,19 @@ class MockStorageService implements ExportStorageService {
   }) async => 0;
 
   @override
-  Future<int> cleanupAllExports() async => 0;
+  Future<int> cleanupAllExports({
+    bool force = false,
+    Duration activeGraceDuration = Duration.zero,
+  }) async => 0;
+
+  @override
+  void acquireLease(String filePath) {}
+
+  @override
+  void releaseLease(String filePath) {}
+
+  @override
+  bool isLeased(String filePath) => false;
 }
 
 class MockShareLauncher implements ShareLauncher {

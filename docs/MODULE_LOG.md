@@ -1459,3 +1459,56 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Physical Device Verification Scope: Single bounded run executed on Vivo V2207 (`10AC9R1ABF0013A`) via `tool/test.ps1 -Suite device -DeviceId 10AC9R1ABF0013A -TestPath integration_test/module43_workflow_reliability_test.dart -TimeoutSeconds 180`. App compiled (37.3s) and installed (12.5s); runner safely stopped at the bounded 180s threshold without unbounded session delay. Logged at `build/test-runner/77a171f8180542708a78d5da658625a7.out.log`. Recorded as completed implementation with pending device check per execution policy.
 - **Status:** Complete on `frontend`. Stopped before Module 44.
 
+## Module 44: Security and Privacy Review and Remediation
+- **Scope & Objectives:**
+  - Concrete threat modeling, code-level vulnerability reproduction, remediation, and regression verification across all three repositories (`trustcue-mobile`, `trustcue-backend`, and `trustcue-database`).
+  - Threat Model Scope across 8 Domains: Untrusted message/image/QR input, mobile-to-backend requests, authentication and account boundaries, backend-to-provider processing, hosted database access, local report storage, export files and Android sharing, and CI/configuration/secrets.
+  - Database Remediation (`trustcue-database`, branch `database`):
+    - Replaced negative key check `NOT (report_payload ? 'text')` with an exact key subtraction allowlist: `(report_payload - ARRAY['formatVersion', 'outcomeState', 'hasAiAnalysis', 'indicatorCount', 'categories', 'source']) = '{}'::jsonb`.
+    - Enforced JSONB scalar and array data types: `formatVersion` (number), `outcomeState` (string), `hasAiAnalysis` (boolean), `indicatorCount` (number >= 0), `categories` (array), `source` (string).
+    - Hardened RLS policies `reports_insert_own` and `reports_update_own` to require `reports.client_updated_at > profiles.sync_purged_at`, preventing stale offline uploads from resurrecting purged cloud records.
+    - Permitted tombstone deletion (`NEW.is_deleted = TRUE`) even when `sync_enabled = FALSE`, ensuring users can purge existing cloud data without being blocked by opt-out status.
+  - Backend Remediation (`trustcue-backend`, branch `backend`):
+    - Added `sync_purged_at` retrieval in `get_sync_profile_state()`.
+    - Hardened `sync_service.py` to allow tombstone uploads when opted out (`all(item.is_deleted for item in request.reports)`).
+    - Added stale report filtering to skip items with `client_updated_at <= sync_purged_at`.
+    - Hardened in-memory state tracking in `state.py` against stale purge resurrection.
+    - Replaced short test HMAC secrets with 32-byte cryptographic random test vectors to eliminate PyJWT `InsecureKeyLengthWarning`.
+  - Frontend Remediation (`trustcue-mobile`, branch `frontend`):
+    - Session Boundary Report Saving: bound `originatingAccountId` on initialization in `AnalysisResultsController`; session switches invalidate consent, increment `_aiOperationId`, and lock `saveStatus` to `failed`. In `saveReportOnDevice()`, asserts `accountId == originatingAccountId`, preventing saving User A's sensitive analysis under User B or guest local storage.
+    - File Sharing Lifecycle Leases: implemented active in-memory leases (`acquireLease(path)`, `releaseLease(path)`, `isLeased(path)`) in `DefaultExportStorageService` and protected files younger than `activeGraceDuration`. In `ExportController.shareReport()`, acquired lease with a 2-minute safety delay on release to accommodate Android FileProvider external reader lifecycles.
+    - PDF Character Fidelity: removed non-ASCII characters from Type-1 font strings and implemented `UnsupportedPdfScriptException` throwing on runes > 255 rather than corrupting characters to `'?'`.
+  - Test Runner & Device Timeout Diagnosis:
+    - Bounded log diagnosis (`77a171f8180542708a78d5da658625a7.out.log` and `c5dc2f2cdc4844fca544ac6cbe49aca1.out.log`) demonstrated that Windows Gradle `assembleDebug` compilation (~90s) plus APK streaming installation (~13s) consumes over half of the 180s test budget.
+    - Integration test execution run `fc04c31dac5e42de995aed9e1ca0e6ce.out.log` confirmed that the application connects to and executes natively on the physical Vivo V2207 device (`10AC9R1ABF0013A`, Android 14 API 34).
+- **Components Created / Updated:**
+  - `trustcue-database`:
+    - `database/migrations/00008_harden_sync_purge_and_allowlist.sql`: Migration script with exact allowlist and purge policies.
+    - `database/tests/sql/07_test_sync_purge_and_allowlist.sql`: SQL tests 8–11 for allowlist, types, purge resurrection, and opt-out deletion.
+    - `database/tests/test_static_schema.py`: Static schema unit tests (13 tests).
+  - `trustcue-backend`:
+    - `backend/src/trustcue_backend/core/state.py`: In-memory purge resurrection protection.
+    - `backend/src/trustcue_backend/services/sync_service.py`: Opt-out tombstone handling and purge timestamp checks.
+    - `backend/tests/test_sync.py`: Added regression tests for opt-out push and purge timestamp skipping.
+  - `trustcue-mobile`:
+    - `frontend/lib/features/analysis/presentation/controllers/analysis_results_controller.dart`: Originating account ID session boundary locking.
+    - `frontend/lib/features/export/data/services/export_storage_service.dart`: In-memory lease management and active grace duration.
+    - `frontend/lib/features/export/presentation/controllers/export_controller.dart`: Sharing lease lifecycle retention.
+    - `frontend/lib/features/export/data/services/pdf_export_builder.dart`: Character fidelity and exception throwing.
+    - `frontend/integration_test/module43_workflow_reliability_test.dart`: Updated button selectors to match UI.
+    - `frontend/test/features/analysis/presentation/controllers/analysis_results_controller_test.dart`: Session boundary save rejection tests.
+    - `frontend/test/features/export/data/export_storage_service_test.dart`: Active lease and grace duration tests.
+    - `frontend/test/features/export/data/pdf_export_builder_test.dart`: Non-Latin script rejection tests.
+    - `docs/SECURITY_REVIEW_MODULE_44.md`: Dedicated comprehensive report.
+    - `docs/ROADMAP.md`, `docs/PROJECT_STATE.md`, `docs/MODULE_LOG.md`.
+- **Checks Performed:**
+  - Database: 13/13 static schema tests PASS (`python database/tests/test_static_schema.py`).
+  - Backend: 142/142 tests PASS (`pytest`), 0 issues (`ruff check backend`).
+  - Frontend: 852/852 unit/widget tests PASS (`flutter test`), 0 failures, 0 regressions.
+  - Static Analysis: PASS (`flutter analyze --no-pub`), 0 issues found across all 309 files.
+  - Code Formatting: PASS (`dart format`), clean.
+  - Debug APK Compilation: PASS (`flutter build apk --debug`), built `build\app\outputs\flutter-apk\app-debug.apk`.
+  - Physical Device Verification: Native execution verified on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34).
+- **Status:** Complete across `frontend`, `backend`, and `database`. Stopped before Module 45.
+
+

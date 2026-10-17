@@ -297,5 +297,47 @@ void main() {
         expect(check.valueOrNull, isNotNull);
       },
     );
+
+    testWidgets(
+      'deleteCurrentReport returns false when already deleting (isDeleting mutex)',
+      (tester) async {
+        final report = createReport(id: 'rep-del', text: 'Text');
+        await fakeRepo.saveReport(report);
+
+        final controller = SavedReportDetailController(
+          reportId: 'rep-del',
+          repository: fakeRepo,
+          authRepository: fakeAuth,
+        );
+        await controller.loadReport();
+
+        controller.isDeleting.value = true;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) {
+                return ElevatedButton(
+                  onPressed: () async {
+                    final result = await controller.deleteCurrentReport(
+                      context,
+                    );
+                    expect(result, isFalse);
+                  },
+                  child: const Text('Delete'),
+                );
+              },
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Delete'));
+        await tester.pump();
+
+        // Report should still exist in repo
+        final check = await fakeRepo.getReportById('rep-del');
+        expect(check.valueOrNull, isNotNull);
+      },
+    );
   });
 }
