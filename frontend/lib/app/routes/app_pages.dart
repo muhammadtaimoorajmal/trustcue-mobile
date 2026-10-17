@@ -33,6 +33,9 @@ import 'package:trustcue_mobile/features/reports/presentation/bindings/history_b
 import 'package:trustcue_mobile/features/reports/presentation/bindings/saved_report_detail_binding.dart';
 import 'package:trustcue_mobile/features/reports/presentation/screens/history_screen.dart';
 import 'package:trustcue_mobile/features/reports/presentation/screens/saved_report_detail_screen.dart';
+import 'package:trustcue_mobile/features/education/presentation/bindings/education_binding.dart';
+import 'package:trustcue_mobile/features/education/presentation/screens/education_screen.dart';
+import 'package:trustcue_mobile/features/education/presentation/screens/education_topic_detail_screen.dart';
 
 class AppPages {
   AppPages(this.preferences, {this.requestedRoute});
@@ -130,6 +133,16 @@ class AppPages {
       name: AppRoutes.privacy,
       page: () => const PrivacyScreen(),
       binding: PrivacyBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.education,
+      page: () => const EducationScreen(),
+      binding: EducationBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.educationTopic,
+      page: () => const EducationTopicDetailScreen(),
+      binding: EducationBinding(),
     ),
     unknownRoute,
   ];

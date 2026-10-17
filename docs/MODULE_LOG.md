@@ -1290,3 +1290,80 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - **Full Flutter Test Suite:** 790/790 PASS (`flutter test`), `flutter analyze --no-pub` clean, `dart format` clean.
   - **Physical Device Verification Scope Notice:** Streamed install via `adb install -r` on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 / API 34). The 6 passing device smoke tests confirm app stability, OCR, text redaction, link inspection, and local analysis. They do NOT exercise the new Privacy Center UI, retention auto-pruning, or live cloud summary purge on the physical device; those specific checks remain pending manual walkthrough.
 - **Status:** Complete. Database committed (`6cada28`), Backend committed (`2f4c37d`), Frontend committed and pushed. Stopped before Module 41.
+
+## Module 41: Education, Synthetic Examples, Feedback, and Localization
+- **Scope & Objectives:**
+  - Implemented an offline Scam Indicator Education Center (`/education`, `/education/topic`) covering all 10 canonical indicator categories (`urgency`, `credentialRequest`, `verificationCode`, `paymentRequest`, `accountThreat`, `claimedIdentity`, `jobOffer`, `rewardClaim`, `investmentReturn`, `linkStructural`).
+  - Enriched `CategoryEducationalCatalog` and `EducationalTopic` with:
+    - Clear explanation of pattern meaning and why it warrants attention.
+    - Honest limitations of detection rules and heuristics.
+    - Realistic synthetic scam practice example.
+    - Contrasting ordinary/legitimate example demonstrating how legitimate communications differ.
+    - Detailed explanation of key differences between suspicious and legitimate messages.
+    - Safe, concrete independent verification steps for users to protect themselves.
+    - Attributed, authoritative public source citations (FTC, NCSC, CISA, APWG, SEC) with review dates.
+  - Implemented interactive safe practice workflow ("Try this example"):
+    - Bridges the Education Center directly to the Review flow (`/input/review`).
+    - Detects whether an active review draft exists; if so, displays `DraftReplacementDialog` for explicit user confirmation before replacing.
+    - Invariant: local analysis remains strictly 100% user-triggered; zero auto-execution of AI, zero auto-save, zero auto-sync, and zero manipulation of detection heuristics.
+  - Implemented local anonymous feedback subsystem:
+    - Upgraded SQLite database to Schema V3 (`PRAGMA user_version = 3`) via `LocalDatabaseMigrator` creating `local_feedback` table and performance indexes (`idx_feedback_created_at`, `idx_feedback_target`).
+    - Domain model `AppFeedback` with bounded enums (`FeedbackTargetType`: `overallApp`, `indicatorCategory`, `analysisResult`; `FeedbackRating`: `helpful`, `unclear`, `unhelpful`; `FeedbackReasonChip`), target metadata, and <=200 character comment validation.
+    - Explicit non-reporting notice displayed in `FeedbackDialog` stating feedback is stored locally on-device and never sent to external servers.
+    - Immediate confirmation feedback: displays "Saved on this device" (never misleadingly claims "Sent").
+    - Integrated feedback action buttons on About screen ("Give Feedback") and Analysis Results screen ("Was this helpful?").
+    - Exposed feedback counts and 1-tap local feedback purge action in Privacy Center (`/privacy`).
+  - Implemented bidirectional centralized localization:
+    - Added `flutter_localizations` SDK dependency.
+    - Implemented `AppTranslations` dictionary covering all primary UI strings, actions, error states, and feedback in English (`en_US`) and Urdu (`ur_PK`).
+    - Enabled bidirectional RTL text rendering for Urdu (`TextDirection.rtl`) while preserving LTR orientation for URLs, code points, technical tokens, version tags, and timestamps.
+    - Implemented `LocalizationController` managing persistent language preference in `SharedPreferences`.
+    - Integrated `LanguageSelectorDialog` accessible from Home screen AppBar, About screen, and Education Center.
+    - Disclosed technical limitations: clearly notes that detection rules and ML Kit OCR models evaluate Latin/English text.
+- **Components Created / Updated:**
+  - Frontend (`trustcue-mobile`):
+    - `frontend/pubspec.yaml` & `frontend/pubspec.lock`: added `flutter_localizations: sdk: flutter`.
+    - `frontend/lib/features/reports/data/database/database_constants.dart`: Schema V3, `tableFeedback` and column constants.
+    - `frontend/lib/features/reports/data/database/local_database_migrator.dart`: Schema V3 migration `_applyMigrationV3` and rollback handler.
+    - `frontend/lib/features/feedback/domain/models/app_feedback.dart`: `AppFeedback`, `FeedbackRating`, `FeedbackTargetType`, `FeedbackReasonChip`.
+    - `frontend/lib/features/feedback/domain/contracts/feedback_repository.dart`: `FeedbackRepository` contract.
+    - `frontend/lib/features/feedback/data/repositories/sqlite_feedback_repository.dart`: SQLite repository implementation.
+    - `frontend/lib/features/feedback/presentation/controllers/feedback_controller.dart`: `FeedbackController`.
+    - `frontend/lib/features/feedback/presentation/widgets/feedback_dialog.dart`: `FeedbackDialog` with non-reporting disclosure and chips.
+    - `frontend/lib/features/education/domain/models/educational_topic.dart`: `EducationalTopic` domain model.
+    - `frontend/lib/features/analysis/domain/services/category_educational_catalog.dart`: Enriched catalog with 10 topics, synthetic examples, contrasting pairs, and reference sources.
+    - `frontend/lib/features/education/presentation/controllers/education_controller.dart`: `EducationController`.
+    - `frontend/lib/features/education/presentation/bindings/education_binding.dart`: `EducationBinding`.
+    - `frontend/lib/features/education/presentation/screens/education_screen.dart`: Education list screen.
+    - `frontend/lib/features/education/presentation/screens/education_topic_detail_screen.dart`: Topic detail with interactive practice action.
+    - `frontend/lib/features/education/presentation/widgets/draft_replacement_dialog.dart`: Draft conflict replacement confirmation.
+    - `frontend/lib/features/localization/domain/models/app_language.dart`: `AppLanguage` enum.
+    - `frontend/lib/features/localization/data/services/localization_service.dart`: `LocalizationService` with SharedPreferences persistence.
+    - `frontend/lib/features/localization/data/translations/app_translations.dart`: `AppTranslations` English and Urdu dictionaries.
+    - `frontend/lib/features/localization/presentation/controllers/localization_controller.dart`: `LocalizationController`.
+    - `frontend/lib/features/localization/presentation/widgets/language_selector_dialog.dart`: `LanguageSelectorDialog`.
+    - `frontend/lib/app/routes/app_routes.dart` & `app_pages.dart`: `/education` and `/education/topic` route registration.
+    - `frontend/lib/app/trustcue_app.dart`: Localization delegates, supported locales, translations, and initial binding.
+    - `frontend/lib/core/widgets/app_text_field.dart`: Optional `prefixIcon` and `maxLength` parameters.
+    - `frontend/lib/features/home/presentation/screens/home_screen.dart`: Education banner & AppBar button, Language switcher action.
+    - `frontend/lib/features/about/presentation/screens/about_screen.dart`: Education, Feedback, and Language actions.
+    - `frontend/lib/features/analysis/presentation/screens/analysis_results_screen.dart`: "Learn more & practice" on indicator cards, "Was this helpful?" feedback button.
+    - `frontend/lib/features/privacy/presentation/controllers/privacy_controller.dart`: Feedback count and clearing integration.
+    - `frontend/lib/features/privacy/presentation/screens/privacy_screen.dart`: Clear local feedback button with live count.
+    - `frontend/test/features/education/domain/services/category_educational_catalog_extension_test.dart`: 3 tests.
+    - `frontend/test/features/education/presentation/screens/education_screen_test.dart`: 3 tests.
+    - `frontend/test/features/education/presentation/screens/education_topic_detail_screen_test.dart`: 4 tests.
+    - `frontend/test/features/feedback/data/repositories/sqlite_feedback_repository_test.dart`: 6 tests.
+    - `frontend/test/features/feedback/presentation/widgets/feedback_dialog_test.dart`: 3 tests.
+    - `frontend/test/features/localization/localization_test.dart`: 3 tests.
+    - `frontend/test/features/reports/data/database/local_database_migrator_test.dart`: Updated for Schema V3 migration.
+    - `frontend/test/features/onboarding/onboarding_test.dart`: Updated button matcher.
+    - `frontend/integration_test/module41_education_localization_feedback_test.dart`: Dedicated integration test script.
+    - `docs/ROADMAP.md`, `docs/PROJECT_STATE.md`, `docs/MODULE_LOG.md`.
+- **Checks Performed:**
+  - Automated Unit & Widget Tests: 814/814 PASS (`flutter test`), 0 failures, 0 regressions.
+  - Static Analysis: PASS (`flutter analyze --no-pub`), 0 issues found across all packages.
+  - Code Formatting: PASS (`dart format`), clean.
+  - Debug APK Compilation: PASS (`flutter build apk --debug`), built `build\app\outputs\flutter-apk\app-debug.apk` (179 MB).
+  - Physical Device Verification Scope: Physical phone (Vivo V2207, `10AC9R1ABF0013A`) disconnected over USB during adb streaming; automated on-device test script is stored at `frontend/integration_test/module41_education_localization_feedback_test.dart` for execution upon physical reconnect.
+- **Status:** Complete on `frontend`. Stopped before Module 42.

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:trustcue_mobile/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:trustcue_mobile/features/feedback/data/repositories/sqlite_feedback_repository.dart';
+import 'package:trustcue_mobile/features/feedback/domain/contracts/feedback_repository.dart';
 import 'package:trustcue_mobile/features/input/data/services/default_screenshot_storage_service.dart';
 import 'package:trustcue_mobile/features/privacy/presentation/widgets/scope_clear_confirmation_dialog.dart';
 import 'package:trustcue_mobile/features/reports/data/services/retention_service.dart';
@@ -11,19 +13,23 @@ import 'package:trustcue_mobile/features/reports/domain/models/retention_policy.
 class PrivacyController extends GetxController {
   final LocalReportRepository repository;
   final RetentionService retentionService;
+  final FeedbackRepository _feedbackRepository;
   final DefaultScreenshotStorageService _screenshotStorageService;
 
   PrivacyController({
     required this.repository,
     required this.retentionService,
+    FeedbackRepository? feedbackRepository,
     DefaultScreenshotStorageService? screenshotStorageService,
-  }) : _screenshotStorageService =
+  }) : _feedbackRepository = feedbackRepository ?? SqliteFeedbackRepository(),
+       _screenshotStorageService =
            screenshotStorageService ?? DefaultScreenshotStorageService();
 
   final Rx<RetentionPolicy> currentPolicy = RetentionPolicy.never.obs;
   final RxBool isLoading = false.obs;
   final RxInt accountReportCount = 0.obs;
   final RxInt guestReportCount = 0.obs;
+  final RxInt feedbackCount = 0.obs;
   final RxString statusMessage = ''.obs;
 
   AuthController? get _authController =>
@@ -59,6 +65,26 @@ class PrivacyController extends GetxController {
 
       final guestCountRes = await repository.getReportCount(accountId: null);
       guestReportCount.value = guestCountRes.valueOrNull ?? 0;
+
+      try {
+        feedbackCount.value = await _feedbackRepository.getFeedbackCount();
+      } catch (_) {
+        feedbackCount.value = 0;
+      }
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Clears all anonymous feedback records stored locally on the device.
+  Future<void> clearLocalFeedback() async {
+    isLoading.value = true;
+    try {
+      await _feedbackRepository.clearAllFeedback();
+      feedbackCount.value = 0;
+      statusMessage.value = 'Local feedback data cleared.';
+    } catch (_) {
+      statusMessage.value = 'Failed to clear local feedback.';
     } finally {
       isLoading.value = false;
     }

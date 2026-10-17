@@ -74,6 +74,9 @@ class LocalDatabaseMigrator {
       case 2:
         await _applyMigrationV2(db);
         break;
+      case 3:
+        await _applyMigrationV3(db);
+        break;
       default:
         throw ArgumentError(
           'Unrecognized migration target version: $targetVersion',
@@ -153,6 +156,36 @@ class LocalDatabaseMigrator {
       ON ${DatabaseConstants.tableSyncMetadata} (
         ${DatabaseConstants.colSyncAccountId},
         ${DatabaseConstants.colSyncStatus}
+      );
+    ''');
+  }
+
+  Future<void> _applyMigrationV3(DatabaseExecutor db) async {
+    // 4. Local feedback table for Module 41 anonymous on-device feedback
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${DatabaseConstants.tableFeedback} (
+        ${DatabaseConstants.colFeedbackId} TEXT PRIMARY KEY NOT NULL,
+        ${DatabaseConstants.colFeedbackTargetType} TEXT NOT NULL,
+        ${DatabaseConstants.colFeedbackTargetId} TEXT NOT NULL,
+        ${DatabaseConstants.colFeedbackRating} TEXT NOT NULL,
+        ${DatabaseConstants.colFeedbackReasonChip} TEXT,
+        ${DatabaseConstants.colFeedbackComment} TEXT,
+        ${DatabaseConstants.colFeedbackCreatedAt} TEXT NOT NULL
+      );
+    ''');
+
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_feedback_created_at
+      ON ${DatabaseConstants.tableFeedback} (
+        ${DatabaseConstants.colFeedbackCreatedAt} DESC
+      );
+    ''');
+
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_feedback_target
+      ON ${DatabaseConstants.tableFeedback} (
+        ${DatabaseConstants.colFeedbackTargetType},
+        ${DatabaseConstants.colFeedbackTargetId}
       );
     ''');
   }

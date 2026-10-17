@@ -19,4 +19,6 @@ abstract class AppRoutes {
   static const authForgotPassword = '/auth/forgot-password';
   static const authResetPassword = '/auth/reset-password';
   static const privacy = '/privacy';
+  static const education = '/education';
+  static const educationTopic = '/education/topic';
 }

@@ -9,6 +9,10 @@ import 'package:trustcue_mobile/features/incoming_share/domain/contracts/incomin
 import 'package:trustcue_mobile/features/incoming_share/presentation/controllers/incoming_share_coordinator.dart';
 import 'package:trustcue_mobile/features/onboarding/data/onboarding_preferences.dart';
 
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:trustcue_mobile/features/localization/presentation/controllers/localization_controller.dart';
+import 'package:trustcue_mobile/features/localization/presentation/translations/app_translations.dart';
+
 class TrustCueApp extends StatefulWidget {
   const TrustCueApp({
     super.key,
@@ -51,6 +55,12 @@ class _TrustCueAppState extends State<TrustCueApp> {
         permanent: true,
       );
     }
+    if (!Get.isRegistered<LocalizationController>()) {
+      Get.put<LocalizationController>(
+        LocalizationController(),
+        permanent: true,
+      );
+    }
     AuthBinding.ensureInitialized(authRepository: widget.authRepository);
   }
 
@@ -61,6 +71,15 @@ class _TrustCueAppState extends State<TrustCueApp> {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
+      translations: AppTranslations(),
+      locale: const Locale('en', 'US'),
+      fallbackLocale: const Locale('en', 'US'),
+      supportedLocales: const [Locale('en', 'US'), Locale('ur', 'PK')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       initialRoute: AppRoutes.startup,
       // Supplying getPages would override these factories in GetX 4.7.3.
       onGenerateRoute: _pages.resolve,

@@ -4,6 +4,9 @@ import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/core/widgets/app_card.dart';
 import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
+import 'package:trustcue_mobile/features/feedback/domain/models/app_feedback.dart';
+import 'package:trustcue_mobile/features/feedback/presentation/widgets/feedback_dialog.dart';
+import 'package:trustcue_mobile/features/localization/presentation/widgets/language_selector_dialog.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -73,12 +76,41 @@ class AboutScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             AppButton.secondary(
+              label: 'Scam Education Center',
+              icon: Icons.school_outlined,
+              onPressed: () {
+                if (Get.currentRoute != AppRoutes.education) {
+                  Get.toNamed(AppRoutes.education);
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+            AppButton.secondary(
               label: 'Privacy & Data Controls',
               icon: Icons.shield_outlined,
               onPressed: () {
                 if (Get.currentRoute != AppRoutes.privacy) {
                   Get.toNamed(AppRoutes.privacy);
                 }
+              },
+            ),
+            const SizedBox(height: 12),
+            AppButton.secondary(
+              label: 'Language / زبان',
+              icon: Icons.language,
+              onPressed: () => LanguageSelectorDialog.show(context),
+            ),
+            const SizedBox(height: 12),
+            AppButton.secondary(
+              label: 'Share anonymous feedback',
+              icon: Icons.rate_review_outlined,
+              onPressed: () {
+                FeedbackDialog.show(
+                  context,
+                  targetType: FeedbackTargetType.appExperience,
+                  targetId: 'general',
+                  targetTitle: 'General TrustCue Experience',
+                );
               },
             ),
           ],

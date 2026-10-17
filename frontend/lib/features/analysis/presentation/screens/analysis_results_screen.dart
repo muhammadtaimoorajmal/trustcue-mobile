@@ -12,6 +12,8 @@ import 'package:trustcue_mobile/features/analysis/domain/models/assessment_indic
 import 'package:trustcue_mobile/features/analysis/domain/models/finding_origin.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/local_assessment.dart';
 import 'package:trustcue_mobile/features/analysis/presentation/controllers/analysis_results_controller.dart';
+import 'package:trustcue_mobile/features/feedback/domain/models/app_feedback.dart';
+import 'package:trustcue_mobile/features/feedback/presentation/widgets/feedback_dialog.dart';
 
 /// Screen displaying deterministic on-device analysis results, scope limitations,
 /// factual evidence trail, prioritized protective actions, and optional protected
@@ -578,7 +580,39 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton.icon(
+                  icon: const Icon(Icons.school_outlined, size: 16),
+                  label: const Text('Learn more & practice'),
+                  onPressed: () {
+                    Get.toNamed(
+                      AppRoutes.educationTopic,
+                      arguments: {'categoryId': group.categoryId},
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.thumb_up_alt_outlined, size: 16),
+                  tooltip: 'Was this explanation helpful?',
+                  constraints: const BoxConstraints(
+                    minWidth: 40,
+                    minHeight: 40,
+                  ),
+                  onPressed: () {
+                    FeedbackDialog.show(
+                      context,
+                      targetType: FeedbackTargetType.analysisFinding,
+                      targetId: group.categoryId,
+                      targetTitle: group.categoryLabel,
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
 
             // Individual Findings
             ...group.findings.map(

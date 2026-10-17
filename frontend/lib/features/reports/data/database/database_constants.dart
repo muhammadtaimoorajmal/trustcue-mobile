@@ -1,7 +1,7 @@
 /// Constants defining SQLite table, column, and index names for TrustCue local storage.
 abstract class DatabaseConstants {
   static const String databaseName = 'trustcue_local.db';
-  static const int currentDatabaseVersion = 2;
+  static const int currentDatabaseVersion = 3;
 
   // Table: text_snapshots
   static const String tableSnapshots = 'text_snapshots';
@@ -34,4 +34,14 @@ abstract class DatabaseConstants {
   static const String colSyncStatus = 'sync_status';
   static const String colSyncClientUpdatedAt = 'client_updated_at';
   static const String colSyncLastSyncedAt = 'last_synced_at';
+
+  // Table: local_feedback
+  static const String tableFeedback = 'local_feedback';
+  static const String colFeedbackId = 'id';
+  static const String colFeedbackTargetType = 'target_type';
+  static const String colFeedbackTargetId = 'target_id';
+  static const String colFeedbackRating = 'rating';
+  static const String colFeedbackReasonChip = 'reason_chip';
+  static const String colFeedbackComment = 'comment';
+  static const String colFeedbackCreatedAt = 'created_at';
 }

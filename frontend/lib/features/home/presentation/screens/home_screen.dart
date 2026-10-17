@@ -6,6 +6,7 @@ import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/core/widgets/app_card.dart';
 import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
 import 'package:trustcue_mobile/features/home/presentation/controllers/home_controller.dart';
+import 'package:trustcue_mobile/features/localization/presentation/widgets/language_selector_dialog.dart';
 
 class HomeScreen extends GetView<HomeController> {
   const HomeScreen({super.key, required this.title});
@@ -40,6 +41,16 @@ class HomeScreen extends GetView<HomeController> {
             },
           ),
           IconButton(
+            icon: const Icon(Icons.school_outlined),
+            tooltip: 'Scam Education',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            onPressed: () {
+              if (Get.currentRoute != AppRoutes.education) {
+                Get.toNamed(AppRoutes.education);
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.shield_outlined),
             tooltip: 'Privacy & Data',
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
@@ -48,6 +59,12 @@ class HomeScreen extends GetView<HomeController> {
                 Get.toNamed(AppRoutes.privacy);
               }
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.language),
+            tooltip: 'Language',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            onPressed: () => LanguageSelectorDialog.show(context),
           ),
           IconButton(
             icon: const Icon(Icons.info_outline),
@@ -104,6 +121,55 @@ class HomeScreen extends GetView<HomeController> {
               route: AppRoutes.inputLink,
               statusText: 'Inspection & local checks available',
               actionLabel: 'Inspect link or QR',
+            ),
+            const SizedBox(height: AppSpacing.pagePaddingSmall),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.school_outlined,
+                        size: 28,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'home_education_title'.tr,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Practice examples & verification',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'home_education_desc'.tr,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  AppButton.secondary(
+                    label: 'home_education_action'.tr,
+                    icon: Icons.menu_book_outlined,
+                    onPressed: () {
+                      if (Get.currentRoute != AppRoutes.education) {
+                        Get.toNamed(AppRoutes.education);
+                      }
+                    },
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: AppSpacing.pagePaddingLarge),
             AppCard(

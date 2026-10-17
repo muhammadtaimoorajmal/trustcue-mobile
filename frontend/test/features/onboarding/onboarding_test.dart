@@ -145,7 +145,9 @@ void main() {
       await tester.tap(find.byTooltip('About TrustCue'));
       await tester.pumpAndSettle();
       final action = tester
-          .widget<AppButton>(find.byType(AppButton))
+          .widget<AppButton>(
+            find.widgetWithText(AppButton, 'Review safe-use guidance'),
+          )
           .onPressed!;
       await tester.ensureVisible(find.text('Review safe-use guidance'));
       await tester.pumpAndSettle();

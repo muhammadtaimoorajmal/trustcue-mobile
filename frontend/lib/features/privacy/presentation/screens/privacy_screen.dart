@@ -41,6 +41,8 @@ class PrivacyScreen extends GetView<PrivacyController> {
               const SizedBox(height: AppSpacing.pagePaddingSmall),
               _buildLocalDataClearingCard(context, theme),
               const SizedBox(height: AppSpacing.pagePaddingSmall),
+              _buildFeedbackCard(context, theme),
+              const SizedBox(height: AppSpacing.pagePaddingSmall),
               _buildCloudAndAccountCard(context, theme),
               const SizedBox(height: AppSpacing.pagePaddingSmall),
               _buildGuidanceCard(context, theme),
@@ -460,6 +462,87 @@ class PrivacyScreen extends GetView<PrivacyController> {
             label: 'Review Safe-Use Guidance',
             icon: Icons.verified_user_outlined,
             onPressed: () => Get.toNamed(AppRoutes.guidance),
+          ),
+          const SizedBox(height: 12),
+          AppButton.secondary(
+            label: 'Explore Scam Education Center',
+            icon: Icons.school_outlined,
+            onPressed: () => Get.toNamed(AppRoutes.education),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeedbackCard(BuildContext context, ThemeData theme) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.rate_review_outlined,
+                color: theme.colorScheme.primary,
+                size: 22,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Local Anonymous Feedback',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Usefulness ratings and comments submitted for educational topics or findings are stored strictly on this device without any personal data or transmission.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Obx(() {
+            final count = controller.feedbackCount.value;
+            return Text(
+              '$count feedback records stored on this device',
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
+            );
+          }),
+          const SizedBox(height: 12),
+          AppButton.secondary(
+            label: 'Clear Local Feedback',
+            icon: Icons.delete_outline,
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (dialogCtx) => AlertDialog(
+                  title: const Text('Clear Local Feedback'),
+                  content: const Text(
+                    'Are you sure you want to delete all locally stored feedback records from this device? This action cannot be undone.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogCtx).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    AppButton.primary(
+                      label: 'Clear All',
+                      onPressed: () => Navigator.of(dialogCtx).pop(true),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true) {
+                await controller.clearLocalFeedback();
+              }
+            },
           ),
         ],
       ),

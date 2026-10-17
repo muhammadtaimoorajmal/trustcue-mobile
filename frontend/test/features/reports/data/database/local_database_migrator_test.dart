@@ -95,12 +95,96 @@ void main() {
       expect(
         () => migrator.onDowngrade(
           db,
-          2, // oldVersion (from newer app)
-          1, // supportedVersion (current app)
+          4, // oldVersion (from newer app)
+          3, // supportedVersion (current app)
         ),
         throwsA(isA<UnsupportedDatabaseVersionException>()),
       );
       await db.close();
+    });
+
+    test('initializes clean database to Schema Version 3 with feedback table and indexes', () async {
+      final db = await databaseFactory.openDatabase(
+        inMemoryDatabasePath,
+        options: OpenDatabaseOptions(
+          version: DatabaseConstants.currentDatabaseVersion,
+          onConfigure: migrator.onConfigure,
+          onCreate: migrator.onCreate,
+          onUpgrade: migrator.onUpgrade,
+          onDowngrade: migrator.onDowngrade,
+        ),
+      );
+
+      final versionResult = await db.rawQuery('PRAGMA user_version;');
+      final currentVersion = versionResult.first.values.first as int;
+      expect(currentVersion, equals(3));
+
+      // Verify local_feedback table exists
+      final feedbackTableCheck = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?;",
+        [DatabaseConstants.tableFeedback],
+      );
+      expect(feedbackTableCheck, isNotEmpty);
+
+      // Verify feedback indexes exist
+      final indexCheck = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name=?;",
+        [DatabaseConstants.tableFeedback],
+      );
+      final indexNames = indexCheck
+          .map((row) => row['name'] as String)
+          .toList();
+      expect(indexNames, contains('idx_feedback_created_at'));
+      expect(indexNames, contains('idx_feedback_target'));
+
+      await db.close();
+    });
+
+    test('upgrades database sequentially from Version 1 to Version 3 preserving data', () async {
+      // 1. Create DB at Version 1
+      final dbV1 = await databaseFactory.openDatabase(
+        inMemoryDatabasePath,
+        options: OpenDatabaseOptions(
+          version: 1,
+          onConfigure: migrator.onConfigure,
+          onCreate: migrator.onCreate,
+        ),
+      );
+
+      await dbV1.insert(DatabaseConstants.tableSnapshots, {
+        DatabaseConstants.colSnapshotId: 'snap-1',
+        DatabaseConstants.colSnapshotText: 'Test text',
+        DatabaseConstants.colSnapshotInputSource: 'messageText',
+        DatabaseConstants.colSnapshotCreatedAt: '2026-10-15T12:00:00.000Z',
+        DatabaseConstants.colSnapshotSha256: 'hash1',
+      });
+
+      // 2. Perform sequential upgrade from Version 1 to Version 3
+      await migrator.onUpgrade(dbV1, 1, 3);
+      await dbV1.execute('PRAGMA user_version = 3;');
+
+      final versionResult = await dbV1.rawQuery('PRAGMA user_version;');
+      expect(versionResult.first.values.first as int, equals(3));
+
+      // Verify V1 row preserved
+      final rows = await dbV1.query(DatabaseConstants.tableSnapshots);
+      expect(rows.length, equals(1));
+      expect(rows.first[DatabaseConstants.colSnapshotId], equals('snap-1'));
+
+      // Verify V2 and V3 tables exist
+      final syncTableCheck = await dbV1.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?;",
+        [DatabaseConstants.tableSyncMetadata],
+      );
+      expect(syncTableCheck, isNotEmpty);
+
+      final feedbackTableCheck = await dbV1.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?;",
+        [DatabaseConstants.tableFeedback],
+      );
+      expect(feedbackTableCheck, isNotEmpty);
+
+      await dbV1.close();
     });
   });
 }

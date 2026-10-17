@@ -64,7 +64,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **38** | Account/profile settings and account deletion | Completed | `frontend` / `backend` |
 | **39** | Optional account-owned backup/sync and isolation | Completed (`56056b2`) | `frontend` / `backend` / `database` |
 | **40** | Privacy, retention and consent controls | Completed | `frontend` |
-| **41** | Education, synthetic examples, feedback and localization | Planned | `frontend` |
+| **41** | Education, synthetic examples, feedback and localization | Completed | `frontend` |
 | **42** | User-controlled privacy-reviewed export/sharing | Planned | `frontend` |
 | **43** | Complete workflow integration and offline/retry/lifecycle handling | Planned | `frontend` |
 | **44** | Security and privacy testing | Planned | `frontend` / `backend` |
