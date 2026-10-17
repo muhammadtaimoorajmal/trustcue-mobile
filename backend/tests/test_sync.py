@@ -449,3 +449,89 @@ def test_pull_cursor_tie_breaker_with_identical_timestamps(auth_client: TestClie
     data2 = page2.json()
     assert len(data2["reports"]) == 1
     assert data2["reports"][0]["clientReportId"] == "rep-bbb"
+
+
+def test_sync_push_allows_tombstone_when_opted_out(auth_client: TestClient) -> None:
+    """Verify that a user who has opted out (syncEnabled=False) CAN still push deletion tombstones."""
+    user_id = str(uuid.uuid4())
+    headers = get_auth_headers(user_id)
+
+    # User profile has syncEnabled=False by default
+    res = auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-tombstone-opted-out",
+                    "snapshotId": "snap-tomb",
+                    "clientUpdatedAt": datetime.now(UTC).isoformat(),
+                    "isDeleted": True,
+                    "deletedAt": datetime.now(UTC).isoformat(),
+                    "reportPayload": make_summary_payload(),
+                }
+            ]
+        },
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["acceptedCount"] == 1
+    assert "rep-tombstone-opted-out" in data["syncedReportIds"]
+
+
+def test_sync_push_skips_stale_reports_preceding_purge(auth_client: TestClient) -> None:
+    """Verify that reports dated before a purge cannot resurrect purged records."""
+    user_id = str(uuid.uuid4())
+    headers = get_auth_headers(user_id)
+
+    # 1. Enable sync and push report
+    auth_client.patch("/api/v1/account/profile", headers=headers, json={"syncEnabled": True})
+    now = datetime.now(UTC)
+    stale_time = now - timedelta(hours=2)
+
+    auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-initial",
+                    "snapshotId": "snap-1",
+                    "clientUpdatedAt": stale_time.isoformat(),
+                    "reportPayload": make_summary_payload(),
+                }
+            ]
+        },
+    )
+
+    # 2. Purge reports -> increments generation, sets sync_purged_at, syncEnabled=False
+    purge_res = auth_client.delete("/api/v1/sync/reports", headers=headers)
+    assert purge_res.status_code == 200
+
+    # 3. Re-enable sync
+    auth_client.patch("/api/v1/account/profile", headers=headers, json={"syncEnabled": True})
+
+    # 4. Attempt to push stale report dated BEFORE purge
+    stale_push = auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-stale-resurrect",
+                    "snapshotId": "snap-stale",
+                    "clientUpdatedAt": (now - timedelta(hours=1)).isoformat(),  # Precedes purge
+                    "reportPayload": make_summary_payload(),
+                }
+            ]
+        },
+    )
+    assert stale_push.status_code == 200
+    # Accepted count should be 0 because stale report preceding purge was skipped!
+    assert stale_push.json()["acceptedCount"] == 0
+
+    # 5. Pull reports to confirm nothing was resurrected
+    pull = auth_client.get("/api/v1/sync/reports", headers=headers)
+    assert pull.status_code == 200
+    assert len(pull.json()["reports"]) == 0
+

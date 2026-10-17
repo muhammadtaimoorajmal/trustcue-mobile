@@ -49,11 +49,10 @@ class SyncService:
             "Content-Type": "application/json",
         }
 
-    async def is_sync_enabled(self, user_id: str) -> bool:
-        """Determine whether the user has explicitly opted into cloud synchronization."""
-        # Check in-memory state first
-        if self.app_state.get_sync_enabled(user_id):
-            return True
+    async def get_sync_profile_state(self, user_id: str) -> tuple[bool, datetime | None]:
+        """Determine whether the user has opted into cloud sync and retrieve their last purge timestamp."""
+        enabled = self.app_state.get_sync_enabled(user_id)
+        purged_at = self.app_state.sync_purged_at.get(str(user_id).strip().lower())
 
         if self.settings.SUPABASE_URL and self.settings.SUPABASE_SERVICE_ROLE_KEY:
             client = self._http_client or httpx.AsyncClient(timeout=5.0)
@@ -61,7 +60,7 @@ class SyncService:
             try:
                 base_url = self.settings.SUPABASE_URL.rstrip("/")
                 resp = await client.get(
-                    f"{base_url}/rest/v1/profiles?id=eq.{user_id}&select=sync_enabled",
+                    f"{base_url}/rest/v1/profiles?id=eq.{user_id}&select=sync_enabled,sync_purged_at",
                     headers=self._get_auth_headers(),
                 )
                 if resp.status_code == 200:
@@ -69,14 +68,22 @@ class SyncService:
                     if isinstance(data, list) and len(data) > 0:
                         enabled = bool(data[0].get("sync_enabled", False))
                         self.app_state.set_sync_enabled(user_id, enabled)
-                        return enabled
+                        raw_purged = data[0].get("sync_purged_at")
+                        if raw_purged:
+                            purged_at = datetime.fromisoformat(str(raw_purged).replace("Z", "+00:00"))
+                            self.app_state.sync_purged_at[str(user_id).strip().lower()] = purged_at
             except Exception as exc:
-                logger.warning("Error verifying sync_enabled for user %s: %s", user_id, str(exc))
+                logger.warning("Error verifying sync profile state for user %s: %s", user_id, str(exc))
             finally:
                 if close_client:
                     await client.aclose()
 
-        return self.app_state.get_sync_enabled(user_id)
+        return enabled, purged_at
+
+    async def is_sync_enabled(self, user_id: str) -> bool:
+        """Determine whether the user has explicitly opted into cloud synchronization."""
+        enabled, _ = await self.get_sync_profile_state(user_id)
+        return enabled
 
     async def push_reports(
         self, user_id: str, request: SyncReportsPushRequest
@@ -84,20 +91,43 @@ class SyncService:
         """
         Batch-upload client-submitted report summaries.
 
-        Requires sync_enabled opt-in on user profile.
+        Requires sync_enabled opt-in on user profile, except for tombstones (owner deletion).
+        Rejects stale uploads preceding the user's last cloud purge to prevent resurrection.
         """
-        if not await self.is_sync_enabled(user_id):
-            raise SyncOptInRequiredError()
+        sync_enabled, purged_at = await self.get_sync_profile_state(user_id)
+        if not sync_enabled:
+            # Opt-out blocks new uploads but does not prevent owner deletion (tombstones)
+            if not all(item.is_deleted for item in request.reports):
+                raise SyncOptInRequiredError()
+
+        # Filter out stale reports dated before the user's purge timestamp
+        valid_items: list[Any] = []
+        for item in request.reports:
+            item_time = (
+                item.client_updated_at
+                if isinstance(item.client_updated_at, datetime)
+                else datetime.fromisoformat(str(item.client_updated_at))
+            )
+            if purged_at is not None and item_time <= purged_at:
+                logger.info(
+                    "Skipping stale report %s for user %s: timestamp %s precedes purge %s",
+                    item.client_report_id,
+                    user_id,
+                    item_time,
+                    purged_at,
+                )
+                continue
+            valid_items.append(item)
 
         raw_items: list[dict[str, Any]] = [
-            item.model_dump(by_alias=True) for item in request.reports
+            item.model_dump(by_alias=True) for item in valid_items
         ]
 
         # 1. Update in-memory fallback state
         synced_ids = self.app_state.save_synced_reports(user_id, raw_items)
 
         # 2. Persist to PostgREST public.synced_reports if configured
-        if self.settings.SUPABASE_URL and self.settings.SUPABASE_SERVICE_ROLE_KEY:
+        if self.settings.SUPABASE_URL and self.settings.SUPABASE_SERVICE_ROLE_KEY and valid_items:
             client = self._http_client or httpx.AsyncClient(timeout=10.0)
             close_client = self._http_client is None
             try:
@@ -106,7 +136,7 @@ class SyncService:
                 headers["Prefer"] = "resolution=merge-duplicates"
 
                 rows: list[dict[str, Any]] = []
-                for item in request.reports:
+                for item in valid_items:
                     rows.append({
                         "user_id": user_id,
                         "client_report_id": item.client_report_id,
@@ -138,7 +168,7 @@ class SyncService:
                     await client.aclose()
 
         return SyncReportsPushResponse(
-            acceptedCount=len(request.reports),
+            acceptedCount=len(valid_items),
             syncedReportIds=synced_ids,
             serverTimestamp=datetime.now(UTC),
         )

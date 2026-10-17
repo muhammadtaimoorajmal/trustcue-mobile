@@ -72,7 +72,6 @@ class AppState:
         """Save or update reports for user in in-memory store, preventing resurrection after purge."""
         uid = str(user_id).strip().lower()
         purged_at = self.sync_purged_at.get(uid)
-        current_gen = self.get_sync_generation(uid)
 
         synced_ids: list[str] = []
         for item in items:
@@ -84,9 +83,8 @@ class AppState:
                 else datetime.fromisoformat(str(client_time_raw))
             )
 
-            # Prevent resurrection: if report was modified before last purge or client has stale generation, skip
-            item_gen = item.get("syncGeneration", 1)
-            if purged_at is not None and client_time <= purged_at and item_gen < current_gen:
+            # Prevent resurrection: if report was modified before last purge, skip
+            if purged_at is not None and client_time <= purged_at:
                 continue
 
             key = f"{uid}:{client_id}"
