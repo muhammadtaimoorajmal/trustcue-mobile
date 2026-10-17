@@ -53,7 +53,8 @@ class ExportDataExtractor {
         ? AssessmentOutcomeState.indicatorsDetected
         : AssessmentOutcomeState.noIndicatorsMatched;
 
-    final outcomeSummary = outcomeState == AssessmentOutcomeState.indicatorsDetected
+    final outcomeSummary =
+        outcomeState == AssessmentOutcomeState.indicatorsDetected
         ? 'Analysis identified ${report.totalFindingsCount} potential scam warning indicator(s).'
         : 'Analysis did not identify matching scam patterns among evaluated checks.';
 
@@ -112,8 +113,7 @@ class ExportDataExtractor {
 
     final suggestedActions = <String>{
       ...assessment.actionableSteps.map((a) => a.title),
-      if (aiReport != null)
-        ...aiReport.suggestedActions.map((a) => a.title),
+      if (aiReport != null) ...aiReport.suggestedActions.map((a) => a.title),
     }.toList();
 
     return ExportReportData(
@@ -154,7 +154,8 @@ class ExportDataExtractor {
       canonicalDisclaimer,
     ];
 
-    final outcomeSummary = summary.outcomeState == AssessmentOutcomeState.indicatorsDetected
+    final outcomeSummary =
+        summary.outcomeState == AssessmentOutcomeState.indicatorsDetected
         ? 'Summary record: ${summary.findingsCount} indicator pattern(s) previously detected.'
         : 'Summary record: No indicator patterns matched during prior evaluation.';
 

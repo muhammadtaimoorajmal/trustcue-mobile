@@ -53,21 +53,42 @@ void main() {
       expect(output, contains('Analysis Executed:    2026-10-15 14:30:00 UTC'));
       expect(output, contains('Report Identifier:    tc-rep-8899'));
       expect(output, contains('Input Channel:        MESSAGETEXT'));
-      expect(output, contains('Analysis Provenance:  On-Device Heuristics + AI-Assisted (Groq / llama-3.3-70b-versatile)'));
-      expect(output, contains('Assessment Outcome:   WARNING INDICATORS DETECTED'));
+      expect(
+        output,
+        contains(
+          'Analysis Provenance:  On-Device Heuristics + AI-Assisted (Groq / llama-3.3-70b-versatile)',
+        ),
+      );
+      expect(
+        output,
+        contains('Assessment Outcome:   WARNING INDICATORS DETECTED'),
+      );
       expect(output, contains('--- SUMMARY ---'));
       expect(output, contains('Analysis detected 2 warning indicators.'));
       expect(output, contains('--- DETECTED INDICATORS (2) ---'));
       expect(output, contains('[1] urgency'));
-      expect(output, contains('    Provenance: On-Device Heuristic Rule (producer: urgency_rule)'));
+      expect(
+        output,
+        contains(
+          '    Provenance: On-Device Heuristic Rule (producer: urgency_rule)',
+        ),
+      );
       expect(output, contains('      * "Act now or account closed!"'));
       expect(output, contains('[2] paymentRequest'));
-      expect(output, contains('    Provenance: Server-Assisted AI (producer: groq.provider)'));
+      expect(
+        output,
+        contains(
+          '    Provenance: Server-Assisted AI (producer: groq.provider)',
+        ),
+      );
       expect(output, contains('      * "Buy \$200 Google Play cards"'));
       expect(output, contains('--- SUGGESTED VERIFICATION STEPS ---'));
       expect(output, contains('1. Do not send gift cards.'));
       expect(output, contains('2. Verify using official website.'));
-      expect(output, contains('--- IMPORTANT LIMITATIONS & SCOPE DISCLOSURES ---'));
+      expect(
+        output,
+        contains('--- IMPORTANT LIMITATIONS & SCOPE DISCLOSURES ---'),
+      );
       expect(output, contains('* Evaluates observable patterns only.'));
       expect(output, contains('--- REVIEWED MESSAGE CONTENT ---'));
       expect(output, contains('[User-authorized communication excerpt]'));
@@ -93,18 +114,20 @@ void main() {
             evidenceQuotes: ['فوری رابطہ کریں'],
           ),
         ],
-        limitations: const [
-          'یہ جانچ شناخت کی تصدیق نہیں کر سکتی۔',
-        ],
-        suggestedActions: const [
-          'بینک سے براہ راست رابطہ کریں۔',
-        ],
-        reviewedText: 'محترم صارف، آپ کا اکاؤنٹ معطل ہو گیا ہے۔ ⚠️ فوری رابطہ کریں۔',
+        limitations: const ['یہ جانچ شناخت کی تصدیق نہیں کر سکتی۔'],
+        suggestedActions: const ['بینک سے براہ راست رابطہ کریں۔'],
+        reviewedText:
+            'محترم صارف، آپ کا اکاؤنٹ معطل ہو گیا ہے۔ ⚠️ فوری رابطہ کریں۔',
       );
 
       final output = PlainTextExportFormatter.format(data);
 
-      expect(output, contains('محترم صارف، آپ کا اکاؤنٹ معطل ہو گیا ہے۔ ⚠️ فوری رابطہ کریں۔'));
+      expect(
+        output,
+        contains(
+          'محترم صارف، آپ کا اکاؤنٹ معطل ہو گیا ہے۔ ⚠️ فوری رابطہ کریں۔',
+        ),
+      );
       expect(output, contains('فوری کارروائی کا دباؤ۔'));
       expect(output, contains('بینک سے براہ راست رابطہ کریں۔'));
     });
@@ -126,8 +149,14 @@ void main() {
 
       final output = PlainTextExportFormatter.format(data);
 
-      expect(output, contains('[Reviewed message text excluded by user for privacy]'));
-      expect(output, contains('No matching scam indicator patterns were identified'));
+      expect(
+        output,
+        contains('[Reviewed message text excluded by user for privacy]'),
+      );
+      expect(
+        output,
+        contains('No matching scam indicator patterns were identified'),
+      );
     });
 
     test('displays cloud summary notice when isCloudSummaryOnly is true', () {
@@ -148,8 +177,10 @@ void main() {
 
       final output = PlainTextExportFormatter.format(data);
 
-      expect(output, contains('[NOTICE: Reconstructed from cloud summary metadata.'));
+      expect(
+        output,
+        contains('[NOTICE: Reconstructed from cloud summary metadata.'),
+      );
     });
   });
 }
-

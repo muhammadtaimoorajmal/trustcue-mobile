@@ -53,6 +53,14 @@ class ExportController extends GetxController {
     _refreshPreview();
   }
 
+  /// Whether the current report data can be faithfully rendered in PDF format.
+  bool get isPdfSupported =>
+      PdfExportBuilder.canRenderFaithfully(reportData.value);
+
+  /// Explanatory reason if PDF export is unavailable due to unsupported script.
+  String? get pdfUnsupportedReason =>
+      PdfExportBuilder.checkUnsupportedScript(reportData.value);
+
   void setFormat(ExportFormat format) {
     if (options.value.format == format) return;
     options.value = options.value.copyWith(format: format);
@@ -83,12 +91,21 @@ class ExportController extends GetxController {
   }
 
   void _refreshPreview() {
+    if (options.value.format == ExportFormat.pdf && !isPdfSupported) {
+      previewText.value =
+          '[PDF EXPORT UNAVAILABLE - SCRIPT LIMITATION]\n\n'
+          '${pdfUnsupportedReason!}\n\n'
+          'Please select Plain Text (.txt) format above for complete, unredacted UTF-8 fidelity.';
+      return;
+    }
     final text = PlainTextExportFormatter.format(reportData.value);
     previewText.value = text;
   }
 
   /// Copies the formatted plain text report to the clipboard.
   Future<bool> copyPlainTextToClipboard() async {
+    if (isGenerating.value || isSharing.value) return false;
+
     try {
       final text = PlainTextExportFormatter.format(reportData.value);
       await Clipboard.setData(ClipboardData(text: text));
@@ -108,6 +125,12 @@ class ExportController extends GetxController {
   Future<ShareStatus?> shareReport({Rect? sharePositionOrigin}) async {
     if (isGenerating.value || isSharing.value) return null;
 
+    final format = options.value.format;
+    if (format == ExportFormat.pdf && !isPdfSupported) {
+      errorMessage.value = pdfUnsupportedReason;
+      return ShareStatus.unavailable;
+    }
+
     isGenerating.value = true;
     errorMessage.value = null;
 
@@ -115,7 +138,6 @@ class ExportController extends GetxController {
 
     try {
       final currentData = reportData.value;
-      final format = options.value.format;
 
       if (format == ExportFormat.plainText) {
         final content = PlainTextExportFormatter.format(currentData);

@@ -6,23 +6,101 @@ import 'package:trustcue_mobile/features/analysis/domain/models/finding_origin.d
 import 'package:trustcue_mobile/features/analysis/domain/models/local_assessment.dart';
 import 'package:trustcue_mobile/features/export/domain/models/export_report_data.dart';
 
+/// Exception thrown when report content contains scripts or characters that cannot
+/// be faithfully rendered by the PDF typography engine without content loss.
+class UnsupportedPdfScriptException implements Exception {
+  final String message;
+  const UnsupportedPdfScriptException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 /// Service responsible for building clean, paginated PDF reports from [ExportReportData].
 ///
 /// Principles & Guarantees:
 /// - Generates standard PDF documents fully offline without network or cloud rendering.
 /// - Dark-on-light theme optimized for printing and screen reading.
 /// - Multi-page support with structured headers, footers, and page numbers.
-/// - Robust Unicode & non-Latin handling: Type-1 standard PDF fonts support Latin-1.
-///   Non-Latin characters (including Urdu Nastaliq and emojis) are safely escaped
-///   with informative placeholders to prevent PDF font crashes, with prominent
-///   disclosures directing users to Plain Text (.txt) export for 100% multilingual fidelity.
+/// - Faithful content fidelity: Never silently drops or replaces user text.
+///   If a report contains non-Latin scripts (such as Urdu Nastaliq or emojis)
+///   that standard PDF Type-1 fonts cannot faithfully shape and render, PDF export is
+///   blocked with an understandable explanation, directing users to lossless Plain Text (.txt) export.
 class PdfExportBuilder {
   static const String urduNotice =
-      'Notice: PDF formatting uses standard Latin typography. '
+      'Notice: PDF formatting requires standard Latin typography. '
       'For unredacted Urdu (اردو) or non-Latin script fidelity, export using Plain Text (.txt).';
 
+  /// Verifies whether all text sections in [data] can be rendered faithfully in PDF.
+  static bool canRenderFaithfully(ExportReportData data) {
+    return checkUnsupportedScript(data) == null;
+  }
+
+  /// Checks whether a single string contains any characters that cannot be faithfully rendered
+  /// in Type-1 PDF fonts.
+  static bool isStringSupported(String text) {
+    for (final rune in text.runes) {
+      if (rune <= 255) continue;
+      // Allow common typographical punctuation with standard ASCII mappings
+      switch (rune) {
+        case 0x2018: // ‘
+        case 0x2019: // ’
+        case 0x201A: // ‚
+        case 0x201C: // “
+        case 0x201D: // ”
+        case 0x201E: // „
+        case 0x2013: // –
+        case 0x2014: // —
+        case 0x2022: // •
+        case 0x2026: // …
+          continue;
+        default:
+          return false;
+      }
+    }
+    return true;
+  }
+
+  /// Returns a detailed explanation if [data] contains non-Latin scripts that would cause
+  /// content loss in PDF, or null if the report can be rendered faithfully.
+  static String? checkUnsupportedScript(ExportReportData data) {
+    if (!isStringSupported(data.outcomeSummary)) {
+      return 'PDF export is unavailable because the summary contains unsupported non-Latin script (such as Urdu or emojis). Please export as Plain Text (.txt) for full, complete, and unredacted fidelity.';
+    }
+    for (final finding in data.findings) {
+      if (!isStringSupported(finding.category) ||
+          !isStringSupported(finding.explanation)) {
+        return 'PDF export is unavailable because finding descriptions contain unsupported non-Latin script (such as Urdu or emojis). Please export as Plain Text (.txt) for full, complete, and unredacted fidelity.';
+      }
+      for (final quote in finding.evidenceQuotes) {
+        if (!isStringSupported(quote)) {
+          return 'PDF export is unavailable because evidence quotes contain unsupported non-Latin script (such as Urdu or emojis). Please export as Plain Text (.txt) for full, complete, and unredacted fidelity.';
+        }
+      }
+    }
+    for (final action in data.suggestedActions) {
+      if (!isStringSupported(action)) {
+        return 'PDF export is unavailable because suggested actions contain unsupported non-Latin script (such as Urdu or emojis). Please export as Plain Text (.txt) for full, complete, and unredacted fidelity.';
+      }
+    }
+    for (final limitation in data.limitations) {
+      if (!isStringSupported(limitation)) {
+        return 'PDF export is unavailable because disclosures contain unsupported non-Latin script (such as Urdu or emojis). Please export as Plain Text (.txt) for full, complete, and unredacted fidelity.';
+      }
+    }
+    if (data.hasReviewedText && !isStringSupported(data.reviewedText!)) {
+      return 'PDF export is unavailable because the reviewed message content contains unsupported script (such as Urdu or emojis). Standard PDF typography cannot shape or render this script without losing content. Please export as Plain Text (.txt) for 100% complete, lossless fidelity.';
+    }
+    return null;
+  }
+
   /// Builds a complete PDF document and returns the binary bytes.
+  /// Throws [UnsupportedPdfScriptException] if [data] contains non-Latin scripts.
   static Future<Uint8List> buildPdf(ExportReportData data) async {
+    final unsupportedReason = checkUnsupportedScript(data);
+    if (unsupportedReason != null) {
+      throw UnsupportedPdfScriptException(unsupportedReason);
+    }
     final pdf = pw.Document(
       title: 'TrustCue Scam Analysis Report',
       author: 'TrustCue Mobile Security',
@@ -164,10 +242,15 @@ class PdfExportBuilder {
                 ),
               ),
               pw.Container(
-                padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const pw.EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
+                ),
                 decoration: pw.BoxDecoration(
                   color: outcomeColor,
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                  borderRadius: const pw.BorderRadius.all(
+                    pw.Radius.circular(4),
+                  ),
                 ),
                 child: pw.Text(
                   outcomeLabel,
@@ -183,12 +266,21 @@ class PdfExportBuilder {
           pw.SizedBox(height: 6),
           pw.Divider(color: PdfColors.grey300, height: 0.8),
           pw.SizedBox(height: 6),
-          _buildMetaRow('Export Date:', '${_formatTimestamp(data.exportedAt)} (Export generated)'),
-          _buildMetaRow('Analysis Date:', '${_formatTimestamp(data.analyzedAt)} (Text evaluated)'),
+          _buildMetaRow(
+            'Export Date:',
+            '${_formatTimestamp(data.exportedAt)} (Export generated)',
+          ),
+          _buildMetaRow(
+            'Analysis Date:',
+            '${_formatTimestamp(data.analyzedAt)} (Text evaluated)',
+          ),
           _buildMetaRow('Input Channel:', data.inputSource.name.toUpperCase()),
           _buildMetaRow('Provenance:', provenanceStr),
           if (data.isCloudSummaryOnly)
-            _buildMetaRow('Record Source:', 'Reconstructed from cloud summary metadata (original text not stored)'),
+            _buildMetaRow(
+              'Record Source:',
+              'Reconstructed from cloud summary metadata (original text not stored)',
+            ),
         ],
       ),
     );
@@ -204,7 +296,11 @@ class PdfExportBuilder {
             width: 85,
             child: pw.Text(
               label,
-              style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700),
+              style: pw.TextStyle(
+                fontSize: 8,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.grey700,
+              ),
             ),
           ),
           pw.Expanded(
@@ -226,7 +322,11 @@ class PdfExportBuilder {
         pw.SizedBox(height: 4),
         pw.Text(
           _sanitizeForPdf(data.outcomeSummary),
-          style: const pw.TextStyle(fontSize: 9.5, color: PdfColors.grey900, lineSpacing: 1.4),
+          style: const pw.TextStyle(
+            fontSize: 9.5,
+            color: PdfColors.grey900,
+            lineSpacing: 1.4,
+          ),
         ),
       ],
     );
@@ -236,7 +336,9 @@ class PdfExportBuilder {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('DETECTED SCAM WARNING INDICATORS (${data.findingCount})'),
+        _buildSectionHeader(
+          'DETECTED SCAM WARNING INDICATORS (${data.findingCount})',
+        ),
         pw.SizedBox(height: 4),
         if (data.findings.isEmpty)
           pw.Container(
@@ -249,7 +351,10 @@ class PdfExportBuilder {
             child: pw.Text(
               'No matching scam indicator patterns were identified during this evaluation. '
               'Note: This does not prove that the communication is safe or legitimate.',
-              style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey800),
+              style: const pw.TextStyle(
+                fontSize: 8.5,
+                color: PdfColors.grey800,
+              ),
             ),
           )
         else
@@ -276,31 +381,50 @@ class PdfExportBuilder {
                     children: [
                       pw.Text(
                         '#$index ${_sanitizeForPdf(finding.category)}',
-                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey900),
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.blueGrey900,
+                        ),
                       ),
                       pw.Text(
                         '$originLabel (${finding.producerId})',
-                        style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey600),
+                        style: const pw.TextStyle(
+                          fontSize: 7.5,
+                          color: PdfColors.grey600,
+                        ),
                       ),
                     ],
                   ),
                   pw.SizedBox(height: 4),
                   pw.Text(
                     _sanitizeForPdf(finding.explanation),
-                    style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey800, lineSpacing: 1.3),
+                    style: const pw.TextStyle(
+                      fontSize: 8.5,
+                      color: PdfColors.grey800,
+                      lineSpacing: 1.3,
+                    ),
                   ),
                   if (finding.evidenceQuotes.isNotEmpty) ...[
                     pw.SizedBox(height: 5),
                     pw.Text(
                       'Evidence Excerpts:',
-                      style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700),
+                      style: pw.TextStyle(
+                        fontSize: 7.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.grey700,
+                      ),
                     ),
                     ...finding.evidenceQuotes.map(
                       (q) => pw.Padding(
                         padding: const pw.EdgeInsets.only(left: 6, top: 2),
                         child: pw.Text(
                           '- "${_sanitizeForPdf(q)}"',
-                          style: pw.TextStyle(fontSize: 7.5, fontStyle: pw.FontStyle.italic, color: PdfColors.grey800),
+                          style: pw.TextStyle(
+                            fontSize: 7.5,
+                            fontStyle: pw.FontStyle.italic,
+                            color: PdfColors.grey800,
+                          ),
                         ),
                       ),
                     ),
@@ -331,13 +455,20 @@ class PdfExportBuilder {
                   width: 16,
                   child: pw.Text(
                     '${entry.key + 1}.',
-                    style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey800),
+                    style: pw.TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.blueGrey800,
+                    ),
                   ),
                 ),
                 pw.Expanded(
                   child: pw.Text(
                     _sanitizeForPdf(entry.value),
-                    style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey900),
+                    style: const pw.TextStyle(
+                      fontSize: 8.5,
+                      color: PdfColors.grey900,
+                    ),
                   ),
                 ),
               ],
@@ -360,11 +491,21 @@ class PdfExportBuilder {
             child: pw.Row(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('- ', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                pw.Text(
+                  '- ',
+                  style: const pw.TextStyle(
+                    fontSize: 8,
+                    color: PdfColors.grey700,
+                  ),
+                ),
                 pw.Expanded(
                   child: pw.Text(
                     _sanitizeForPdf(limitation),
-                    style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700, lineSpacing: 1.2),
+                    style: const pw.TextStyle(
+                      fontSize: 8,
+                      color: PdfColors.grey700,
+                      lineSpacing: 1.2,
+                    ),
                   ),
                 ),
               ],
@@ -395,18 +536,30 @@ class PdfExportBuilder {
                   children: [
                     pw.Text(
                       '[User-authorized communication excerpt]',
-                      style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.grey600),
+                      style: pw.TextStyle(
+                        fontSize: 7.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.grey600,
+                      ),
                     ),
                     pw.SizedBox(height: 4),
                     pw.Text(
                       _sanitizeForPdf(data.reviewedText!),
-                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey900, lineSpacing: 1.3),
+                      style: const pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.grey900,
+                        lineSpacing: 1.3,
+                      ),
                     ),
                   ],
                 )
               : pw.Text(
                   '[Reviewed message text excluded by user for privacy]',
-                  style: pw.TextStyle(fontSize: 8, fontStyle: pw.FontStyle.italic, color: PdfColors.grey600),
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    fontStyle: pw.FontStyle.italic,
+                    color: PdfColors.grey600,
+                  ),
                 ),
         ),
       ],
@@ -460,20 +613,12 @@ class PdfExportBuilder {
         '${utc.second.toString().padLeft(2, '0')} UTC';
   }
 
-  /// Sanitizes text for PDF Type-1 Helvetica font rendering.
-  ///
-  /// Maps common Unicode punctuation to Latin-1/ASCII and replaces non-Latin runes
-  /// (e.g. Urdu, Arabic, Chinese, emojis) with safe placeholders to prevent crashes.
+  /// Maps common typographical punctuation to Latin-1/ASCII for PDF Type-1 font rendering.
   static String _sanitizeForPdf(String text) {
     final sb = StringBuffer();
-    bool inNonLatinSequence = false;
 
     for (final rune in text.runes) {
       if (rune <= 255) {
-        if (inNonLatinSequence) {
-          sb.write(']');
-          inNonLatinSequence = false;
-        }
         sb.writeCharCode(rune);
       } else {
         // Map common high-code-point typographical punctuation to ASCII
@@ -481,59 +626,30 @@ class PdfExportBuilder {
           case 0x2018: // ‘
           case 0x2019: // ’
           case 0x201A: // ‚
-            if (inNonLatinSequence) {
-              sb.write(']');
-              inNonLatinSequence = false;
-            }
             sb.write("'");
             break;
           case 0x201C: // “
           case 0x201D: // ”
           case 0x201E: // „
-            if (inNonLatinSequence) {
-              sb.write(']');
-              inNonLatinSequence = false;
-            }
             sb.write('"');
             break;
           case 0x2013: // –
           case 0x2014: // —
-            if (inNonLatinSequence) {
-              sb.write(']');
-              inNonLatinSequence = false;
-            }
             sb.write('-');
             break;
           case 0x2022: // •
-            if (inNonLatinSequence) {
-              sb.write(']');
-              inNonLatinSequence = false;
-            }
             sb.write('*');
             break;
           case 0x2026: // …
-            if (inNonLatinSequence) {
-              sb.write(']');
-              inNonLatinSequence = false;
-            }
             sb.write('...');
             break;
           default:
-            // Non-Latin rune (Urdu, emoji, CJK, etc.)
-            if (!inNonLatinSequence) {
-              sb.write('[Non-Latin / Urdu script');
-              inNonLatinSequence = true;
-            }
+            sb.writeCharCode(rune <= 255 ? rune : 0x3F); // '?' fallback
             break;
         }
       }
     }
 
-    if (inNonLatinSequence) {
-      sb.write(']');
-    }
-
     return sb.toString();
   }
 }
-

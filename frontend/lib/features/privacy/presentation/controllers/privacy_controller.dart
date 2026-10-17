@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:trustcue_mobile/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:trustcue_mobile/features/export/data/services/export_storage_service.dart';
 import 'package:trustcue_mobile/features/feedback/data/repositories/sqlite_feedback_repository.dart';
 import 'package:trustcue_mobile/features/feedback/domain/contracts/feedback_repository.dart';
 import 'package:trustcue_mobile/features/input/data/services/default_screenshot_storage_service.dart';
@@ -15,15 +16,19 @@ class PrivacyController extends GetxController {
   final RetentionService retentionService;
   final FeedbackRepository _feedbackRepository;
   final DefaultScreenshotStorageService _screenshotStorageService;
+  final ExportStorageService _exportStorageService;
 
   PrivacyController({
     required this.repository,
     required this.retentionService,
     FeedbackRepository? feedbackRepository,
     DefaultScreenshotStorageService? screenshotStorageService,
+    ExportStorageService? exportStorageService,
   }) : _feedbackRepository = feedbackRepository ?? SqliteFeedbackRepository(),
        _screenshotStorageService =
-           screenshotStorageService ?? DefaultScreenshotStorageService();
+           screenshotStorageService ?? DefaultScreenshotStorageService(),
+       _exportStorageService =
+           exportStorageService ?? DefaultExportStorageService();
 
   final Rx<RetentionPolicy> currentPolicy = RetentionPolicy.never.obs;
   final RxBool isLoading = false.obs;
@@ -145,18 +150,23 @@ class PrivacyController extends GetxController {
     }
   }
 
-  /// Cleans up cached temporary screenshots and image buffers.
+  /// Cleans up cached temporary screenshots, image buffers, and temporary export files.
   Future<void> clearTemporaryFiles() async {
     isLoading.value = true;
     try {
-      final clearedCount = await _screenshotStorageService.cleanupOrphanFiles();
-      Get.snackbar(
-        'Temporary Cache Cleared',
-        clearedCount == 0
-            ? 'No temporary files were found in cache.'
-            : 'Cleared $clearedCount cached temporary image file(s).',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      final clearedScreenshots = await _screenshotStorageService
+          .cleanupOrphanFiles();
+      final clearedExports = await _exportStorageService.cleanupAllExports();
+      final total = clearedScreenshots + clearedExports;
+      if (Get.context != null) {
+        Get.snackbar(
+          'Temporary Cache Cleared',
+          total == 0
+              ? 'No temporary files were found in cache.'
+              : 'Cleared $total cached temporary file(s).',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
     } finally {
       isLoading.value = false;
     }

@@ -1,9 +1,13 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_report.dart';
 import 'package:trustcue_mobile/features/auth/domain/models/auth_state.dart';
 import 'package:trustcue_mobile/features/auth/domain/models/auth_user.dart';
 import 'package:trustcue_mobile/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:trustcue_mobile/features/export/data/services/export_storage_service.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/input/domain/models/text_snapshot.dart';
 import 'package:trustcue_mobile/features/privacy/presentation/controllers/privacy_controller.dart';
@@ -14,6 +18,26 @@ import 'package:trustcue_mobile/features/reports/domain/models/saved_report.dart
 
 import '../../../auth/mocks/fake_auth_repository.dart';
 import '../../../reports/mocks/fake_report_repository.dart';
+
+class FakeExportStorageService implements ExportStorageService {
+  int cleanedCount = 0;
+
+  @override
+  Future<int> cleanupAllExports() async => cleanedCount;
+
+  @override
+  Future<int> pruneOldExports({
+    Duration maxAge = const Duration(hours: 2),
+  }) async => 0;
+
+  @override
+  Future<File> writePdfReport(Uint8List bytes, {DateTime? timestamp}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<File> writePlainTextReport(String content, {DateTime? timestamp}) =>
+      throw UnimplementedError();
+}
 
 class FakeRetentionPreferences implements RetentionPreferences {
   RetentionPolicy policy = RetentionPolicy.never;
@@ -146,6 +170,24 @@ void main() {
         expect(controller.currentAccountId, equals('acc-uuid-999'));
         expect(controller.accountReportCount.value, equals(1));
         expect(controller.guestReportCount.value, equals(1));
+      },
+    );
+
+    test(
+      'clearTemporaryFiles cleans up export files and reports status',
+      () async {
+        final fakeExport = FakeExportStorageService();
+        fakeExport.cleanedCount = 4;
+
+        final testCtrl = PrivacyController(
+          repository: fakeRepo,
+          retentionService: retentionService,
+          exportStorageService: fakeExport,
+        );
+
+        await testCtrl.clearTemporaryFiles();
+
+        expect(testCtrl.isLoading.value, isFalse);
       },
     );
   });

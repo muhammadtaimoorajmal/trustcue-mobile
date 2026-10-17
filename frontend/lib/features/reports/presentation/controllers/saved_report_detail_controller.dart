@@ -31,6 +31,7 @@ class SavedReportDetailController extends GetxController {
   });
 
   final RxBool isLoading = true.obs;
+  final RxBool isDeleting = false.obs;
   final Rxn<SavedReport> report = Rxn<SavedReport>();
   final RxnString errorMessage = RxnString();
   final RxBool showLimitations = false.obs;
@@ -135,58 +136,65 @@ class SavedReportDetailController extends GetxController {
 
   /// Prompts for confirmation and deletes this report.
   Future<bool> deleteCurrentReport(BuildContext context) async {
+    if (isDeleting.value) return false;
     final currentReport = report.value;
     if (currentReport == null) return false;
 
-    final syncActive = isSyncEnabled && currentReport.accountId != null;
-    final choice = await DeleteConfirmationDialog.show(
-      context,
-      isSyncEnabled: syncActive,
-    );
-    if (choice == DeleteReportChoice.cancel) return false;
+    isDeleting.value = true;
+    try {
+      final syncActive = isSyncEnabled && currentReport.accountId != null;
+      final choice = await DeleteConfirmationDialog.show(
+        context,
+        isSyncEnabled: syncActive,
+      );
+      if (choice == DeleteReportChoice.cancel) return false;
 
-    final shouldTombstone = choice == DeleteReportChoice.deviceAndCloud;
-    final accountId = currentAccountId;
-    final result = await _repo.deleteReport(
-      currentReport.id,
-      accountId: accountId,
-      enforceAccountScope: true,
-      tombstoneForCloud: shouldTombstone,
-    );
+      final shouldTombstone = choice == DeleteReportChoice.deviceAndCloud;
+      final accountId = currentAccountId;
+      final result = await _repo.deleteReport(
+        currentReport.id,
+        accountId: accountId,
+        enforceAccountScope: true,
+        tombstoneForCloud: shouldTombstone,
+      );
 
-    if (result.isSuccess && (result.valueOrNull ?? false)) {
-      if (shouldTombstone && Get.isRegistered<AuthController>()) {
-        unawaited(Get.find<AuthController>().syncNow());
-      }
+      if (result.isSuccess && (result.valueOrNull ?? false)) {
+        if (shouldTombstone && Get.isRegistered<AuthController>()) {
+          unawaited(Get.find<AuthController>().syncNow());
+        }
 
-      Get.back(result: true);
-      final currentContext = Get.context;
-      if (currentContext != null && currentContext.mounted) {
-        ScaffoldMessenger.of(currentContext).showSnackBar(
-          SnackBar(
-            content: Text(
-              shouldTombstone
-                  ? 'Report deleted from device and cloud backup.'
-                  : 'Report deleted from this device.',
+        Get.back(result: true);
+        final currentContext = Get.context;
+        if (currentContext != null && currentContext.mounted) {
+          ScaffoldMessenger.of(currentContext).showSnackBar(
+            SnackBar(
+              content: Text(
+                shouldTombstone
+                    ? 'Report deleted from device and cloud backup.'
+                    : 'Report deleted from this device.',
+              ),
+              duration: const Duration(seconds: 3),
             ),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-      return true;
-    } else {
-      final currentContext = Get.context;
-      if (currentContext != null && currentContext.mounted) {
-        ScaffoldMessenger.of(currentContext).showSnackBar(
-          SnackBar(
-            content: Text(
-              result.failureOrNull?.message ?? 'Failed to delete saved report.',
+          );
+        }
+        return true;
+      } else {
+        final currentContext = Get.context;
+        if (currentContext != null && currentContext.mounted) {
+          ScaffoldMessenger.of(currentContext).showSnackBar(
+            SnackBar(
+              content: Text(
+                result.failureOrNull?.message ??
+                    'Failed to delete saved report.',
+              ),
+              backgroundColor: Theme.of(currentContext).colorScheme.error,
             ),
-            backgroundColor: Theme.of(currentContext).colorScheme.error,
-          ),
-        );
+          );
+        }
+        return false;
       }
-      return false;
+    } finally {
+      isDeleting.value = false;
     }
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -283,6 +284,68 @@ void main() {
       expect(purgeResult.isSuccess, isTrue);
       expect(purgeResult.valueOrNull, equals(3));
       expect(repository.syncedReportIds, isEmpty);
+    });
+
+    test('synchronize prevents concurrent overlapping cycles', () async {
+      final completer = Completer<http.Response>();
+      final mockHttp = MockClient((request) async {
+        return completer.future;
+      });
+
+      final syncClient = SyncApiClient(
+        baseUrl: 'http://localhost:8000',
+        httpClient: mockHttp,
+        tokenProvider: () async => 'token-123',
+      );
+      final accountClient = AccountApiClient(
+        baseUrl: 'http://localhost:8000',
+        httpClient: mockHttp,
+        tokenProvider: () async => 'token-123',
+      );
+
+      final service = ReportSyncService(
+        repository: repository,
+        syncApiClient: syncClient,
+        accountApiClient: accountClient,
+      );
+
+      // Start first sync
+      final firstSync = service.synchronize(
+        accountId: 'usr-123',
+        syncEnabled: true,
+      );
+
+      expect(service.isSyncing, isTrue);
+
+      // Attempt second sync concurrently
+      final secondSync = await service.synchronize(
+        accountId: 'usr-123',
+        syncEnabled: true,
+      );
+
+      expect(secondSync.isFailure, isTrue);
+      expect(
+        secondSync.failureOrNull?.message,
+        contains('already in progress'),
+      );
+
+      // Complete first sync
+      completer.complete(
+        http.Response(
+          jsonEncode({
+            'status': 'success',
+            'records': [],
+            'tombstones': [],
+            'serverTimestamp': '2026-10-16T12:00:00Z',
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        ),
+      );
+
+      final firstResult = await firstSync;
+      expect(firstResult.isSuccess, isTrue);
+      expect(service.isSyncing, isFalse);
     });
   });
 }

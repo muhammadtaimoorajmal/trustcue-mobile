@@ -193,7 +193,9 @@ class AuthController extends GetxController {
   /// If disabling and [purgeCloud] is true, purges cloud records without touching local reports.
   Future<bool> toggleCloudSync(bool enabled, {bool purgeCloud = false}) async {
     final currentUser = user.value;
-    if (currentUser == null || !isAuthenticated) return false;
+    if (currentUser == null || !isAuthenticated || isSyncing.value) {
+      return false;
+    }
 
     isSyncing.value = true;
     syncError.value = null;
@@ -235,7 +237,8 @@ class AuthController extends GetxController {
     if (currentUser == null ||
         !isAuthenticated ||
         currentProfile == null ||
-        effectiveService == null) {
+        effectiveService == null ||
+        isSyncing.value) {
       return null;
     }
     if (!currentProfile.syncEnabled) {
@@ -266,7 +269,10 @@ class AuthController extends GetxController {
   Future<bool> purgeCloudBackups() async {
     final currentUser = user.value;
     final effectiveService = _effectiveSyncService;
-    if (currentUser == null || !isAuthenticated || effectiveService == null) {
+    if (currentUser == null ||
+        !isAuthenticated ||
+        effectiveService == null ||
+        isPurgingSync.value) {
       return false;
     }
 

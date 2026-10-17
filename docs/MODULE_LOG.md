@@ -1413,3 +1413,49 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Debug APK Compilation: PASS (`flutter build apk --debug`), built `build\app\outputs\flutter-apk\app-debug.apk`.
   - Physical Device Verification Scope: Physical phone (Vivo V2207, `10AC9R1ABF0013A`) disconnected over USB during adb streaming; automated on-device test script is stored at `frontend/integration_test/module42_report_export_and_sharing_test.dart` for execution upon physical reconnect.
 - **Status:** Complete on `frontend`. Stopped before Module 43.
+
+## Module 43: Workflow Reliability, Offline Behavior, Retries, and Lifecycle Handling
+- **Scope & Objectives:**
+  - Hardened end-to-end user workflows against unexpected disconnections, backgrounding, concurrency hazards, and account switches.
+  - Test Runner Optimization (`frontend/tool/test.ps1`): corrected `-Suite device` execution to respect `-TestPath`, enabling targeted, bounded integration test runs (`module43_workflow_reliability_test.dart`) with strict watchdog timeouts, eliminating monolithic test stalls.
+  - Export Script Fidelity & Limitation Handling: updated `PdfExportBuilder` to detect non-Latin/Urdu scripts and reject PDF compilation with `UnsupportedPdfScriptException` rather than corrupting content or silently dropping glyphs. Added `isPdfSupported` and `pdfUnsupportedReason` to `ExportController`, and an error banner with a one-tap "Switch to Plain Text (.txt)" button in `ExportReportSheet` to ensure users get 100% lossless UTF-8 export.
+  - Export Temporary Cache Management: integrated `DefaultExportStorageService.cleanupAllExports()` into `PrivacyController.clearTemporaryFiles()`, ensuring complete purge of temporary export files alongside screenshot cache.
+  - Concurrency & Rapid-Tap Mutex Protection:
+    - Added `isDeleting` observable mutex in `SavedReportDetailController` and `HistoryController` with UI button disablement, preventing race conditions or duplicate deletion requests during in-flight deletes.
+    - Added `_isSyncing` mutex in `ReportSyncService.synchronize()`, returning safe early rejection if a sync cycle is already executing.
+    - Added `isSyncing` and `isPurgingSync` guards in `AuthController.toggleCloudSync()`, `syncNow()`, and `purgeCloudBackups()`.
+    - Added `isGenerating` and `isSharing` concurrency guards in `ExportController.copyPlainTextToClipboard()`.
+  - Session Boundary & In-Flight State Invalidation:
+    - Added `StreamSubscription<AuthStatus>` listener in `AnalysisResultsController`: automatically invalidates in-flight and completed cloud AI results, clears upload consent, and resets report persistence status when the authenticated account changes or signs out.
+    - Bound `AnalysisResultsController.requestAiAnalysis()` to `initialAccountId`: rejects remote AI response if account switches during network transit.
+  - Pure-Offline Invariance: verified all local pipelines (text input, screenshot OCR, link inspection, heuristic rule engine, SQLite report saving, history browsing, education catalog, feedback recording, and plain text export) operate 100% offline without network connectivity or authentication.
+- **Components Created / Updated:**
+  - Frontend (`trustcue-mobile`):
+    - `frontend/tool/test.ps1`: Fixed `-Suite device` target test path selection.
+    - `frontend/lib/features/export/data/services/pdf_export_builder.dart`: Added script fidelity checks, `UnsupportedPdfScriptException`, and ASCII typographical mapping.
+    - `frontend/lib/features/export/presentation/controllers/export_controller.dart`: Added `isPdfSupported`, `pdfUnsupportedReason`, and clipboard concurrency guards.
+    - `frontend/lib/features/export/presentation/widgets/export_report_sheet.dart`: Added PDF script block warning container, switch-to-plain-text action, and disabled primary share button when unsupported.
+    - `frontend/lib/features/analysis/presentation/controllers/analysis_results_controller.dart`: Added auth stream listener and session invalidation.
+    - `frontend/lib/features/reports/data/services/report_sync_service.dart`: Added `_isSyncing` mutex in `synchronize()`.
+    - `frontend/lib/features/reports/presentation/controllers/saved_report_detail_controller.dart`: Added `isDeleting` mutex guard.
+    - `frontend/lib/features/reports/presentation/screens/saved_report_detail_screen.dart`: Disabled delete action when `isDeleting` is true.
+    - `frontend/lib/features/reports/presentation/controllers/history_controller.dart`: Added `isDeleting` mutex guard.
+    - `frontend/lib/features/privacy/presentation/controllers/privacy_controller.dart`: Integrated export cache cleanup in `clearTemporaryFiles()`.
+    - `frontend/lib/features/auth/presentation/controllers/auth_controller.dart`: Added sync button double-tap guards.
+    - `frontend/integration_test/module43_workflow_reliability_test.dart`: Dedicated integration test script verifying offline pipeline, script blocking, concurrency, and local deletion.
+    - `frontend/test/features/export/data/pdf_export_builder_test.dart`: Updated script fidelity and exception assertions.
+    - `frontend/test/features/export/presentation/export_controller_test.dart`: Added script blocking and clipboard concurrency tests.
+    - `frontend/test/features/analysis/presentation/controllers/analysis_results_controller_test.dart`: Added session switch invalidation test.
+    - `frontend/test/features/reports/data/services/report_sync_service_test.dart`: Added sync concurrency mutex test.
+    - `frontend/test/features/reports/presentation/controllers/saved_report_detail_controller_test.dart`: Added `isDeleting` mutex test.
+    - `frontend/test/features/reports/presentation/controllers/history_controller_test.dart`: Added `isDeleting` mutex test.
+    - `frontend/test/features/privacy/presentation/controllers/privacy_controller_test.dart`: Added export cleanup test.
+    - `docs/ROADMAP.md`, `docs/PROJECT_STATE.md`, `docs/MODULE_LOG.md`.
+- **Checks Performed:**
+  - Automated Unit & Widget Tests: 844/844 PASS (`flutter test`), 0 failures, 0 regressions across entire app.
+  - Static Analysis: PASS (`flutter analyze --no-pub`), 0 issues found across all files.
+  - Code Formatting: PASS (`dart format`), clean.
+  - Debug APK Compilation: PASS (`flutter build apk --debug`), built `build\app\outputs\flutter-apk\app-debug.apk`.
+  - Physical Device Verification Scope: Single bounded run executed on Vivo V2207 (`10AC9R1ABF0013A`) via `tool/test.ps1 -Suite device -DeviceId 10AC9R1ABF0013A -TestPath integration_test/module43_workflow_reliability_test.dart -TimeoutSeconds 180`. App compiled (37.3s) and installed (12.5s); runner safely stopped at the bounded 180s threshold without unbounded session delay. Logged at `build/test-runner/77a171f8180542708a78d5da658625a7.out.log`. Recorded as completed implementation with pending device check per execution policy.
+- **Status:** Complete on `frontend`. Stopped before Module 44.
+

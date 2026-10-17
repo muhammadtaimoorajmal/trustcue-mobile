@@ -25,23 +25,33 @@ class PlainTextExportFormatter {
     buffer.writeln(_separator);
     buffer.writeln('                        TRUSTCUE SCAM ANALYSIS REPORT');
     buffer.writeln(_separator);
-    buffer.writeln('Export Generated:     ${_formatTimestamp(data.exportedAt)}');
-    buffer.writeln('Analysis Executed:    ${_formatTimestamp(data.analyzedAt)}');
+    buffer.writeln(
+      'Export Generated:     ${_formatTimestamp(data.exportedAt)}',
+    );
+    buffer.writeln(
+      'Analysis Executed:    ${_formatTimestamp(data.analyzedAt)}',
+    );
     buffer.writeln('Report Identifier:    ${data.reportId}');
-    buffer.writeln('Input Channel:        ${data.inputSource.name.toUpperCase()}');
+    buffer.writeln(
+      'Input Channel:        ${data.inputSource.name.toUpperCase()}',
+    );
 
     final provenanceStr = data.hasAiAnalysis
         ? 'On-Device Heuristics + AI-Assisted (${data.aiProvider ?? "Remote AI"} / ${data.aiModel ?? "Unknown Model"})'
         : 'On-Device Heuristic Rules';
     buffer.writeln('Analysis Provenance:  $provenanceStr');
-    buffer.writeln('Assessment Outcome:   ${_formatOutcome(data.outcomeState)}');
+    buffer.writeln(
+      'Assessment Outcome:   ${_formatOutcome(data.outcomeState)}',
+    );
     buffer.writeln(_separator);
     buffer.writeln();
 
     // Cloud summary notice if applicable
     if (data.isCloudSummaryOnly) {
       buffer.writeln('[NOTICE: Reconstructed from cloud summary metadata.');
-      buffer.writeln(' Detailed message text and evidence quotes are not stored in cloud summaries.]');
+      buffer.writeln(
+        ' Detailed message text and evidence quotes are not stored in cloud summaries.]',
+      );
       buffer.writeln();
     }
 
@@ -53,8 +63,12 @@ class PlainTextExportFormatter {
     // Detected indicators
     buffer.writeln('--- DETECTED INDICATORS (${data.findingCount}) ---');
     if (data.findings.isEmpty) {
-      buffer.writeln('No matching scam indicator patterns were identified during evaluation.');
-      buffer.writeln('Important: This does not guarantee that the message is authentic or safe.');
+      buffer.writeln(
+        'No matching scam indicator patterns were identified during evaluation.',
+      );
+      buffer.writeln(
+        'Important: This does not guarantee that the message is authentic or safe.',
+      );
     } else {
       for (int i = 0; i < data.findings.length; i++) {
         final finding = data.findings[i];
@@ -64,7 +78,9 @@ class PlainTextExportFormatter {
             : 'On-Device Heuristic Rule';
 
         buffer.writeln('[$index] ${finding.category}');
-        buffer.writeln('    Provenance: $originLabel (producer: ${finding.producerId})');
+        buffer.writeln(
+          '    Provenance: $originLabel (producer: ${finding.producerId})',
+        );
         buffer.writeln('    Explanation: ${finding.explanation}');
 
         if (finding.evidenceQuotes.isNotEmpty) {
@@ -135,4 +151,3 @@ class PlainTextExportFormatter {
     }
   }
 }
-

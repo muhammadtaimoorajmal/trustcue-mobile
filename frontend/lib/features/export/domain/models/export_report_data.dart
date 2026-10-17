@@ -71,7 +71,11 @@ class ExportReportData {
        limitations = List.unmodifiable(limitations),
        suggestedActions = List.unmodifiable(suggestedActions) {
     if (reportId.trim().isEmpty) {
-      throw ArgumentError.value(reportId, 'reportId', 'Report ID must not be empty.');
+      throw ArgumentError.value(
+        reportId,
+        'reportId',
+        'Report ID must not be empty.',
+      );
     }
   }
 
@@ -79,6 +83,6 @@ class ExportReportData {
   int get findingCount => findings.length;
 
   /// Whether reviewed text is included in this export.
-  bool get hasReviewedText => reviewedText != null && reviewedText!.trim().isNotEmpty;
+  bool get hasReviewedText =>
+      reviewedText != null && reviewedText!.trim().isNotEmpty;
 }
-

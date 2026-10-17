@@ -25,7 +25,8 @@ if ($Suite -eq 'navigation') {
     $testArguments += " $TestPath"
 } elseif ($Suite -eq 'device') {
     if (!$DeviceId) { throw 'DeviceId is required for device tests.' }
-    $testArguments += " integration_test/app_smoke_test.dart -d $DeviceId"
+    $targetTest = if ($TestPath) { $TestPath } else { 'integration_test/app_smoke_test.dart' }
+    $testArguments += " $targetTest -d $DeviceId"
 }
 
 $command = '/d /s /c ""' + $flutterPath + '" ' + $testArguments + '"'

@@ -39,6 +39,7 @@ class ReportSyncService {
   final CloudReportSummaryCodec summaryCodec;
 
   DateTime? _lastSyncTime;
+  bool _isSyncing = false;
 
   ReportSyncService({
     required this.repository,
@@ -48,6 +49,7 @@ class ReportSyncService {
   });
 
   DateTime? get lastSyncTime => _lastSyncTime;
+  bool get isSyncing => _isSyncing;
 
   /// Executes a full synchronization cycle (push pending local changes, pull remote tombstones/updates).
   Future<Result<SyncCycleResult>> synchronize({
@@ -66,6 +68,16 @@ class ReportSyncService {
         ),
       );
     }
+
+    if (_isSyncing) {
+      return const Result.failure(
+        AnalysisFailure.storage(
+          'A synchronization cycle is already in progress.',
+        ),
+      );
+    }
+
+    _isSyncing = true;
 
     try {
       // 1. Collect pending uploads and pending tombstones
@@ -180,6 +192,8 @@ class ReportSyncService {
       return Result.failure(
         AnalysisFailure.storage('Unexpected error during synchronization: $e'),
       );
+    } finally {
+      _isSyncing = false;
     }
   }
 

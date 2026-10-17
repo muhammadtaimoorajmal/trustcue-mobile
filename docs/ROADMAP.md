@@ -66,7 +66,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **40** | Privacy, retention and consent controls | Completed | `frontend` |
 | **41** | Education, synthetic examples, feedback and localization | Completed | `frontend` |
 | **42** | User-controlled privacy-reviewed export/sharing | Completed | `frontend` |
-| **43** | Complete workflow integration and offline/retry/lifecycle handling | Planned | `frontend` |
+| **43** | Complete workflow integration and offline/retry/lifecycle handling | Completed | `frontend` |
 | **44** | Security and privacy testing | Planned | `frontend` / `backend` |
 | **45** | Accessibility and usability verification | Planned | `frontend` |
 | **46** | End-to-end, real-device, performance and storage verification | Planned | `frontend` / `backend` |

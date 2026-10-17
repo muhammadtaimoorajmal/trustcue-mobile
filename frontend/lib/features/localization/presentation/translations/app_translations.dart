@@ -125,16 +125,14 @@ class AppTranslations extends Translations {
     'export_include_ai': 'Include AI explanations',
     'export_include_ai_desc':
         'Exposes detailed server-assisted analysis reasoning.',
-    'export_privacy_warning':
-        'Warning: Exported reports may expose sensitive communication. Only share with parties you trust.',
+    'export_privacy_warning': 'Warning: Exported reports may expose sensitive communication. Only share with parties you trust.',
     'export_share_button': 'Share Report',
     'export_copy_button': 'Copy Text',
     'export_copied_toast': 'Report copied to clipboard',
     'export_preview_title': 'Report Preview',
     'export_generating': 'Preparing export file...',
     'export_sharing': 'Opening share sheet...',
-    'export_pdf_urdu_notice':
-        'PDF uses Latin typography. Plain Text (.txt) is recommended for full Urdu and non-Latin script fidelity.',
+    'export_pdf_urdu_notice': 'PDF uses Latin typography. Plain Text (.txt) is recommended for full Urdu and non-Latin script fidelity.',
     'export_action_tooltip': 'Export or Share Report',
   };
 
@@ -250,16 +248,14 @@ class AppTranslations extends Translations {
     'export_include_ai': 'مصنوعی ذہانت کی وضاحتیں شامل کریں',
     'export_include_ai_desc':
         'سرور کے معاونتی تجزیے کی تفصیلی وجوہات ظاہر کرتا ہے۔',
-    'export_privacy_warning':
-        'انتباہ: ایکسپورٹ کردہ رپورٹ حساس معلومات ظاہر کر سکتی ہے۔ صرف قابل اعتماد افراد سے شیئر کریں۔',
+    'export_privacy_warning': 'انتباہ: ایکسپورٹ کردہ رپورٹ حساس معلومات ظاہر کر سکتی ہے۔ صرف قابل اعتماد افراد سے شیئر کریں۔',
     'export_share_button': 'رپورٹ شیئر کریں',
     'export_copy_button': 'متن کاپی کریں',
     'export_copied_toast': 'رپورٹ کا متن کلپ بورڈ پر کاپی ہو گیا',
     'export_preview_title': 'رپورٹ کا پیش نظارہ',
     'export_generating': 'ایکسپورٹ فائل تیار ہو رہی ہے...',
     'export_sharing': 'شیئر کا آپشن کھولا جا رہا ہے...',
-    'export_pdf_urdu_notice':
-        'پی ڈی ایف صرف لاطینی رسم الخط کو سپورٹ کرتا ہے۔ مکمل اردو رسم الخط کے لیے سادہ متن (.txt) تجویز کیا جاتا ہے۔',
+    'export_pdf_urdu_notice': 'پی ڈی ایف صرف لاطینی رسم الخط کو سپورٹ کرتا ہے۔ مکمل اردو رسم الخط کے لیے سادہ متن (.txt) تجویز کیا جاتا ہے۔',
     'export_action_tooltip': 'رپورٹ ایکسپورٹ یا شیئر کریں',
   };
 }

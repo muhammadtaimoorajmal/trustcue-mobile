@@ -54,7 +54,9 @@ void main() {
         analyzedAt: DateTime.utc(2026, 10, 15, 12, 0, 1),
         findings: [localFinding],
         limitations: const ['Evaluated deterministic on-device rules.'],
-        suggestedActions: const ['Contact your bank directly via official phone number.'],
+        suggestedActions: const [
+          'Contact your bank directly via official phone number.',
+        ],
       );
 
       aiReport = AiAnalysisReport(
@@ -105,35 +107,41 @@ void main() {
       );
     });
 
-    test('extracts from SavedReport with default privacy options (summaries only)', () {
-      final exportData = ExportDataExtractor.fromSavedReport(
-        report: savedReport,
-        options: const ExportOptions(),
-        exportedAt: DateTime.utc(2026, 10, 17, 10, 0, 0),
-      );
+    test(
+      'extracts from SavedReport with default privacy options (summaries only)',
+      () {
+        final exportData = ExportDataExtractor.fromSavedReport(
+          report: savedReport,
+          options: const ExportOptions(),
+          exportedAt: DateTime.utc(2026, 10, 17, 10, 0, 0),
+        );
 
-      expect(exportData.reportId, 'saved-rep-1');
-      expect(exportData.analyzedAt, DateTime.utc(2026, 10, 15, 12, 0, 1));
-      expect(exportData.exportedAt, DateTime.utc(2026, 10, 17, 10, 0, 0));
-      expect(exportData.inputSource, InputSource.messageText);
-      expect(exportData.hasAiAnalysis, isTrue);
+        expect(exportData.reportId, 'saved-rep-1');
+        expect(exportData.analyzedAt, DateTime.utc(2026, 10, 15, 12, 0, 1));
+        expect(exportData.exportedAt, DateTime.utc(2026, 10, 17, 10, 0, 0));
+        expect(exportData.inputSource, InputSource.messageText);
+        expect(exportData.hasAiAnalysis, isTrue);
 
-      // Default privacy bounds:
-      // Reviewed text MUST be null by default
-      expect(exportData.reviewedText, isNull);
-      expect(exportData.hasReviewedText, isFalse);
+        // Default privacy bounds:
+        // Reviewed text MUST be null by default
+        expect(exportData.reviewedText, isNull);
+        expect(exportData.hasReviewedText, isFalse);
 
-      // AI findings are excluded by default
-      expect(exportData.findingCount, 1);
-      expect(exportData.findings.first.category, 'urgency');
+        // AI findings are excluded by default
+        expect(exportData.findingCount, 1);
+        expect(exportData.findings.first.category, 'urgency');
 
-      // Evidence quotes MUST be empty by default
-      expect(exportData.findings.first.evidenceQuotes, isEmpty);
+        // Evidence quotes MUST be empty by default
+        expect(exportData.findings.first.evidenceQuotes, isEmpty);
 
-      // Limitations include canonical disclaimer
-      expect(exportData.limitations, contains(ExportDataExtractor.canonicalDisclaimer));
-      expect(exportData.isCloudSummaryOnly, isFalse);
-    });
+        // Limitations include canonical disclaimer
+        expect(
+          exportData.limitations,
+          contains(ExportDataExtractor.canonicalDisclaimer),
+        );
+        expect(exportData.isCloudSummaryOnly, isFalse);
+      },
+    );
 
     test('extracts from SavedReport with all opt-in options enabled', () {
       const options = ExportOptions(
@@ -159,7 +167,10 @@ void main() {
       expect(exportData.findings[1].evidenceQuotes, contains('Wire \$5000'));
 
       // AI uncertainty notes merged into limitations
-      expect(exportData.limitations, contains('AI evaluation is assistive only.'));
+      expect(
+        exportData.limitations,
+        contains('AI evaluation is assistive only.'),
+      );
     });
 
     test('extracts from in-memory LocalAssessment seamlessly', () {
@@ -184,7 +195,10 @@ void main() {
       );
 
       expect(exportData.reportId, 'rep-export-1');
-      expect(exportData.outcomeState, AssessmentOutcomeState.indicatorsDetected);
+      expect(
+        exportData.outcomeState,
+        AssessmentOutcomeState.indicatorsDetected,
+      );
       expect(exportData.reviewedText, snapshot.text);
       expect(exportData.suggestedActions.isNotEmpty, isTrue);
     });
@@ -206,7 +220,9 @@ void main() {
 
       final exportData = ExportDataExtractor.fromSummary(
         summary: summary,
-        options: const ExportOptions(includeReviewedText: true), // Requested, but summary has no snapshot
+        options: const ExportOptions(
+          includeReviewedText: true,
+        ), // Requested, but summary has no snapshot
       );
 
       expect(exportData.reportId, 'summary-001');
@@ -214,7 +230,9 @@ void main() {
       expect(exportData.reviewedText, isNull); // Must remain null for summary
       expect(exportData.findings, isEmpty);
       expect(
-        exportData.limitations.any((l) => l.contains('high-level summary record')),
+        exportData.limitations.any(
+          (l) => l.contains('high-level summary record'),
+        ),
         isTrue,
       );
     });

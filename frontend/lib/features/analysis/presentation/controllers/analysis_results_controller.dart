@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:trustcue_mobile/app/routes/app_routes.dart';
@@ -116,10 +118,24 @@ class AnalysisResultsController extends GetxController {
 
   int _operationId = 0;
   int _aiOperationId = 0;
+  StreamSubscription<AuthStatus>? _authSubscription;
 
   @override
   void onInit() {
     super.onInit();
+    final auth =
+        authRepository ??
+        (Get.isRegistered<AuthRepository>()
+            ? Get.find<AuthRepository>()
+            : null);
+    _authSubscription = auth?.statusStream.listen((_) {
+      if (isClosed) return;
+      _aiOperationId++;
+      invalidateConsent();
+      if (saveStatus.value == ReportSaveStatus.saved) {
+        saveStatus.value = ReportSaveStatus.notSaved;
+      }
+    });
     startAnalysis();
   }
 
@@ -128,6 +144,7 @@ class AnalysisResultsController extends GetxController {
     // Invalidate any in-flight operations
     _operationId++;
     _aiOperationId++;
+    _authSubscription?.cancel();
     assessment.value = null;
     aiReport.value = null;
     currentConsent.value = null;
@@ -249,6 +266,16 @@ class AnalysisResultsController extends GetxController {
       );
 
       if (isClosed || _aiOperationId != operationId) return;
+
+      // Ensure session account has not changed while request was in flight
+      final latestAccountId = auth.currentStatus == AuthStatus.authenticated
+          ? auth.currentUser?.id
+          : null;
+      if (latestAccountId != accountId) {
+        aiState.value = AiAnalysisState.failed;
+        aiErrorMessage.value = 'Account session changed during request. AI results were discarded.';
+        return;
+      }
 
       if (result.isSuccess) {
         aiReport.value = result.valueOrNull;

@@ -51,16 +51,16 @@ class DefaultExportStorageService implements ExportStorageService {
     await pruneOldExports();
 
     final dir = await _getExportDirectory();
-    final fileName = _generateFileName(ExportFormat.plainText, timestamp: timestamp);
+    final fileName = _generateFileName(
+      ExportFormat.plainText,
+      timestamp: timestamp,
+    );
     final file = File(p.join(dir.path, fileName));
     return file.writeAsString(content, flush: true);
   }
 
   @override
-  Future<File> writePdfReport(
-    Uint8List bytes, {
-    DateTime? timestamp,
-  }) async {
+  Future<File> writePdfReport(Uint8List bytes, {DateTime? timestamp}) async {
     // Proactively prune older exports
     await pruneOldExports();
 
@@ -71,7 +71,9 @@ class DefaultExportStorageService implements ExportStorageService {
   }
 
   @override
-  Future<int> pruneOldExports({Duration maxAge = const Duration(hours: 2)}) async {
+  Future<int> pruneOldExports({
+    Duration maxAge = const Duration(hours: 2),
+  }) async {
     try {
       final dir = await _getExportDirectory();
       if (!await dir.exists()) return 0;

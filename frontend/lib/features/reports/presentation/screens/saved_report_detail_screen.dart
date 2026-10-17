@@ -36,14 +36,25 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
                 IconButton(
                   icon: const Icon(Icons.ios_share_rounded),
                   tooltip: 'export_action_tooltip'.tr,
-                  constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
                   onPressed: () => _openExportSheet(context, report),
                 ),
                 IconButton(
-                  icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: theme.colorScheme.error,
+                  ),
                   tooltip: 'Delete report from device',
-                  constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                  onPressed: () => controller.deleteCurrentReport(context),
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
+                  onPressed: controller.isDeleting.value
+                      ? null
+                      : () => controller.deleteCurrentReport(context),
                 ),
               ],
             );
@@ -187,12 +198,12 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
     final exportController = ExportController(
       hasSourceText: report.snapshot.text.isNotEmpty,
       hasAiFindings: report.hasAiAnalysis,
-      hasEvidenceQuotes: report.localReport.findings.any((f) => f.evidence.isNotEmpty) ||
-          (report.aiReport?.findings.any((f) => f.evidence.isNotEmpty) ?? false),
-      dataFactory: (options) => ExportDataExtractor.fromSavedReport(
-        report: report,
-        options: options,
-      ),
+      hasEvidenceQuotes:
+          report.localReport.findings.any((f) => f.evidence.isNotEmpty) ||
+          (report.aiReport?.findings.any((f) => f.evidence.isNotEmpty) ??
+              false),
+      dataFactory: (options) =>
+          ExportDataExtractor.fromSavedReport(report: report, options: options),
     );
 
     ExportReportSheet.show(context, controller: exportController);

@@ -147,7 +147,9 @@ void main() {
       final activeInputController = Get.put<InputTextController>(
         InputTextController(),
       );
-      activeInputController.populateSharedText('My active custom draft message');
+      activeInputController.populateSharedText(
+        'My active custom draft message',
+      );
 
       await tester.ensureVisible(tryExampleBtn);
       await tester.pumpAndSettle();
@@ -297,8 +299,7 @@ void main() {
       await tester.tap(
         find.byWidgetPredicate(
           (w) =>
-              w is RadioListTile<AppLanguage> &&
-              w.value == AppLanguage.english,
+              w is RadioListTile<AppLanguage> && w.value == AppLanguage.english,
         ),
       );
       await tester.pumpAndSettle();

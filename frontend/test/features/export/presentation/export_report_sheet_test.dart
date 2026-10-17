@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -17,15 +18,19 @@ import 'package:trustcue_mobile/features/localization/presentation/translations/
 
 class MockStorageService implements ExportStorageService {
   @override
-  Future<File> writePlainTextReport(String content, {DateTime? timestamp}) async =>
-      File('dummy.txt');
+  Future<File> writePlainTextReport(
+    String content, {
+    DateTime? timestamp,
+  }) async => File('dummy.txt');
 
   @override
   Future<File> writePdfReport(Uint8List bytes, {DateTime? timestamp}) async =>
       File('dummy.pdf');
 
   @override
-  Future<int> pruneOldExports({Duration maxAge = const Duration(hours: 2)}) async => 0;
+  Future<int> pruneOldExports({
+    Duration maxAge = const Duration(hours: 2),
+  }) async => 0;
 
   @override
   Future<int> cleanupAllExports() async => 0;
@@ -81,7 +86,9 @@ void main() {
       );
     }
 
-    testWidgets('renders all controls, default options, and preview', (tester) async {
+    testWidgets('renders all controls, default options, and preview', (
+      tester,
+    ) async {
       final controller = ExportController(
         dataFactory: createTestData,
         storageService: MockStorageService(),
@@ -96,9 +103,7 @@ void main() {
         GetMaterialApp(
           translations: AppTranslations(),
           locale: const Locale('en', 'US'),
-          home: Scaffold(
-            body: ExportReportSheet(controller: controller),
-          ),
+          home: Scaffold(body: ExportReportSheet(controller: controller)),
         ),
       );
       await tester.pumpAndSettle();
@@ -126,7 +131,9 @@ void main() {
 
       // Check privacy warning banner
       expect(
-        find.textContaining('Warning: Exported reports may expose sensitive communication.'),
+        find.textContaining(
+          'Warning: Exported reports may expose sensitive communication.',
+        ),
         findsOneWidget,
       );
 
@@ -135,7 +142,9 @@ void main() {
       expect(find.text('Copy Text'), findsOneWidget);
     });
 
-    testWidgets('switching format to PDF shows Urdu typography notice', (tester) async {
+    testWidgets('switching format to PDF shows Urdu typography notice', (
+      tester,
+    ) async {
       final controller = ExportController(
         dataFactory: createTestData,
         storageService: MockStorageService(),
@@ -150,9 +159,7 @@ void main() {
         GetMaterialApp(
           translations: AppTranslations(),
           locale: const Locale('en', 'US'),
-          home: Scaffold(
-            body: ExportReportSheet(controller: controller),
-          ),
+          home: Scaffold(body: ExportReportSheet(controller: controller)),
         ),
       );
       await tester.pumpAndSettle();
@@ -172,7 +179,9 @@ void main() {
       expect(find.text('Copy Text'), findsNothing);
     });
 
-    testWidgets('toggling checkboxes updates controller options', (tester) async {
+    testWidgets('toggling checkboxes updates controller options', (
+      tester,
+    ) async {
       final controller = ExportController(
         dataFactory: createTestData,
         storageService: MockStorageService(),
@@ -187,9 +196,7 @@ void main() {
         GetMaterialApp(
           translations: AppTranslations(),
           locale: const Locale('en', 'US'),
-          home: Scaffold(
-            body: ExportReportSheet(controller: controller),
-          ),
+          home: Scaffold(body: ExportReportSheet(controller: controller)),
         ),
       );
       await tester.pumpAndSettle();

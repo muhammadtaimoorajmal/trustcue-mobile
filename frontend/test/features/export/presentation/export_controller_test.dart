@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/finding_origin.dart';
@@ -16,7 +17,10 @@ class FakeExportStorageService implements ExportStorageService {
   Uint8List? lastWrittenBytes;
 
   @override
-  Future<File> writePlainTextReport(String content, {DateTime? timestamp}) async {
+  Future<File> writePlainTextReport(
+    String content, {
+    DateTime? timestamp,
+  }) async {
     lastWrittenContent = content;
     final file = File('${Directory.systemTemp.path}/test_report.txt');
     await file.writeAsString(content);
@@ -32,7 +36,9 @@ class FakeExportStorageService implements ExportStorageService {
   }
 
   @override
-  Future<int> pruneOldExports({Duration maxAge = const Duration(hours: 2)}) async => 0;
+  Future<int> pruneOldExports({
+    Duration maxAge = const Duration(hours: 2),
+  }) async => 0;
 
   @override
   Future<int> cleanupAllExports() async => 0;
@@ -79,7 +85,9 @@ void main() {
             origin: FindingOrigin.localRule,
             producerId: 'rule.urgency',
             explanation: 'Immediate payment required.',
-            evidenceQuotes: options.includeEvidenceQuotes ? ['Act now!'] : const [],
+            evidenceQuotes: options.includeEvidenceQuotes
+                ? ['Act now!']
+                : const [],
           ),
           if (options.includeAiExplanations)
             const ExportFindingItem(
@@ -92,7 +100,9 @@ void main() {
         ],
         limitations: const ['Honest limitations.'],
         suggestedActions: const ['Contact your bank.'],
-        reviewedText: options.includeReviewedText ? 'Dear user, Act now!' : null,
+        reviewedText: options.includeReviewedText
+            ? 'Dear user, Act now!'
+            : null,
       );
     }
 
@@ -101,22 +111,31 @@ void main() {
       fakeLauncher = FakeShareLauncher();
     });
 
-    test('initializes with strict privacy defaults and generates initial preview', () {
-      final controller = ExportController(
-        dataFactory: createTestData,
-        storageService: fakeStorage,
-        shareLauncher: fakeLauncher,
-      );
-      controller.onInit();
+    test(
+      'initializes with strict privacy defaults and generates initial preview',
+      () {
+        final controller = ExportController(
+          dataFactory: createTestData,
+          storageService: fakeStorage,
+          shareLauncher: fakeLauncher,
+        );
+        controller.onInit();
 
-      expect(controller.options.value.format, ExportFormat.plainText);
-      expect(controller.options.value.includeReviewedText, isFalse);
-      expect(controller.options.value.includeEvidenceQuotes, isFalse);
-      expect(controller.options.value.includeAiExplanations, isFalse);
+        expect(controller.options.value.format, ExportFormat.plainText);
+        expect(controller.options.value.includeReviewedText, isFalse);
+        expect(controller.options.value.includeEvidenceQuotes, isFalse);
+        expect(controller.options.value.includeAiExplanations, isFalse);
 
-      expect(controller.previewText.value, contains('TRUSTCUE SCAM ANALYSIS REPORT'));
-      expect(controller.previewText.value, contains('[Reviewed message text excluded by user for privacy]'));
-    });
+        expect(
+          controller.previewText.value,
+          contains('TRUSTCUE SCAM ANALYSIS REPORT'),
+        );
+        expect(
+          controller.previewText.value,
+          contains('[Reviewed message text excluded by user for privacy]'),
+        );
+      },
+    );
 
     test('toggling options reactively updates preview', () {
       final controller = ExportController(
@@ -156,7 +175,10 @@ void main() {
 
       expect(status, ShareStatus.success);
       expect(fakeStorage.lastWrittenContent, isNotNull);
-      expect(fakeStorage.lastWrittenContent, contains('TRUSTCUE SCAM ANALYSIS REPORT'));
+      expect(
+        fakeStorage.lastWrittenContent,
+        contains('TRUSTCUE SCAM ANALYSIS REPORT'),
+      );
       expect(fakeLauncher.sharedMimeType, 'text/plain');
     });
 
@@ -180,14 +202,14 @@ void main() {
       String? copiedText;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-        if (call.method == 'Clipboard.setData') {
-          copiedText = (call.arguments as Map)['text'] as String?;
-          return null;
-        } else if (call.method == 'Clipboard.getData') {
-          return {'text': copiedText};
-        }
-        return null;
-      });
+            if (call.method == 'Clipboard.setData') {
+              copiedText = (call.arguments as Map)['text'] as String?;
+              return null;
+            } else if (call.method == 'Clipboard.getData') {
+              return {'text': copiedText};
+            }
+            return null;
+          });
 
       final controller = ExportController(
         dataFactory: createTestData,
@@ -201,5 +223,61 @@ void main() {
       expect(controller.wasCopied.value, isTrue);
       expect(copiedText, contains('TRUSTCUE SCAM ANALYSIS REPORT'));
     });
+
+    test('blocks PDF format when non-Latin/Urdu script is present', () async {
+      ExportReportData createUrduData(ExportOptions options) {
+        return ExportReportData(
+          reportId: 'tc-urdu-test',
+          analyzedAt: DateTime.utc(2026, 10, 15, 12, 0, 0),
+          exportedAt: DateTime.utc(2026, 10, 17, 10, 0, 0),
+          inputSource: InputSource.messageText,
+          hasAiAnalysis: false,
+          outcomeState: AssessmentOutcomeState.indicatorsDetected,
+          outcomeSummary: 'مشتبہ پیغام موصول ہوا۔',
+          findings: const [],
+          limitations: const ['Urdu rules.'],
+          suggestedActions: const [],
+          reviewedText: 'یہ ایک فراڈ ہے',
+        );
+      }
+
+      final controller = ExportController(
+        dataFactory: createUrduData,
+        storageService: fakeStorage,
+        shareLauncher: fakeLauncher,
+        initialOptions: const ExportOptions(format: ExportFormat.pdf),
+      );
+      controller.onInit();
+
+      expect(controller.isPdfSupported, isFalse);
+      expect(controller.pdfUnsupportedReason, isNotNull);
+      expect(controller.previewText.value, contains('[PDF EXPORT UNAVAILABLE'));
+
+      // Attempting to share PDF when unsupported must fail safely
+      final status = await controller.shareReport();
+      expect(status, ShareStatus.unavailable);
+      expect(fakeStorage.lastWrittenBytes, isNull);
+    });
+
+    test(
+      'guards copyPlainTextToClipboard against concurrent execution',
+      () async {
+        final controller = ExportController(
+          dataFactory: createTestData,
+          storageService: fakeStorage,
+          shareLauncher: fakeLauncher,
+        );
+        controller.onInit();
+
+        controller.isGenerating.value = true;
+        final copyWhileGenerating = await controller.copyPlainTextToClipboard();
+        expect(copyWhileGenerating, isFalse);
+
+        controller.isGenerating.value = false;
+        controller.isSharing.value = true;
+        final copyWhileSharing = await controller.copyPlainTextToClipboard();
+        expect(copyWhileSharing, isFalse);
+      },
+    );
   });
 }

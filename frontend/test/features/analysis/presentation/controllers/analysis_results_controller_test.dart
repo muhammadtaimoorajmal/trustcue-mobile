@@ -600,6 +600,57 @@ void main() {
       expect(controller.aiState.value, equals(AiAnalysisState.idle));
       expect(controller.aiErrorMessage.value, isNull);
     });
+
+    testWidgets(
+      'invalidates AI results and clears consent when auth status/account changes',
+      (tester) async {
+        final authRepo = FakeAuthRepository(
+          initialStatus: AuthStatus.authenticated,
+          initialUser: AuthUser(
+            id: 'user-original',
+            email: 'orig@trustcue.com',
+            emailVerified: true,
+            createdAt: DateTime.now(),
+          ),
+        );
+
+        final controller = AnalysisResultsController(
+          pipeline: dummyPipeline,
+          args: AnalysisResultsArgs(reviewResult: reviewResult),
+          authRepository: authRepo,
+          apiClient: _FakeAnalysisApiClient(),
+        );
+        controller.onInit();
+        await tester.pump();
+
+        controller.currentConsent.value = UploadConsent.affirmative(
+          snapshot: reviewResult.snapshot,
+          accountId: 'user-original',
+        );
+        controller.aiState.value = AiAnalysisState.completed;
+        controller.aiReport.value = AiAnalysisReport(
+          reportId: 'rep-test',
+          snapshotId: reviewResult.snapshot.id,
+          provider: 'groq',
+          model: 'qwen',
+          analyzedAt: DateTime.utc(2026, 1, 1),
+          factualSummary: 'summary',
+          findings: const [],
+          uncertaintyNotes: const [],
+          suggestedActions: const [],
+        );
+
+        // User logs out or changes account
+        authRepo.setStatus(AuthStatus.unauthenticated, user: null);
+        await tester.pump();
+
+        expect(controller.currentConsent.value, isNull);
+        expect(controller.aiReport.value, isNull);
+        expect(controller.aiState.value, equals(AiAnalysisState.idle));
+
+        controller.onClose();
+      },
+    );
   });
 }
 

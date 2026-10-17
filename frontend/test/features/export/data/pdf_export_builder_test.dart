@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/finding_origin.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/local_assessment.dart';
@@ -32,9 +33,7 @@ void main() {
           'Evaluates observable patterns only.',
           'Cannot verify sender identity.',
         ],
-        suggestedActions: const [
-          'Contact institution using official numbers.',
-        ],
+        suggestedActions: const ['Contact institution using official numbers.'],
         reviewedText: 'Act now or account locked! Verify immediately.',
         isCloudSummaryOnly: false,
       );
@@ -49,7 +48,7 @@ void main() {
       expect(header, '%PDF-');
     });
 
-    test('safely handles non-Latin / Urdu text and emojis without font crashes', () async {
+    test('detects non-Latin / Urdu text and throws UnsupportedPdfScriptException rather than corrupting content', () async {
       final data = ExportReportData(
         reportId: 'tc-pdf-urdu',
         analyzedAt: DateTime.utc(2026, 10, 15, 10, 0, 0),
@@ -67,43 +66,45 @@ void main() {
             evidenceQuotes: ['فوری ادائیگی کریں'],
           ),
         ],
-        limitations: const [
-          'اردو میں محدود قواعد۔',
-        ],
-        suggestedActions: const [
-          'تصدیق کریں۔',
-        ],
+        limitations: const ['اردو میں محدود قواعد۔'],
+        suggestedActions: const ['تصدیق کریں۔'],
         reviewedText: 'پیغام: آپ کی لاٹری نکل آئی ہے۔ 🎁',
       );
 
-      // Must complete successfully without throwing font encoding exceptions
-      final bytes = await PdfExportBuilder.buildPdf(data);
+      final canRender = PdfExportBuilder.canRenderFaithfully(data);
+      expect(canRender, isFalse);
 
-      expect(bytes, isNotNull);
-      expect(bytes.length, greaterThan(100));
+      final supportReason = PdfExportBuilder.checkUnsupportedScript(data);
+      expect(supportReason, isNotNull);
+      expect(supportReason, contains('Urdu or emojis'));
 
-      final header = latin1.decode(bytes.sublist(0, 5));
-      expect(header, '%PDF-');
-    });
-
-    test('builds valid PDF when reviewed text is excluded for privacy', () async {
-      final data = ExportReportData(
-        reportId: 'tc-pdf-no-text',
-        analyzedAt: DateTime.utc(2026, 10, 15, 10, 0, 0),
-        exportedAt: DateTime.utc(2026, 10, 17, 12, 0, 0),
-        inputSource: InputSource.link,
-        hasAiAnalysis: false,
-        outcomeState: AssessmentOutcomeState.noIndicatorsMatched,
-        outcomeSummary: 'No matching indicators.',
-        findings: const [],
-        limitations: const ['Scope disclaimer.'],
-        suggestedActions: const [],
-        reviewedText: null, // Excluded
+      // Building PDF must throw UnsupportedPdfScriptException
+      expect(
+        () => PdfExportBuilder.buildPdf(data),
+        throwsA(isA<UnsupportedPdfScriptException>()),
       );
-
-      final bytes = await PdfExportBuilder.buildPdf(data);
-      expect(bytes.isNotEmpty, isTrue);
     });
+
+    test(
+      'builds valid PDF when reviewed text is excluded for privacy',
+      () async {
+        final data = ExportReportData(
+          reportId: 'tc-pdf-no-text',
+          analyzedAt: DateTime.utc(2026, 10, 15, 10, 0, 0),
+          exportedAt: DateTime.utc(2026, 10, 17, 12, 0, 0),
+          inputSource: InputSource.link,
+          hasAiAnalysis: false,
+          outcomeState: AssessmentOutcomeState.noIndicatorsMatched,
+          outcomeSummary: 'No matching indicators.',
+          findings: const [],
+          limitations: const ['Scope disclaimer.'],
+          suggestedActions: const [],
+          reviewedText: null, // Excluded
+        );
+
+        final bytes = await PdfExportBuilder.buildPdf(data);
+        expect(bytes.isNotEmpty, isTrue);
+      },
+    );
   });
 }
-

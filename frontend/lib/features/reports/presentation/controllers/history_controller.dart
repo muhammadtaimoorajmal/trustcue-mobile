@@ -38,6 +38,7 @@ class HistoryController extends GetxController {
   final RxList<SavedReportSummary> summaries = <SavedReportSummary>[].obs;
   final RxBool isLoading = false.obs;
   final RxBool isLoadingMore = false.obs;
+  final RxBool isDeleting = false.obs;
   final RxBool hasMore = false.obs;
   final RxnString errorMessage = RxnString();
   final RxInt totalCount = 0.obs;
@@ -253,55 +254,61 @@ class HistoryController extends GetxController {
     SavedReportSummary summary,
     BuildContext context,
   ) async {
-    final syncActive = isSyncEnabled && summary.accountId != null;
-    final choice = await DeleteConfirmationDialog.show(
-      context,
-      isSyncEnabled: syncActive,
-    );
-    if (choice == DeleteReportChoice.cancel) return;
+    if (isDeleting.value) return;
+    isDeleting.value = true;
+    try {
+      final syncActive = isSyncEnabled && summary.accountId != null;
+      final choice = await DeleteConfirmationDialog.show(
+        context,
+        isSyncEnabled: syncActive,
+      );
+      if (choice == DeleteReportChoice.cancel) return;
 
-    final shouldTombstone = choice == DeleteReportChoice.deviceAndCloud;
-    final accountId = currentAccountId;
-    final result = await _repo.deleteReport(
-      summary.id,
-      accountId: accountId,
-      enforceAccountScope: true,
-      tombstoneForCloud: shouldTombstone,
-    );
+      final shouldTombstone = choice == DeleteReportChoice.deviceAndCloud;
+      final accountId = currentAccountId;
+      final result = await _repo.deleteReport(
+        summary.id,
+        accountId: accountId,
+        enforceAccountScope: true,
+        tombstoneForCloud: shouldTombstone,
+      );
 
-    if (result.isSuccess && (result.valueOrNull ?? false)) {
-      summaries.removeWhere((item) => item.id == summary.id);
-      totalCount.value = (totalCount.value - 1).clamp(0, 999999);
-      hasMore.value = summaries.length < totalCount.value;
+      if (result.isSuccess && (result.valueOrNull ?? false)) {
+        summaries.removeWhere((item) => item.id == summary.id);
+        totalCount.value = (totalCount.value - 1).clamp(0, 999999);
+        hasMore.value = summaries.length < totalCount.value;
 
-      if (shouldTombstone && Get.isRegistered<AuthController>()) {
-        unawaited(Get.find<AuthController>().syncNow());
-      }
+        if (shouldTombstone && Get.isRegistered<AuthController>()) {
+          unawaited(Get.find<AuthController>().syncNow());
+        }
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              shouldTombstone
-                  ? 'Report deleted from device and cloud backup.'
-                  : 'Report deleted from this device.',
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                shouldTombstone
+                    ? 'Report deleted from device and cloud backup.'
+                    : 'Report deleted from this device.',
+              ),
+              duration: const Duration(seconds: 3),
             ),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } else {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              result.failureOrNull?.message ??
-                  'Failed to delete report from device.',
+          );
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result.failureOrNull?.message ??
+                    'Failed to delete report from device.',
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
             ),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+          );
+        }
       }
+    } finally {
+      isDeleting.value = false;
     }
   }
 
