@@ -74,8 +74,8 @@ COMMENT ON FUNCTION public.purge_synced_reports(UUID) IS 'Purges all cloud synce
 REVOKE ALL ON FUNCTION public.purge_synced_reports(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.purge_synced_reports(UUID) TO authenticated, service_role, postgres;
 
--- 3. Strict allowlist validation check on public.synced_reports payload
--- Ensures only approved summary keys exist and strictly forbids arbitrary/sensitive fields
+-- 3. Strict allowlist and type validation check on public.synced_reports payload
+-- Ensures ONLY approved summary keys exist with valid types and strictly forbids arbitrary/sensitive fields
 ALTER TABLE public.synced_reports
     DROP CONSTRAINT IF EXISTS chk_report_payload_privacy;
 
@@ -89,6 +89,14 @@ ALTER TABLE public.synced_reports
             (report_payload ? 'indicatorCount') AND
             (report_payload ? 'categories') AND
             (report_payload ? 'source') AND
+            ((report_payload - ARRAY['formatVersion', 'outcomeState', 'hasAiAnalysis', 'indicatorCount', 'categories', 'source']) = '{}'::jsonb) AND
+            (jsonb_typeof(report_payload->'formatVersion') = 'number') AND
+            (jsonb_typeof(report_payload->'outcomeState') = 'string') AND
+            (jsonb_typeof(report_payload->'hasAiAnalysis') = 'boolean') AND
+            (jsonb_typeof(report_payload->'indicatorCount') = 'number') AND
+            ((report_payload->>'indicatorCount')::int >= 0) AND
+            (jsonb_typeof(report_payload->'categories') = 'array') AND
+            (jsonb_typeof(report_payload->'source') = 'string') AND
             NOT (report_payload ? 'text') AND
             NOT (report_payload ? 'rawText') AND
             NOT (report_payload ? 'raw_text') AND
@@ -102,6 +110,43 @@ ALTER TABLE public.synced_reports
             NOT (report_payload ? 'input_text') AND
             NOT (report_payload ? 'findings') AND
             NOT (report_payload ? 'snapshot')
+        )
+    );
+
+-- 4. Harden RLS policies against stale generation resurrection and allow deletion when opted out
+DROP POLICY IF EXISTS "reports_insert_own" ON public.synced_reports;
+CREATE POLICY "reports_insert_own"
+    ON public.synced_reports FOR INSERT
+    TO authenticated
+    WITH CHECK (
+        auth.uid() = user_id AND
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE public.profiles.id = auth.uid()
+            AND public.profiles.sync_enabled = TRUE
+            AND (public.profiles.sync_purged_at IS NULL OR NEW.client_updated_at > public.profiles.sync_purged_at)
+        )
+    );
+
+DROP POLICY IF EXISTS "reports_update_own" ON public.synced_reports;
+CREATE POLICY "reports_update_own"
+    ON public.synced_reports FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (
+        auth.uid() = user_id AND
+        (
+            -- Deleting/tombstoning is permitted even when opted out of cloud sync
+            (NEW.is_deleted = TRUE) OR
+            -- Active report updates require sync_enabled = TRUE and non-stale client timestamp
+            (
+                EXISTS (
+                    SELECT 1 FROM public.profiles
+                    WHERE public.profiles.id = auth.uid()
+                    AND public.profiles.sync_enabled = TRUE
+                    AND (public.profiles.sync_purged_at IS NULL OR NEW.client_updated_at > public.profiles.sync_purged_at)
+                )
+            )
         )
     );
 

@@ -178,6 +178,117 @@ BEGIN
     END IF;
 END $$;
 
+-- 8. Verify that payload with extra/unapproved keys (e.g., 'body' or 'message') is REJECTED
+SELECT auth.set_test_user('d0000000-0000-0000-0000-000000000001'::uuid, 'authenticated');
+
+-- Temporarily re-enable sync for User A to test payload constraint
+UPDATE public.profiles SET sync_enabled = TRUE WHERE id = 'd0000000-0000-0000-0000-000000000001';
+
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO public.synced_reports (
+            user_id, client_report_id, snapshot_id, report_payload, client_updated_at
+        ) VALUES (
+            'd0000000-0000-0000-0000-000000000001',
+            'rep-extra-keys-004',
+            'snap-004',
+            '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText", "body": "unauthorized message content"}'::jsonb,
+            now() + interval '1 minute'
+        );
+        RAISE EXCEPTION 'Security Failure: Report with unauthorized extra key was accepted!';
+    EXCEPTION
+        WHEN check_violation THEN
+            NULL; -- Expected check violation
+    END;
+END $$;
+
+-- 9. Verify that payload with invalid value types (e.g., categories as string instead of array) is REJECTED
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO public.synced_reports (
+            user_id, client_report_id, snapshot_id, report_payload, client_updated_at
+        ) VALUES (
+            'd0000000-0000-0000-0000-000000000001',
+            'rep-invalid-type-005',
+            'snap-005',
+            '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": "not-an-array", "source": "messageText"}'::jsonb,
+            now() + interval '1 minute'
+        );
+        RAISE EXCEPTION 'Security Failure: Report with invalid category type was accepted!';
+    EXCEPTION
+        WHEN check_violation THEN
+            NULL; -- Expected check violation
+    END;
+END $$;
+
+-- 10. Verify that stale upload (client_updated_at <= sync_purged_at) is REJECTED by RLS
+DO $$
+DECLARE
+    v_purged_at TIMESTAMPTZ;
+BEGIN
+    SELECT sync_purged_at INTO v_purged_at
+    FROM public.profiles
+    WHERE id = 'd0000000-0000-0000-0000-000000000001';
+
+    BEGIN
+        INSERT INTO public.synced_reports (
+            user_id, client_report_id, snapshot_id, report_payload, client_updated_at
+        ) VALUES (
+            'd0000000-0000-0000-0000-000000000001',
+            'rep-stale-006',
+            'snap-006',
+            '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText"}'::jsonb,
+            v_purged_at - interval '1 hour' -- Stale timestamp preceding purge
+        );
+        RAISE EXCEPTION 'Security Failure: Stale report preceding purge was accepted!';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            NULL; -- Expected RLS denial
+    END;
+END $$;
+
+-- 11. Verify that a user who has opted out (sync_enabled = FALSE) CAN still tombstone an existing report
+UPDATE public.profiles SET sync_enabled = FALSE WHERE id = 'd0000000-0000-0000-0000-000000000001';
+
+-- Insert an initial record using service_role to set up the tombstone test
+SELECT auth.set_test_user(NULL, 'service_role');
+INSERT INTO public.synced_reports (
+    user_id, client_report_id, snapshot_id, report_payload, is_deleted, client_updated_at
+) VALUES (
+    'd0000000-0000-0000-0000-000000000001',
+    'rep-tombstone-007',
+    'snap-007',
+    '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText"}'::jsonb,
+    FALSE,
+    now()
+);
+
+-- Now switch back to authenticated User A and update it to tombstoned (is_deleted = TRUE)
+SELECT auth.set_test_user('d0000000-0000-0000-0000-000000000001'::uuid, 'authenticated');
+
+UPDATE public.synced_reports
+SET is_deleted = TRUE,
+    deleted_at = now(),
+    updated_at = now()
+WHERE user_id = 'd0000000-0000-0000-0000-000000000001'
+  AND client_report_id = 'rep-tombstone-007';
+
+DO $$
+DECLARE
+    v_is_del BOOLEAN;
+BEGIN
+    SELECT is_deleted INTO v_is_del
+    FROM public.synced_reports
+    WHERE user_id = 'd0000000-0000-0000-0000-000000000001'
+      AND client_report_id = 'rep-tombstone-007';
+
+    IF v_is_del <> TRUE THEN
+        RAISE EXCEPTION 'Expected report to be marked tombstoned (is_deleted = TRUE) even when sync_enabled is FALSE';
+    END IF;
+END $$;
+
 SELECT auth.reset_test_user();
 
 ROLLBACK;

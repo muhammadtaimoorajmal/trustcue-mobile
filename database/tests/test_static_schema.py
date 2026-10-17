@@ -165,6 +165,11 @@ class TestDatabaseMigrations(unittest.TestCase):
         self.assertIn("(report_payload ? 'indicatorCount')", content)
         self.assertIn("(report_payload ? 'categories')", content)
         self.assertIn("(report_payload ? 'source')", content)
+        self.assertIn("((report_payload - ARRAY['formatVersion', 'outcomeState', 'hasAiAnalysis', 'indicatorCount', 'categories', 'source']) = '{}'::jsonb)", content)
+        self.assertIn("(jsonb_typeof(report_payload->'formatVersion') = 'number')", content)
+        self.assertIn("(jsonb_typeof(report_payload->'categories') = 'array')", content)
+        self.assertIn("NEW.client_updated_at > public.profiles.sync_purged_at", content)
+        self.assertIn("(NEW.is_deleted = TRUE)", content)
 
 
 class TestSQLRegressionSuites(unittest.TestCase):
