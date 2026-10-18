@@ -147,34 +147,60 @@ class SyncService:
             try:
                 base_url = self.settings.SUPABASE_URL.rstrip("/")
                 headers = self._get_auth_headers()
-                headers["Prefer"] = "resolution=merge-duplicates"
 
-                rows: list[dict[str, Any]] = []
+                rpc_rows: list[dict[str, Any]] = []
                 for item in valid_items:
-                    rows.append({
-                        "user_id": user_id,
+                    rpc_rows.append({
                         "client_report_id": item.client_report_id,
                         "snapshot_id": item.snapshot_id,
                         "schema_version": item.schema_version,
+                        "revision": getattr(item, "revision", 1),
                         "sync_generation": item.sync_generation,
                         "report_payload": item.report_payload,
                         "is_deleted": item.is_deleted,
                         "deleted_at": item.deleted_at.isoformat() if item.deleted_at else None,
                         "client_updated_at": item.client_updated_at.isoformat(),
-                        "updated_at": datetime.now(UTC).isoformat(),
                     })
 
-                resp = await client.post(
-                    f"{base_url}/rest/v1/synced_reports?on_conflict=user_id,client_report_id",
+                # Prefer atomic RPC which acquires FOR SHARE lock on user profile and checks generation
+                rpc_resp = await client.post(
+                    f"{base_url}/rest/v1/rpc/sync_push_reports",
                     headers=headers,
-                    json=rows,
+                    json={
+                        "target_user_id": user_id,
+                        "reports": rpc_rows,
+                    },
                 )
-                if resp.status_code not in (200, 201, 204):
+                if rpc_resp.status_code in (200, 201, 204):
+                    logger.debug("Successfully pushed %d reports via sync_push_reports RPC", len(rpc_rows))
+                elif rpc_resp.status_code == 404:
+                    # Fallback to direct table upsert if RPC not yet deployed (trigger still guards if migration 8 applied)
+                    table_headers = headers.copy()
+                    table_headers["Prefer"] = "resolution=merge-duplicates"
+                    table_rows = []
+                    for r in rpc_rows:
+                        row = dict(r)
+                        row["user_id"] = user_id
+                        row["updated_at"] = datetime.now(UTC).isoformat()
+                        table_rows.append(row)
+                    resp = await client.post(
+                        f"{base_url}/rest/v1/synced_reports?on_conflict=user_id,client_report_id",
+                        headers=table_headers,
+                        json=table_rows,
+                    )
+                    if resp.status_code not in (200, 201, 204):
+                        logger.warning(
+                            "PostgREST batch sync returned status %s for user %s: %s",
+                            resp.status_code,
+                            user_id,
+                            resp.text,
+                        )
+                else:
                     logger.warning(
-                        "PostgREST batch sync returned status %s for user %s: %s",
-                        resp.status_code,
+                        "PostgREST sync_push_reports RPC returned status %s for user %s: %s",
+                        rpc_resp.status_code,
                         user_id,
-                        resp.text,
+                        rpc_resp.text,
                     )
             except Exception as exc:
                 logger.warning("PostgREST batch sync failed for user %s: %s", user_id, str(exc))
