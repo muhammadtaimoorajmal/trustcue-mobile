@@ -80,7 +80,7 @@ All three repository worktrees feature dedicated, hardened GitHub Actions CI wor
 |---|---|---|---|---|---|
 | **Mobile (`frontend`)** | `.github/workflows/frontend-ci.yml` | `frontend`, `main` | Java 21 Temurin LTS, Flutter 3.47.4, `flutter pub get --enforce-lockfile`, Dart format check, `flutter analyze --no-pub`, `flutter test --no-pub` (860 tests), Android SDK licenses & NDK config, `flutter build apk --debug` | 15 min | **100% PASS**<br>*(Run `39130841070` on `1de3f07`: all 11 steps passed including 860 tests, verified NDK 30, and debug APK build)* |
 | **Backend (`backend`)** | `.github/workflows/backend-ci.yml` | `backend`, `main` | Python 3.13, Ruff linting, OpenAPI 3.1.0 schema validator, Pytest suite (142 tests) | 10 min | **100% PASS**<br>*(Run `39130950265` on `745c9e7`: Ruff clean, schema valid, 142/142 tests passing)* |
-| **Database (`database`)** | `.github/workflows/database-ci.yml` | `database` | Python 3.11 static schema suite (13 tests), PostgreSQL 16 container, sequential migration apply (`00001`–`00008`), seed loading, 7 SQL regression suites | 10 min | **100% PASS**<br>*(Run `39127268819` on `dfd78db`: 13 static tests, 8 migrations, 7 SQL regression suites passing)* |
+| **Database (`database`)** | `.github/workflows/database-ci.yml` | `database` | Python 3.11 static schema suite (13 tests), PostgreSQL 16 container, sequential migration apply (`00001`–`00008`), seed loading, 7 SQL regression suites | 10 min | **100% PASS**<br>*(Run `39136023168` on `07fbdfa`: 13 static tests, 8 migrations, 7 SQL regression suites passing including canonical category containment)* |
 
 ### Workflow Security Hardening
 - **Least-Privilege Permissions:** All workflows explicitly declare `permissions: contents: read`.
@@ -221,7 +221,7 @@ docker run -d \
 | **00005** | `00005_create_auth_trigger.sql` | `22401C43DFAC5F6F2C529476BC4E16B85DE1FF4AEF7ECAF7377093B89FB112B4` | Hosted Supabase | **Applied** (Mod 35) | Provisions profile and quota row automatically on user registration. |
 | **00006** | `00006_create_quota_reservation.sql` | `68023D0FA6498AA03F00DB351A69093A704F101BC7634443781FDDB673819640` | Hosted Supabase | **Applied** (Mod 35) | Atomic `reserve_ai_quota` and `release_ai_quota` RPC functions. |
 | **00007** | `00007_enforce_sync_opt_in.sql` | `C5B1F4D6C2FD8193358F4C4C8849BD3E49B0808DF2EE63497C148FE2F0CFF693` | Hosted Supabase | **Verified in CI**<br>*Pending Hosted Rollout* | Enforces `profiles.sync_enabled = true` RLS check and creates `purge_synced_reports`. |
-| **00008** | `00008_harden_sync_purge_and_allowlist.sql` | `1835ACC17883630668C589BC20A0FE0B5691E261FB0336AD945A47CE2F4AA275` | Hosted Supabase | **Verified in CI**<br>*Pending Hosted Rollout* | Adds `sync_generation`, row-level locking on purge, and exact JSONB key allowlist. |
+| **00008** | `00008_harden_sync_purge_and_allowlist.sql` | `A98BACCCF32F59A7F0BEF108693C57BAC6C74D3A800A79FDACA5DE8CECF001AC` | Hosted Supabase | **Verified in CI (Run 39136023168)**<br>*Pending Hosted Rollout* | Adds `sync_generation`, row-level locking on purge, canonical category taxonomy containment, and exact JSONB key allowlist. |
 
 ### Preflight Verification Queries
 Before applying Migrations 00007 and 00008 to hosted Supabase, execute in the **Supabase SQL Editor**:

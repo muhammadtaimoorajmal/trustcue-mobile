@@ -35,7 +35,7 @@ class SyncApiClient {
     }
 
     if (kReleaseMode) {
-      return 'https://api.trustcue.app';
+      return 'https://trustcue-backend.onrender.com';
     }
 
     if (!kIsWeb && Platform.isAndroid) {

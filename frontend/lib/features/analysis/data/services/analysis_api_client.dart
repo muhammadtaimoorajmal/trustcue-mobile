@@ -46,7 +46,7 @@ class AnalysisApiClient {
     }
 
     if (kReleaseMode) {
-      return 'https://api.trustcue.app';
+      return 'https://trustcue-backend.onrender.com';
     }
 
     // In local development, Android emulator accesses host loopback via 10.0.2.2
