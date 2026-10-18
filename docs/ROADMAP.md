@@ -69,8 +69,8 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **43** | Complete workflow integration and offline/retry/lifecycle handling | Completed | `frontend` |
 | **44** | Security and privacy testing | Completed | `frontend` / `backend` / `database` |
 | **45** | Accessibility and usability verification | Completed | `frontend` |
-| **46** | End-to-end, real-device, performance and storage verification | Planned | `frontend` / `backend` |
-| **47** | CI, deployment, migrations and recovery procedures | Planned | `frontend` / `backend` |
+| **46** | End-to-end, real-device, performance and storage verification | Completed (`5c817ef`) | `frontend` / `backend` |
+| **47** | CI, deployment, migrations and recovery procedures | Completed | `frontend` / `backend` / `database` |
 | **48** | Android release configuration, branding, signing and AAB | Planned | `frontend` |
 | **49** | Play Console listing, disclosures, internal/required testing and release candidates | Planned | `frontend` |
 | **50** | Final audit, approved main integration, release and maintenance handover | Planned | `frontend` / `backend` / `database` / `main` |

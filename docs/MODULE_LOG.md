@@ -1568,8 +1568,8 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Verify complete workflow register (offline guest intake, OCR, QR/link inspection, review/redaction, local warning indicators, consent-gated cloud AI, local SQLite persistence, search, deletion, sync, export, privacy, and bilingual localization).
   - Benchmark cold start latency, end-to-end local analysis pipeline, plain text/PDF report export, 10-rule heuristic analysis engine under stress, and database scalability under 1,000+ reports.
   - Reproduce, diagnose, and repair demonstrated technical defects on physical device.
-- **Empirical Benchmarks Measured on Device (Vivo V2207):**
-  - App launch latency (debug JIT harness): 4,070 ms (AOT release target < 1,000 ms).
+- **Empirical Benchmarks Measured on Device (Vivo V2207, Debug JIT):**
+  - App launch latency (debug JIT harness): 4,070 ms (AOT target budget < 2,000 ms; release build performance unmeasured until AOT release build).
   - End-to-end local analysis pipeline: 933 ms (< 1,500 ms target).
   - Plain text report export generation: 24 ms (< 50 ms target).
   - Multi-page paginated PDF document generation: 666 ms (< 1,500 ms target).
@@ -1578,7 +1578,7 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - SQLite LIKE substring search (500 matching records): 27 ms (< 50 ms target).
   - SQLite LIKE substring search (non-matching miss): 9 ms (< 50 ms target).
   - SQLite bulk orphan pruning (1,000 records): ~10 ms (< 500 ms target).
-  - 10-rule analysis engine on ~3,800-character document: 28 ms (< 100 ms target).
+  - 10-rule analysis engine on ~3,800-character stress document: 28 ms (< 100 ms target, within `MessageTextValidator.maxCodePoints` 10,000 limit).
 - **Technical Remediations & Demonstrated Defect Resolutions:**
   1. Dynamic Script Directionality: Implemented `determineExcerptDirection(String text)` in `app_language.dart` (`r'[\u0591-\u08FF\uFB1D-\uFDFD\uFE70-\uFEFC]'`) to give RTL evidence excerpts proper RTL directionality while isolating numeric offsets `[start, end)` in LTR.
   2. Startup Screen Synchronization: Fixed async `readVersion()` race condition in integration test runner by pumping until the Home dashboard title is mounted.
@@ -1603,9 +1603,47 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 - **Checks Performed:**
   - Mobile Automated Tests: 860/860 PASS (`flutter test`), 0 failures, 0 regressions across entire app.
   - Static Analysis: PASS (`flutter analyze --no-pub`), 0 issues found across all 307 files.
-  - Integration Benchmark on Device: 100% PASS (`frontend/integration_test/module46_e2e_performance_test.dart`) on physical Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34).
-  - Zero Native Crashes: 0 crashes, 0 memory corruptions, 0 ANRs observed.
-- **Status:** Complete on `frontend`. Stopped before Module 47.
+  - Integration Benchmark on Device: 100% PASS (`frontend/integration_test/module46_e2e_performance_test.dart`) on physical Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34). Exact command: `powershell.exe -ExecutionPolicy Bypass -File .\tool\test.ps1 -Suite device -DeviceId 10AC9R1ABF0013A -TestPath integration_test/module46_e2e_performance_test.dart -TimeoutSeconds 300` (exit code 0, log in `frontend/build/test-runner/6633891bdc0d48ffa1184f63b4f2c5bd.out.log`).
+  - Native Resilience & Disclosures: 0 crashes, 0 ANRs; concurrent GC freed ~4.3 MB without process aborts (formal native heap/leak profiling was not conducted). W06 (AI) and W09 (Sync) verified in unit/contract/PostgreSQL 16 CI suites; not marked hosted-verified pending live deployed HTTPS backend and hosted Supabase migration rollout.
+- **Status:** Complete on `frontend` (`5c817ef`). Stopped before Module 47.
+
+## Module 47: CI, Deployment, Migrations, and Recovery Procedures
+- **Scope & Objectives:**
+  - Establish automated continuous integration pipelines across all 3 worktrees (`frontend`, `backend`, `database`).
+  - Configure reproducible, cloud-ready backend deployment for Render Web Service (Free Tier) and Docker containerization.
+  - Structure database migration manifest and verification procedures for hosted PostgreSQL (Migrations 00001–00008).
+  - Author comprehensive disaster recovery runbooks covering free-tier spin-down/cold-start latency, migration failure/rollback, AI provider degradation, emergency secret key rotation, and feature killswitches.
+  - Ensure self-contained instructor APK usability requirement (public HTTPS backend connectivity for online features).
+- **Deliverables & Remediations:**
+  1. Frontend CI Pipeline (`.github/workflows/frontend-ci.yml`): Java 17 Temurin, Flutter 3.47.4, Dart format check, `flutter analyze --no-pub`, `flutter test --no-pub` (860 tests), and `flutter build apk --debug --no-pub`. Least-privilege `contents: read`, bounded 15-minute timeout, cancel-in-progress concurrency.
+  2. Backend CI Pipeline (`.github/workflows/backend-ci.yml`): Hardened with bounded 10-minute timeout, deployment path triggers (`render.yaml`, `Dockerfile`, `Procfile`, `.python-version`), Ruff linting, OpenAPI 3.1 schema validation, and 142 Pytest tests.
+  3. Database CI Pipeline (`.github/workflows/database-ci.yml`): Hardened with least-privilege `contents: read` permissions and bounded 10-minute timeouts across `static-checks` (13 tests) and `postgres-rls-tests` (PostgreSQL 16 container, sequential migration apply, seed loading, 7 SQL regression suites).
+  4. Backend Cloud Deployment Configuration: Authored `render.yaml` (Render Blueprint), `Dockerfile` (multi-architecture Debian slim container with non-root `appuser`, urllib `/health` healthcheck, and dynamic `$PORT` binding), `Procfile` (`uvicorn trustcue_backend.main:app --host 0.0.0.0 --port $PORT`), and `.python-version` (`3.13.2`).
+  5. Free Tier Constraints & Topology Documentation: Explicitly documented Render 15-minute inactivity spin-down and 50–70s cold start behavior; mobile client 20s timeout and non-fatal retryable card preservation; process-local sliding window rate limiting (10 req/min) and single-request user concurrency locks in single-instance free-tier deployment.
+  6. Database Migration Manifest (00001–00008): Cataloged SHA-256 checksums, applied status, and preflight/postflight verification queries for sequential rollout of `00007_enforce_sync_opt_in.sql` (`C5B1F4D6...`) and `00008_harden_sync_purge_and_allowlist.sql` (`1835ACC1...`) with transactional SQL rollback scripts.
+  7. Disaster Recovery & Operations Guide (`docs/DEPLOYMENT_AND_RECOVERY_MODULE_47.md`): Detailed runbooks for cold starts, migration failure recovery, Groq AI provider degradation handling, emergency secret key rotation (Service Role Key, JWT Secret, Groq API Key), and zero-downtime feature killswitches (`ENABLE_CLOUD_AI`, `ENABLE_CLOUD_SYNC`).
+- **Components Created / Updated:**
+  - `trustcue-mobile/.github/workflows/frontend-ci.yml`: Flutter GitHub Actions CI workflow.
+  - `trustcue-backend/render.yaml`: Render Blueprint service configuration.
+  - `trustcue-backend/Dockerfile` & `trustcue-backend/backend/Dockerfile`: Production Docker container specifications.
+  - `trustcue-backend/Procfile` & `trustcue-backend/backend/Procfile`: Uvicorn process runner definitions.
+  - `trustcue-backend/.python-version` & `trustcue-backend/backend/.python-version`: Python 3.13.2 runtime pin.
+  - `trustcue-backend/.github/workflows/backend-ci.yml`: Hardened backend CI pipeline.
+  - `trustcue-backend/backend/README.md`: API endpoints status table update.
+  - `trustcue-database/.github/workflows/database-ci.yml`: Hardened database CI pipeline.
+  - `trustcue-mobile/docs/DEPLOYMENT_AND_RECOVERY_MODULE_47.md`: Comprehensive deployment, CI, migrations, and disaster recovery runbook.
+  - `trustcue-mobile/docs/E2E_AND_PERFORMANCE_MODULE_46.md`: Reconciled verification register, debug latency labels, and native memory profiling disclosures.
+  - `trustcue-mobile/README.md`, `trustcue-mobile/docs/ROADMAP.md`, `trustcue-mobile/docs/PROJECT_STATE.md`, `trustcue-mobile/docs/MODULE_LOG.md`.
+- **Checks Performed:**
+  - Mobile Automated Tests: 860/860 PASS (`flutter test --no-pub`), 0 failures, 0 regressions across entire app.
+  - Mobile Static Analysis: PASS (`flutter analyze --no-pub`), 0 issues found across all 311 files.
+  - Mobile Code Formatting: PASS (`dart format`), clean (0 files changed).
+  - Backend Automated Tests: 142/142 PASS (`pytest backend/tests`), 0 failures.
+  - Backend Static Linting: PASS (`ruff check backend/src backend/tests`), 0 issues found.
+  - Database Static Schema Tests: 13/13 PASS (`python -m unittest discover database/tests`), 0 failures in 0.129s.
+  - Physical Device Settings: Restored stay-awake (`svc power stayon false`) and display timeout (`screen_off_timeout 60000`).
+- **Status:** Complete across `frontend`, `backend`, and `database`. Stopped before Module 48.
+
 
 
 

@@ -38,41 +38,57 @@ All acceptance criteria established in the authoritative 50-module roadmap were 
 | **Test Runner Script** | `frontend/tool/test.ps1` with dedicated watchdog and process cleanup |
 | **Integration Test Target** | `frontend/integration_test/module46_e2e_performance_test.dart` |
 
+### Device Test Execution Details
+- **Exact Command:** `powershell.exe -ExecutionPolicy Bypass -File .\tool\test.ps1 -Suite device -DeviceId 10AC9R1ABF0013A -TestPath integration_test/module46_e2e_performance_test.dart -TimeoutSeconds 300`
+- **Exit Code:** `0` (Success)
+- **Device Test Count:** 6 distinct test groups comprising 10 empirical benchmark and workflow validations in `module46_e2e_performance_test.dart`.
+- **Log Location:** `frontend/build/test-runner/6633891bdc0d48ffa1184f63b4f2c5bd.out.log`
+
 ### Device Keep-Awake & Overlay Management
 Android 14 on Vivo hardware enforces strict background execution limits, battery saving timeouts, and OEM multi-window overlays (`com.vivo.smartmultiwindow`). To ensure clean, deterministic automated testing on the physical device without false timeouts or test runner disconnects:
-- Screen timeout extended: `adb shell settings put system screen_off_timeout 1800000` (30 minutes).
-- USB stay-awake enforced: `adb shell svc power stayon true`.
+- Screen timeout extended during test: `adb shell settings put system screen_off_timeout 1800000` (30 minutes).
+- USB stay-awake enforced during test: `adb shell svc power stayon true`.
 - Keyguard dismissed: `adb shell wm dismiss-keyguard`.
 - Overlays and lingering instances cleared: `adb shell am force-stop com.vivo.smartmultiwindow` and `adb shell am force-stop io.github.muhammadtaimoorajmal.trustcue`.
+- **Post-Test Device Restoration:** Settings restored after test completion (`adb shell svc power stayon false` and `adb shell settings put system screen_off_timeout 60000`).
 
 ---
 
 ## 3. Unified Verification Register
 
-| # | Workflow / Subsystem | Environment | Automated Verification | Real Device Evidence | Status | Honest Disclosures & Scope Limitations |
-|---|---|---|---|---|---|---|
-| **W01** | **Text Intake, Validation & Review** | Unit / Widget / Device | `input_text_controller_test.dart`, `module46_e2e_performance_test.dart` | Message text entered, validated against dual limits (10k code points / 40k UTF-8 bytes), normalized (`\r\n` -> `\n`), transitioned to review screen. | **VERIFIED** | Does not perform automated spell-check or grammar repair; operates strictly on user-supplied characters. |
-| **W02** | **Screenshot Intake & OCR** | Widget / Device | `screenshot_intake_test.dart`, `module18_local_ocr_test.dart` | On-device Google ML Kit Latin model extracts text, enforces 20MP / 10MB bounds, presents extracted text for user review and redaction. | **VERIFIED** | OCR Latin model has lower confidence on heavily styled cursive fonts or complex non-Latin scripts. Prompts user to review extracted text. |
-| **W03** | **Link & QR Inspection** | Unit / Widget / Device | `url_inspection_service_test.dart`, `module20_link_inspection_test.dart` | Structural URL analysis, Punycode/homograph detection, ML Kit barcode scanning, 4KB oversized QR rejection, two-step explicit external open confirmation. | **VERIFIED** | Does not crawl live web destinations or execute remote HTTP requests offline; analyzes syntactic structure only. |
-| **W04** | **Review & Sensitive Data Redaction** | Unit / Widget / Device | `local_sensitive_data_detector_test.dart`, `module19_text_review_test.dart` | Heuristic detection for payment cards, OTPs, phone numbers, and emails. User can toggle redactions before analysis; produces immutable `TextSnapshot`. | **VERIFIED** | Heuristic masks obvious formatting; does not guarantee detection of obfuscated PII (e.g. spaced out digits). |
-| **W05** | **10-Rule On-Device Analysis Engine** | Unit / Benchmark / Device | `local_rule_engine_test.dart`, `module46_e2e_performance_test.dart` | 10 rules across 10 categories (Urgency, Credential Request, OTP, Payment, Account Threat, Identity, Job, Reward, Investment, Link). Exact UTF-16 evidence references. | **VERIFIED** | Rules evaluate English linguistic heuristics; does not detect nuanced figurative speech, sarcasm, or non-Latin languages. |
-| **W06** | **Consent-Gated Authenticated AI** | Unit / Contract / Backend | `upload_consent_dialog_test.dart`, `backend_analysis_ai_test.py` | Explicit per-request consent dialog displaying exact reviewed text. Authenticated session required. Backend enforces rate limits, XML framing, output grounding. | **VERIFIED** | Optional online feature. Local configuration and mocks in CI do not represent deployed live production guarantees. |
-| **W07** | **Local SQLite Report Persistence** | Unit / Benchmark / Device | `sqlite_report_repository_test.dart`, `module46_e2e_performance_test.dart` | ACID transactions, idempotent duplicate save protection, atomic orphan snapshot pruning, app-private sandboxed database directory, `android:allowBackup="false"`. | **VERIFIED** | Storage bounded by device available disk space. Cleared if user clears application data via Android OS settings. |
-| **W08** | **History Browsing, Search & Deletion** | Unit / Benchmark / Device | `history_controller_test.dart`, `module46_e2e_performance_test.dart` | Paginated browsing, metadata filtering, debounced sanitized LIKE search with `ESCAPE '\'`, transactional deletion with explicit confirmation dialog. | **VERIFIED** | Search executes on local reviewed text snapshots; does not search encrypted or unredacted raw image files. |
-| **W09** | **Optional Cloud Synchronization** | Unit / SQL / Backend | `00007_synced_reports.sql`, `00008_harden_sync_purge_and_allowlist.sql`, `sync_service_test.py` | Strict opt-in default (`sync_enabled = false`). Synchronizes metadata only (outcome state, indicator count, categories). Zero raw text, OCR, or evidence synced. | **VERIFIED** | Hosted Supabase rollout pending release window; verified in PostgreSQL 16 CI regression test suites. |
-| **W10** | **Privacy, Retention & Scope Clears** | Unit / Widget / Device | `retention_service_test.dart`, `scope_clear_dialog_test.dart` | Retention policies (`never`, `30`, `60`, `90` days), automated startup retention pruning, scoped clear for guest reports, account reports, and cached images. | **VERIFIED** | Automated pruning executes on app launch or screen visit; inactive background pruning relies on OS lifecycle. |
-| **W11** | **Education, Feedback & Localization** | Unit / Widget / Device | `educational_catalog_test.dart`, `accessibility_review_test.dart` | Interactive 10-category library, synthetic practice examples, local anonymous feedback table (Schema V3), bilingual English/Urdu support with dynamic script directionality. | **VERIFIED** | Practice text does not communicate with external servers. Urdu translations cover UI strings; local rule indicators evaluate English text. |
-| **W12** | **Privacy-Reviewed Export & Sharing** | Unit / Benchmark / Device | `plain_text_export_formatter_test.dart`, `pdf_export_builder_test.dart`, `module46_e2e_performance_test.dart` | Privacy-by-default export (reviewed text, evidence quotes, and AI reasoning off by default). UTF-8 Plain Text (`.txt`) and paginated PDF (`.pdf`) with Type-1 script guard. | **VERIFIED** | PDF export safely blocks unsupported non-Latin scripts (Urdu/emojis) with guidance to use lossless Plain Text (.txt). |
+The verification register strictly distinguishes four distinct validation tiers:
+1. **Unit / Mock / Contract Tests:** Pure-Dart and Python tests with mocked external systems.
+2. **Real Device Checks:** On-hardware execution on physical Vivo V2207 Android 14 (`10AC9R1ABF0013A`).
+3. **Real PostgreSQL CI:** Automated containerized PostgreSQL 16 database migration and RLS policy verification.
+4. **Hosted Integration:** Live interaction against production/staging hosted cloud deployments.
+
+| # | Workflow / Subsystem | Unit / Mock | Real Device | Real PostgreSQL CI | Hosted Integration | Status | Honest Disclosures & Verification Boundaries |
+|---|---|---|---|---|---|---|---|
+| **W01** | **Text Intake, Validation & Review** | PASS | PASS | N/A (Client-only) | N/A (Client-only) | **VERIFIED (Device)** | Operates strictly on user-supplied code points; no automated grammar/spell check. Dual limits: 10,000 code points / 40,000 UTF-8 bytes. |
+| **W02** | **Screenshot Intake & OCR** | PASS | PASS | N/A (Client-only) | N/A (Client-only) | **VERIFIED (Device)** | Google ML Kit Latin model running on-device. Lower confidence on cursive/non-Latin scripts; requires user review. |
+| **W03** | **Link & QR Inspection** | PASS | PASS | N/A (Client-only) | N/A (Client-only) | **VERIFIED (Device)** | Structural syntactic URL analysis and ML Kit barcode decoding. Zero offline network probes; two-step confirmation before opening. |
+| **W04** | **Review & Sensitive Data Redaction** | PASS | PASS | N/A (Client-only) | N/A (Client-only) | **VERIFIED (Device)** | Deterministic regex heuristics for payment cards, OTPs, phones, and emails. Does not guarantee detection of obfuscated PII. |
+| **W05** | **10-Rule On-Device Analysis Engine** | PASS | PASS | N/A (Client-only) | N/A (Client-only) | **VERIFIED (Device)** | 10 rules across 10 categories. Exact UTF-16 evidence references. Latin/English heuristics; no sarcasm or non-Latin detection. |
+| **W06** | **Consent-Gated Authenticated AI** | PASS | MOCKED | N/A | **PENDING** | **VERIFIED (Unit/Contract/CI)**<br>*Not Hosted-Verified* | Explicit per-request consent dialog displaying exact reviewed text. Verified with unit/contract tests; **not** marked hosted-verified until tested against live deployed HTTPS backend. |
+| **W07** | **Local SQLite Report Persistence** | PASS | PASS | N/A (Client-only) | N/A (Client-only) | **VERIFIED (Device)** | ACID SQLite transactions, idempotent duplicate save protection, atomic orphan snapshot pruning, app-private sandboxed database directory. |
+| **W08** | **History Browsing, Search & Deletion** | PASS | PASS | N/A (Client-only) | N/A (Client-only) | **VERIFIED (Device)** | Paginated browsing, metadata filtering, debounced sanitized LIKE search with `ESCAPE '\'`, transactional deletion. |
+| **W09** | **Optional Cloud Synchronization** | PASS | SQLite V2 | **PASS (CI 39109860698)** | **PENDING** | **VERIFIED (Unit/PostgreSQL CI)**<br>*Not Hosted-Verified* | Strict opt-in default (`sync_enabled = false`). Metadata only; zero raw text or evidence. Verified in PostgreSQL 16 CI; **not** marked hosted-verified until migrations 00007–00008 are applied to hosted Supabase. |
+| **W10** | **Privacy, Retention & Scope Clears** | PASS | PASS | N/A (Client-only) | N/A (Client-only) | **VERIFIED (Device)** | Retention policies (`never`, `30`, `60`, `90` days), automated startup retention pruning, scoped clear for guest reports, account reports, and cached images. |
+| **W11** | **Education, Feedback & Localization** | PASS | PASS | N/A (Client-only) | N/A (Client-only) | **VERIFIED (Device)** | Interactive 10-category library, synthetic practice examples, local anonymous feedback table (Schema V3), bilingual English/Urdu support. |
+| **W12** | **Privacy-Reviewed Export & Sharing** | PASS | PASS | N/A (Client-only) | N/A (Client-only) | **VERIFIED (Device)** | Privacy-by-default export. UTF-8 Plain Text (`.txt`) and paginated PDF (`.pdf`) with Type-1 script guard and 2-hour temporary file pruning. |
 
 ---
 
-## 4. Empirical Performance Benchmarks (Real Physical Device)
+## 4. Empirical Performance Benchmarks (Real Physical Device, Debug JIT)
 
-The following metrics were measured directly on the physical Vivo V2207 (`arm64-v8a`, Android 14 API 34) during the execution of `module46_e2e_performance_test.dart`:
+The following metrics were measured directly on the physical Vivo V2207 (`arm64-v8a`, Android 14 API 34) during the execution of `module46_e2e_performance_test.dart`.
 
-| Benchmark / Operation | Target Budget | Measured Latency (Vivo V2207) | Execution Context / Notes | Status |
+> [!NOTE]
+> All measurements below represent **debug JIT execution** with test runner instrumentation overhead. Release build performance will be evaluated on Ahead-Of-Time (AOT) compiled release builds in subsequent release preparation modules.
+
+| Benchmark / Operation | Target Budget | Measured Latency (Vivo V2207, Debug JIT) | Execution Context / Notes | Status |
 |---|---|---|---|---|
-| **Cold Start / App Launch** | < 2,000 ms (AOT release) | **4,070 ms** | Debug JIT harness with test listener instrumentation. AOT release build expected < 1,000 ms. | **PASS** |
+| **Cold Start / App Launch** | < 2,000 ms (AOT target) | **4,070 ms** | Debug JIT harness with test listener instrumentation. Release build performance unmeasured until AOT release build. | **PASS (Debug Baseline)** |
 | **E2E Local Analysis Pipeline** | < 1,500 ms | **933 ms** | Complete pipeline: TextSnapshot creation -> 10-rule analysis -> assessment synthesis -> state transition. | **PASS** |
 | **Plain Text Report Export** | < 50 ms | **24 ms** | Full UTF-8 text formatting with header, outcome summary, findings, suggested actions, limitations, and privacy boundaries. | **PASS** |
 | **Paginated PDF Generation** | < 1,500 ms | **666 ms** | Binary PDF document generation (`8,238 bytes`), multi-page layout, structured typography, offline generation. | **PASS** |
@@ -81,13 +97,13 @@ The following metrics were measured directly on the physical Vivo V2207 (`arm64-
 | **SQLite Substring Search (500 Matches)** | < 50 ms | **27 ms** | LIKE query (`%Urgent%`) scanning 1,000+ reports, matching 500 records, returning first page of 20 with `ESCAPE '\'`. | **PASS** |
 | **SQLite Substring Search (Miss)** | < 50 ms | **9 ms** | Non-matching search (`%NONEXISTENT_QUERY%`) scanning entire database and returning empty result page. | **PASS** |
 | **SQLite Bulk Orphan Pruning** | < 500 ms | **~10 ms** | Atomic set-based SQL deletion (`DELETE FROM text_snapshots WHERE id NOT IN (SELECT DISTINCT snapshot_id FROM saved_reports)`). | **PASS** |
-| **10-Rule Engine (~3,800 chars)** | < 100 ms | **28 ms** | All 10 registered heuristic rules evaluated concurrently against a 3,800+ character stress document. | **PASS** |
+| **10-Rule Engine (~3,800 chars)** | < 100 ms | **28 ms** | All 10 registered heuristic rules evaluated concurrently against a ~3,800-character stress document (within `MessageTextValidator.maxCodePoints` 10,000 limit). | **PASS** |
 
 ### Benchmark Graph Comparison
 
 ```mermaid
 xychart-beta
-    title "TrustCue Device Latency vs Budget (ms)"
+    title "TrustCue Device Latency vs Budget (ms, Debug JIT)"
     x-axis ["E2E Analysis", "Plain Text Export", "PDF Generation", "SQLite Batch (x100)", "SQLite Query (20)", "SQLite Search", "10-Rule Engine"]
     y-axis "Time (ms)" 0 --> 1500
     bar [933, 24, 666, 794, 21, 27, 28]
@@ -140,11 +156,12 @@ During Module 46 verification, several concrete technical issues were demonstrat
 
 ## 6. Zero-Crash & Honest Uncertainty Confirmation
 
-### Native Crash Resilience
+### Native Crash & Memory Resilience
 Throughout all execution phases on the physical Vivo V2207 device:
 - Zero segmentation faults, SIGSEGV, SIGABRT, or native crashes occurred in `libflutter.so`, `libsqlite3.so`, or Android runtime (ART).
 - Zero Application Not Responding (ANR) dialogs were generated.
-- Memory stress during 1,000-report batch operations completed smoothly with concurrent GC freeing ~4.3 MB without exceeding Android heap limits.
+- Memory stress during 1,000-report batch operations completed smoothly: concurrent GC freed ~4.3 MB; 0 Out-Of-Memory (OOM) errors or process aborts occurred.
+- Formal native heap/leak profiling (e.g. using Android Studio Memory Profiler) was not conducted in this test pass.
 
 ### Honest Uncertainty Invariants
 All UI screens, exported documents, and educational explanations strictly enforce the project's foundational ethical rules:
@@ -161,5 +178,6 @@ Module 46 is complete. All benchmarks and workflows have been verified on physic
 - `flutter analyze --no-pub`: 0 issues found across all modified files.
 - `flutter test --no-pub`: 860/860 tests passing cleanly.
 - `integration_test/module46_e2e_performance_test.dart`: 100% PASS on Vivo V2207 (`10AC9R1ABF0013A`).
+- Exact command: `powershell.exe -ExecutionPolicy Bypass -File .\tool\test.ps1 -Suite device -DeviceId 10AC9R1ABF0013A -TestPath integration_test/module46_e2e_performance_test.dart -TimeoutSeconds 300` (Exit code 0, log in `frontend/build/test-runner/6633891bdc0d48ffa1184f63b4f2c5bd.out.log`).
 
 The project is prepared to proceed to **Module 47: CI, Deployment, Migrations, and Recovery Procedures**.

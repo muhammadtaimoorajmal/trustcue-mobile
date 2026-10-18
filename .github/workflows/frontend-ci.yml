@@ -1,0 +1,72 @@
+name: Frontend CI
+
+on:
+  push:
+    branches:
+      - frontend
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches:
+      - frontend
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter-quality-and-tests:
+    name: Flutter Lint, Analyze & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter 3.47.4
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Flutter & Dart Toolchain
+        run: |
+          flutter --version
+          dart --version
+
+      - name: Check Code Formatting
+        run: |
+          dart format --output=none --set-exit-if-changed frontend/lib frontend/test frontend/integration_test
+
+      - name: Analyze Flutter Codebase
+        run: |
+          cd frontend
+          flutter analyze --no-pub
+
+      - name: Run Automated Test Suite
+        run: |
+          cd frontend
+          flutter test --no-pub --reporter expanded
+
+      - name: Verify Debug APK Build
+        run: |
+          cd frontend
+          flutter build apk --debug --no-pub -t lib/main.dart
