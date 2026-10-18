@@ -338,6 +338,27 @@ BEGIN
     END;
 END $$;
 
+-- 10f. Verify that future sync_generation (> profiles.sync_generation) is REJECTED by RLS
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO public.synced_reports (
+            user_id, client_report_id, snapshot_id, sync_generation, report_payload, client_updated_at
+        ) VALUES (
+            'd0000000-0000-0000-0000-000000000001',
+            'rep-future-gen-006f',
+            'snap-006f',
+            999, -- Future generation 999 while profile is generation 2
+            '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText"}'::jsonb,
+            now() + interval '5 minutes'
+        );
+        RAISE EXCEPTION 'Security Failure: Report with future sync_generation was accepted!';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            NULL; -- Expected RLS denial
+    END;
+END $$;
+
 -- 11. Verify that a user who has opted out (sync_enabled = FALSE) CAN still tombstone an existing report
 UPDATE public.profiles SET sync_enabled = FALSE WHERE id = 'd0000000-0000-0000-0000-000000000001';
 

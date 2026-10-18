@@ -60,6 +60,9 @@ BEGIN
         RAISE EXCEPTION 'User ID must not be null for cloud backup purge';
     END IF;
 
+    -- Acquire exclusive row-level write lock on user's profile to serialize concurrent uploads/purges
+    PERFORM 1 FROM public.profiles WHERE id = effective_user_id FOR UPDATE;
+
     -- Delete all synced reports for this user
     DELETE FROM public.synced_reports
     WHERE user_id = effective_user_id;
@@ -146,7 +149,7 @@ CREATE POLICY "reports_insert_own"
                 -- Active report insert requires sync_enabled = true
                 public.profiles.sync_enabled = TRUE
             )
-            AND public.synced_reports.sync_generation >= public.profiles.sync_generation
+            AND public.synced_reports.sync_generation = public.profiles.sync_generation
             AND (public.profiles.sync_purged_at IS NULL OR public.synced_reports.client_updated_at > public.profiles.sync_purged_at)
         )
     );
@@ -168,7 +171,7 @@ CREATE POLICY "reports_update_own"
                 -- Active report updates require sync_enabled = TRUE
                 public.profiles.sync_enabled = TRUE
             )
-            AND public.synced_reports.sync_generation >= public.profiles.sync_generation
+            AND public.synced_reports.sync_generation = public.profiles.sync_generation
             AND (public.profiles.sync_purged_at IS NULL OR public.synced_reports.client_updated_at > public.profiles.sync_purged_at)
         )
     );

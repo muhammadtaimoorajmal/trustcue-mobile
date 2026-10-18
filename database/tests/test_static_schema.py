@@ -170,7 +170,8 @@ class TestDatabaseMigrations(unittest.TestCase):
         self.assertIn("public.synced_reports.client_updated_at > public.profiles.sync_purged_at", content)
 
         self.assertIn("public.synced_reports.is_deleted = TRUE", content)
-        self.assertIn("public.synced_reports.sync_generation >= public.profiles.sync_generation", content)
+        self.assertIn("public.synced_reports.sync_generation = public.profiles.sync_generation", content)
+        self.assertIn("FOR UPDATE", content)
         self.assertNotIn("NEW.", content)
 
 
