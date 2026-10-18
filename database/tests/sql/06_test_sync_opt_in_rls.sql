@@ -42,8 +42,8 @@ BEGIN
         WHEN insufficient_privilege THEN
             NULL; -- Expected RLS denial
         WHEN OTHERS THEN
-            IF SQLERRM LIKE '%violates row-level security policy%' THEN
-                NULL; -- Expected
+            IF SQLERRM LIKE '%violates row-level security policy%' OR SQLERRM LIKE '%Sync opt-in required%' THEN
+                NULL; -- Expected RLS or trigger opt-in denial
             ELSE
                 RAISE;
             END IF;
