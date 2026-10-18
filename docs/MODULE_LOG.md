@@ -1643,10 +1643,19 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Backend CI Run `39140238266` (commit `b51c638`): 100% PASS (all 10 steps, Ruff, OpenAPI 3.1, 142 Pytest tests, atomic `sync_push_reports` RPC integration with table fallback).
   - Database CI Run `39140127598` (commit `534f66a`): 100% PASS (all 17 steps, 13 static tests, 8 migrations, 8 SQL regression test suites in PostgreSQL 16, and real concurrent upload/purge race test in bash).
   - Physical Device Settings: Restored stay-awake (`svc power stayon false`) and display timeout (`screen_off_timeout 60000`).
-  - Live Public Backend Deployment: Live Render Web Service (`https://trustcue-backend.onrender.com`, commit `b51c638`, service ID `srv-dbad39qjnfac73f8ma80`). Verified `/health` (HTTP 200 ok), `/ready` (HTTP 200 ready), and verified HTTP 401 Unauthorized gateway protection on `/api/v1/account/profile` and `/api/v1/analysis/ai`. Documented `database: unconfigured` readiness indicator (stateless PostgREST HTTP vs direct `DATABASE_URL`).
-  - Concurrency & Allowlist Proof: Implemented `tr_validate_synced_report_write` trigger with profile `FOR SHARE` lock, canonical categories `<@` containment, `sync_push_reports` RPC, and concurrent PostgreSQL test demonstrating that stale uploads cannot survive or bypass purge locks.
-  - Hosted Migration Handoff: Migrations 00007 and 00008 verified and structured with preflight and postflight SQL checks for Supabase SQL Editor rollout.
-- **Status:** Complete across `frontend`, `backend`, and `database`. Stopped before Module 48. Exactly 50 numbered roadmap modules preserved.
+  - Live Public Backend Deployment: Live Render Web Service (`https://trustcue-backend.onrender.com`, commit `b51c638`, service ID `srv-dbad39qjnfac73f8ma80`, deploy `dep-dbaemc3ncjis73d9htm0` with `ENABLE_CLOUD_SYNC=true`). Verified `/health` (HTTP 200 ok), `/ready` (HTTP 200 ready), and verified HTTP 401 Unauthorized gateway protection on `/api/v1/account/profile` and `/api/v1/analysis/ai`. Documented `database: unconfigured` readiness indicator (stateless PostgREST HTTP vs direct `DATABASE_URL`).
+  - Hosted Database Rollout: Migrations `00007_enforce_sync_opt_in.sql` and `00008_harden_sync_purge_and_allowlist.sql` applied on hosted Supabase project `yzqkmoqqvnhfmmrayfko` and postflight verified.
+  - Live Hosted Integration Verification:
+    - Dedicated test user authenticated via Supabase GoTrue Auth API.
+    - Verified profile retrieval (`GET /api/v1/account/profile`, HTTP 200, `syncGeneration = 1`, `syncEnabled = false`) and opt-in (`PATCH /api/v1/account/profile`, HTTP 200, `syncEnabled = true`).
+    - Verified synthetic report upload (`POST /api/v1/sync/reports`, HTTP 200, `acceptedCount = 1`).
+    - Verified report pull (`GET /api/v1/sync/reports`, HTTP 200, matching report ID, zero raw text or evidence excerpt leakage).
+    - Verified cross-account isolation (User 2 sees 0 reports).
+    - Verified cloud purge (`DELETE /api/v1/sync/reports`, HTTP 200, `purgedCount = 1`, profile updated to `syncGeneration = 2`, `syncEnabled = false`).
+    - Verified stale upload rejection while opted out (HTTP 403) and stale generation rejection when re-opted in (`acceptedCount = 0`).
+    - Verified single consented AI request (`POST /api/v1/analysis/ai`, HTTP 200) via live Groq provider (`qwen/qwen3.8-27b`), returning 4 grounded findings, exact UTF-16 code-unit offsets, 3 suggested actions, and atomic PostgreSQL quota decrement from 15 to 14.
+  - Mobile Client Focused Verification: 27/27 focused API client tests passed (`analysis_api_client_test.dart`, `account_api_client_test.dart`, `sync_api_client_test.dart`). Physical Vivo V2207 device verified in Module 46 (benchmarks/APK); remained detached during current session.
+- **Status:** Complete across `frontend`, `backend`, and `database`. Fully verified hosted cloud deployment. Stopped before Module 48. Exactly 50 numbered roadmap modules preserved.
 
 
 

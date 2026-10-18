@@ -367,10 +367,10 @@ If an unexpected vulnerability, upstream provider anomaly, or database abuse occ
 | **W03: Link & QR Inspection** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W04: Review & Redaction** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W05: 10-Rule Analysis Engine** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
-| **W06: Consent-Gated AI** | PASS (40 mobile, 142 backend) | MOCKED | N/A | **LIVE BACKEND DEPLOYED** (`https://trustcue-backend.onrender.com`) | **VERIFIED (Live Deploy / 401 Gated)** |
+| **W06: Consent-Gated AI** | PASS (40 mobile, 142 backend) | MOCKED | N/A | **LIVE BACKEND DEPLOYED** (`https://trustcue-backend.onrender.com`) | **VERIFIED (Live Groq LLM & 15->14 Quota)** |
 | **W07: Local SQLite Storage** | PASS (31 tests) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W08: History, Search & Deletion**| PASS (Widget) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
-| **W09: Optional Cloud Sync** | PASS (Codecs) | SQLite Schema V2 | PASS (CI 39140127598) | **PENDING HOSTED SQL ROLLOUT** (`ENABLE_CLOUD_SYNC=false`) | **VERIFIED (PostgreSQL 16 CI & RPCs)** |
+| **W09: Optional Cloud Sync** | PASS (Codecs) | SQLite Schema V2 | PASS (CI 39140127598) | **HOSTED VERIFIED** (`ENABLE_CLOUD_SYNC=true`) | **VERIFIED (Live Push, Pull, Purge & RLS)** |
 | **W10: Privacy & Retention** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W11: Education & Localization** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W12: Report Export & Sharing** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
@@ -378,7 +378,7 @@ If an unexpected vulnerability, upstream provider anomaly, or database abuse occ
 | **Backend CI (`backend-ci.yml`)** | PASS (142 tests) | N/A | N/A | GitHub Actions | **VERIFIED (CI 39140238266)** |
 | **Database CI (`database-ci.yml`)**| PASS (13 tests) | N/A | PASS (PostgreSQL 16 + Concurrency) | GitHub Actions | **VERIFIED (CI 39140127598)** |
 | **Backend Live Deployment** | PASS (Docker/Render) | N/A | N/A | Live on Render (`srv-dbad39qjnfac73f8ma80`) | **VERIFIED (HTTP 200 Live)** |
-| **Database Migrations (00007-8)** | PASS (Static 13/13) | N/A | PASS (CI 39140127598) | Staged with Pre/Postflight | **VERIFIED (CI Validated)** |
+| **Database Migrations (00007-8)** | PASS (Static 13/13) | N/A | PASS (CI 39140127598) | Applied on Supabase `yzqkmoqqvnhfmmrayfko` | **VERIFIED (Hosted Rolled Out)** |
 
 ---
 
