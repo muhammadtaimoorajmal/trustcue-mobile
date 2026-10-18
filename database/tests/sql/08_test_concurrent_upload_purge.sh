@@ -33,14 +33,12 @@ DELETE FROM public.synced_reports WHERE user_id = '$USER_ID';
 "
 
 echo "--- Scenario 1: Upload paused inside transaction; concurrent Purge serializes ---"
-# Background Job A: Starts upload transaction, acquires FOR SHARE on profile, takes advisory lock, sleeps 2s, inserts and commits.
+# Background Job A: Starts upload transaction, acquires FOR SHARE on profile, sleeps 2s, inserts and commits.
 psql_cmd -c "
 BEGIN;
 SELECT auth.set_test_user('$USER_ID'::uuid, 'authenticated');
 -- Acquire FOR SHARE lock on user profile (same lock acquired by fn_validate_synced_report_write)
 SELECT sync_generation FROM public.profiles WHERE id = '$USER_ID' FOR SHARE;
--- Signal Job B that lock is held
-SELECT pg_advisory_lock(555111);
 -- Deliberately pause upload holding the profile lock
 SELECT pg_sleep(2);
 -- Write generation-1 report
@@ -51,19 +49,15 @@ INSERT INTO public.synced_reports (
     '{\"formatVersion\": 1, \"outcomeState\": \"cautious\", \"hasAiAnalysis\": false, \"indicatorCount\": 0, \"categories\": [], \"source\": \"messageText\"}'::jsonb,
     now()
 );
-SELECT pg_advisory_unlock(555111);
 COMMIT;
 " &
 PID_UPLOAD=$!
 
-# Foreground Job B: Wait for Job A to hold lock, then run purge_synced_reports.
+# Foreground Job B: Wait for Job A to enter transaction, then run purge_synced_reports.
 # purge_synced_reports requests FOR UPDATE on profile, which MUST block until Job A commits.
 sleep 0.5
 psql_cmd -c "
--- Wait for upload to acquire FOR SHARE lock
-SELECT pg_advisory_lock(555111);
-SELECT pg_advisory_unlock(555111);
--- Now call purge. Must block until Upload commits, then atomically purge all reports and bump generation to 2.
+-- Call purge. Blocks on profile FOR UPDATE until Upload commits, then atomically purges all reports and bumps generation to 2.
 SELECT public.purge_synced_reports('$USER_ID'::uuid);
 "
 
@@ -89,12 +83,11 @@ echo "--- Scenario 2: Purge paused inside transaction; concurrent Upload blocked
 # Reset sync_enabled for testing
 psql_cmd -c "UPDATE public.profiles SET sync_enabled = TRUE WHERE id = '$USER_ID';"
 
-# Background Job A: Starts purge transaction, locks profile FOR UPDATE, takes advisory lock, sleeps 2s, completes purge to gen 3.
+# Background Job A: Starts purge transaction, locks profile FOR UPDATE, sleeps 2s, completes purge to gen 3.
 psql_cmd -c "
 BEGIN;
-PERFORM 1 FROM public.profiles WHERE id = '$USER_ID' FOR UPDATE;
+SELECT 1 FROM public.profiles WHERE id = '$USER_ID' FOR UPDATE;
 DELETE FROM public.synced_reports WHERE user_id = '$USER_ID';
-SELECT pg_advisory_lock(555222);
 -- Deliberately pause purge holding FOR UPDATE lock
 SELECT pg_sleep(2);
 UPDATE public.profiles
@@ -102,20 +95,17 @@ SET sync_generation = sync_generation + 1,
     sync_purged_at = timezone('utc'::text, now()),
     sync_enabled = FALSE
 WHERE id = '$USER_ID';
-SELECT pg_advisory_unlock(555222);
 COMMIT;
 " &
 PID_PURGE=$!
 
-# Foreground Job B: Wait for Job A to hold lock, then attempt to insert with old generation 2.
+# Foreground Job B: Wait for Job A to hold FOR UPDATE lock, then attempt to insert with old generation 2.
 # Trigger tr_validate_synced_report_write will block on FOR SHARE until Purge commits.
-# Once Purge commits, trigger unblocks, sees generation is now 3, and raises exception.
+# Once Purge commits, trigger unblocks, sees generation is now 3 and sync is disabled, and raises exception.
 sleep 0.5
 set +e
 psql_cmd -c "
 SELECT auth.set_test_user('$USER_ID'::uuid, 'authenticated');
-SELECT pg_advisory_lock(555222);
-SELECT pg_advisory_unlock(555222);
 INSERT INTO public.synced_reports (
     user_id, client_report_id, snapshot_id, sync_generation, report_payload, client_updated_at
 ) VALUES (
