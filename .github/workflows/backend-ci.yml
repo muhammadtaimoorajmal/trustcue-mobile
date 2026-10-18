@@ -7,6 +7,10 @@ on:
       - main
     paths:
       - 'backend/**'
+      - 'render.yaml'
+      - 'Dockerfile'
+      - 'Procfile'
+      - '.python-version'
       - '.github/workflows/backend-ci.yml'
   pull_request:
     branches:
@@ -14,6 +18,10 @@ on:
       - main
     paths:
       - 'backend/**'
+      - 'render.yaml'
+      - 'Dockerfile'
+      - 'Procfile'
+      - '.python-version'
       - '.github/workflows/backend-ci.yml'
 
 permissions:
@@ -23,6 +31,7 @@ jobs:
   test-and-validate:
     name: Backend Lint, Contract & Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Check out repository

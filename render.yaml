@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: trustcue-backend
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && pip install -e .
+    startCommand: uvicorn trustcue_backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.2
+      - key: ENVIRONMENT
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: DEBUG
+        value: "false"
+      - key: DOCS_ENABLED
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ENABLE_CLOUD_AI
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: ENABLE_CLOUD_AUTH
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
