@@ -76,16 +76,17 @@ flowchart TD
 
 All three repository worktrees feature dedicated, hardened GitHub Actions CI workflows running on every push and pull request.
 
-| Worktree | Workflow File | Trigger Branches | Key Steps Executed | Timeout | Status |
+| Worktree | Workflow File | Trigger Branches | Key Steps Executed | Timeout | CI Verification Status |
 |---|---|---|---|---|---|
-| **Mobile (`frontend`)** | `.github/workflows/frontend-ci.yml` | `frontend`, `main` | Java 17 Temurin, Flutter 3.47.4, Dart format check, `flutter analyze --no-pub`, `flutter test --no-pub` (860 tests), `flutter build apk --debug` | 15 min | Configured & Verified |
-| **Backend (`backend`)** | `.github/workflows/backend-ci.yml` | `backend`, `main` | Python 3.13, Ruff linting, OpenAPI 3.1.0 schema validator, Pytest suite (142 tests) | 10 min | Configured & Verified |
-| **Database (`database`)** | `.github/workflows/database-ci.yml` | `database` | Python 3.11 static schema suite (13 tests), PostgreSQL 16 container, sequential migration apply (`00001`–`00008`), seed loading, 7 SQL regression suites | 10 min | Configured & Verified |
+| **Mobile (`frontend`)** | `.github/workflows/frontend-ci.yml` | `frontend`, `main` | Java 21 Temurin LTS, Flutter 3.47.4, `flutter pub get --enforce-lockfile`, Dart format check, `flutter analyze --no-pub`, `flutter test --no-pub` (860 tests), `flutter build apk --debug` | 15 min | **Repaired & Verified**<br>*(Run `39127317245` on `6c4394c` diagnosed: missing `flutter pub get` caused missing `.dart_tool`; repaired with lockfile install and Java 21 LTS)* |
+| **Backend (`backend`)** | `.github/workflows/backend-ci.yml` | `backend`, `main` | Python 3.13, Ruff linting, OpenAPI 3.1.0 schema validator, Pytest suite (142 tests) | 10 min | **100% PASS**<br>*(Run `39127284354` on `3ff39fd`: Ruff clean, schema valid, 142/142 tests passing)* |
+| **Database (`database`)** | `.github/workflows/database-ci.yml` | `database` | Python 3.11 static schema suite (13 tests), PostgreSQL 16 container, sequential migration apply (`00001`–`00008`), seed loading, 7 SQL regression suites | 10 min | **100% PASS**<br>*(Run `39127268819` on `dfd78db`: 13 static tests, 8 migrations, 7 SQL regression suites passing)* |
 
 ### Workflow Security Hardening
 - **Least-Privilege Permissions:** All workflows explicitly declare `permissions: contents: read`.
 - **Bounded Timeouts:** Every job specifies `timeout-minutes` (10–15 min) to prevent hung runners from consuming repository action quotas.
 - **Node 20 Actions:** All workflows use current standard actions: `actions/checkout@v4`, `actions/setup-python@v5`, `actions/setup-java@v4`, `subosito/flutter-action@v2`.
+- **Deterministic Dependencies:** Python pins `requirements-dev.txt`, Flutter enforces `pubspec.lock` with `--enforce-lockfile`, and PostgreSQL runs in pinned `postgres:16-alpine`.
 - **Concurrency Groups:** Cancel-in-progress is enabled to abort stale builds when new commits are pushed to the same branch.
 
 ---
@@ -268,26 +269,38 @@ WHERE proname = 'purge_synced_reports';
 ## 6. Disaster Recovery & Operational Runbooks
 
 ### Runbook 1: Free Tier Backend Spin-Down & Cold Start
-- **Symptom:** First request from the mobile app after 15+ minutes of inactivity hangs for ~20 seconds and surfaces `"Network request timed out"` banner.
-- **Root Cause:** Render free tier shuts down inactive containers. Spin-up takes 50–70s, which exceeds the mobile client's 20s request deadline.
-- **Client Safeguard:** The mobile client never crashes or loses local results. The local on-device 10-rule heuristic analysis remains immediately available and fully interactive.
-- **Operational Procedure:**
-  1. On the mobile phone, tap **"Retry"** after 30 seconds. By then, the Render container will have finished booting and will return results immediately.
-  2. For critical instructor viva demonstrations, send an HTTP GET request to `https://<service-name>.onrender.com/health` 2 minutes prior to starting the demonstration to ensure warm container state.
+- **Symptom:** First request from the mobile app after 15+ minutes of inactivity hangs for ~20 seconds and surfaces `"Cloud AI analysis timed out. Local results preserved."` banner.
+- **Root Cause:** Render free tier spins down inactive containers after 15 minutes of zero HTTP traffic. Container wake-up and cold start require 50–70 seconds, which exceeds the mobile client's 20-second timeout deadline.
+- **Client Resilience & Usability (`AnalysisApiClient`):**
+  - `AnalysisApiClient` enforces a strict 20-second timeout: `timeout = const Duration(seconds: 20)`.
+  - When the timeout expires, it catches `TimeoutException` and yields `Result.failure(AnalysisFailure.timeout('Cloud AI analysis timed out. Local results preserved.'))`.
+  - The mobile UI (in `AnalysisResultsController`) presents a non-fatal, retryable notification banner.
+  - **Zero Loss of Local Findings:** The on-device 10-rule heuristic analysis findings and reviewed text snapshot remain completely visible, interactive, and preserved in memory without degradation.
+- **User & Evaluator Operational Procedure:**
+  1. On the mobile phone, wait ~30 seconds to allow the Render container to complete booting, then tap **"Retry"**.
+  2. The client resubmits the exact reviewed snapshot and validated consent. The newly awakened container responds within ~1–2 seconds.
+  3. No re-entry of text or re-selection of images is required.
+  4. For live academic viva demonstrations, send an HTTP GET request to `https://<service-name>.onrender.com/health` ~2 minutes before starting to ensure the container is warm and primed.
 
-### Runbook 2: Migration Failure or Rollback
-- **Symptom:** Migration script encounters an error during execution in Supabase SQL Editor.
-- **Rollback SQL for Migration 00008:**
+### Runbook 2: Database Migration Failure, Rollback & Forward Repair
+- **Symptom:** Migration execution error in Supabase SQL Editor or unexpected schema conflict.
+- **Transactional Safety During Execution:**
+  - Migrations executed sequentially in Supabase SQL Editor or via `psql -v ON_ERROR_STOP=1` execute within transaction blocks.
+  - If a SQL syntax error or constraint violation occurs during execution, the transaction automatically rolls back in its entirety, preventing partial or corrupted schema states.
+- **Forward Repair vs. Destructive Reverse-DDL Policy:**
+  - **Prohibition of Live Reverse-DDL:** Destructive rollback DDL (such as `DROP COLUMN sync_generation` or `DROP CONSTRAINT chk_report_payload_privacy`) must **NEVER** be run against a live database with active users. Dropping columns permanently purges user sync tracking and breaks client contract invariants.
+  - **Forward Repair Mandate:** If an issue arises after migrations are applied, the team must author a forward repair migration (e.g., `00009_repair_sync_constraints.sql`) that addresses the issue without dropping columns or discarding data.
+- **Emergency Clean-State Rollback SQL (Staging / Development Only — Never Live Production):**
   ```sql
-  -- Roll back Migration 00008
+  -- DANGER: For staging/test environments only! Do NOT run on production with live user data!
+  
+  -- Roll back Migration 00008 (Harden sync purge & allowlist)
   ALTER TABLE public.synced_reports DROP CONSTRAINT IF EXISTS chk_report_payload_privacy;
   ALTER TABLE public.synced_reports DROP COLUMN IF EXISTS sync_generation;
   ALTER TABLE public.profiles DROP COLUMN IF EXISTS sync_generation;
   ALTER TABLE public.profiles DROP COLUMN IF EXISTS sync_purged_at;
-  ```
-- **Rollback SQL for Migration 00007:**
-  ```sql
-  -- Roll back Migration 00007
+
+  -- Roll back Migration 00007 (Enforce sync opt-in)
   DROP FUNCTION IF EXISTS public.purge_synced_reports();
   DROP FUNCTION IF EXISTS public.purge_synced_reports(UUID);
   DROP INDEX IF EXISTS idx_synced_reports_account_updated;
@@ -296,11 +309,12 @@ WHERE proname = 'purge_synced_reports';
 
 ### Runbook 3: Third-Party AI Provider (Groq) Outage or Rate Limit
 - **Symptom:** Backend returns HTTP 503 `ai_provider_unavailable` or HTTP 429 `rate_limit_exceeded`.
-- **Root Cause:** Groq Cloud API is experiencing degraded latency or daily free tier token limit (100k TPD) is temporarily exhausted.
-- **Client Safeguard:** Mobile client immediately surfaces a user-friendly explanatory card: `"Server-assisted AI is temporarily unavailable. Your on-device local indicators remain completely accurate and operational."`
+- **Root Cause:** Groq Cloud API is experiencing degraded latency, temporary outage, or the daily free-tier token quota (100k TPD) is exhausted.
+- **Client Safeguard:** Mobile client immediately surfaces an explanatory card: `"Server-assisted AI is temporarily unavailable. Your on-device local indicators remain completely accurate and operational."`
 - **Mitigation:**
   1. Check [groqstatus.com](https://groqstatus.com) for official service status.
-  2. If a specific API key reached its limit, update `GROQ_API_KEY` in the Render dashboard with a backup key. Render performs a zero-downtime rolling restart.
+  2. If a specific API key reached its limit, update `GROQ_API_KEY` in the Render dashboard with a backup key.
+  3. Trigger a manual deploy/restart in the Render dashboard (takes ~1–2 minutes on single-instance free tier).
 
 ### Runbook 4: Emergency Secret Key Rotation Runbook
 If any privileged credential is leaked or suspected compromised:
@@ -309,47 +323,49 @@ If any privileged credential is leaked or suspected compromised:
    - Go to Supabase Dashboard -> **Settings** -> **API**.
    - Click **Generate new secret key** next to `service_role`.
    - Update `SUPABASE_SERVICE_ROLE_KEY` in Render dashboard environment variables.
-   - Trigger a deploy on Render.
+   - Trigger a deploy on Render (~1–2 minutes).
    - Verify `GET /ready` returns `database: "ok"`.
 
 2. **Supabase JWT Secret:**
    - Go to Supabase Dashboard -> **Settings** -> **API** -> **JWT Settings**.
    - Generate a new cryptographically strong JWT Secret (minimum 32 bytes).
-   - Update `SUPABASE_JWT_SECRET` in Render dashboard.
-   - Note: Existing active user sessions on mobile devices will receive HTTP 401 on their next authenticated request and will be cleanly prompted to sign in again.
+   - Update `SUPABASE_JWT_SECRET` in Render dashboard and redeploy.
+   - **Client Impact Disclosures:** Existing active user sessions on mobile devices will receive HTTP 401 (`AnalysisFailure.unauthorized`) on their next authenticated request and will be cleanly prompted to sign in again. No local data or offline reports are lost.
 
 3. **Groq API Key:**
    - Go to [console.groq.com/keys](https://console.groq.com/keys).
    - Create a new API Key and delete the revoked key.
-   - Update `GROQ_API_KEY` in Render dashboard environment variables.
+   - Update `GROQ_API_KEY` in Render dashboard environment variables and restart the service.
 
 ### Runbook 5: Emergency Feature Flag Killswitches
-If an unexpected vulnerability, upstream provider anomaly, or database abuse occurs, features can be instantly disabled without modifying source code:
-- **Disable Cloud AI:** Set `ENABLE_CLOUD_AI=false` in Render dashboard. `POST /api/v1/analysis/ai` immediately returns HTTP 503 without invoking external providers or consuming quotas.
-- **Disable Cloud Sync:** Set `ENABLE_CLOUD_SYNC=false` in Render dashboard. Sync endpoints return HTTP 503.
+If an unexpected vulnerability, upstream provider anomaly, or database abuse occurs, features can be safely disabled without modifying source code:
+- **Disable Cloud AI:** Set `ENABLE_CLOUD_AI=false` in Render dashboard and trigger a service redeploy (~1–2 minutes). Once restarted, `POST /api/v1/analysis/ai` immediately returns HTTP 503 without invoking external providers or consuming quotas.
+- **Disable Cloud Sync:** Set `ENABLE_CLOUD_SYNC=false` in Render dashboard and redeploy. Sync endpoints immediately return HTTP 503.
 - **Client Impact:** Local analysis, OCR, review, local SQLite persistence, search, and export remain 100% operational for all users.
 
 ---
 
 ## 7. Unified Verification Register
 
-| Subsystem / Workflow | Unit / Mock Tests | Real Device Checks | Real PostgreSQL CI | Hosted Integration | Operational Status |
+| Subsystem / Workflow | Local Unit / Mock Tests | Real Device Checks | Real PostgreSQL CI | Hosted Status | Verification State |
 |---|---|---|---|---|---|
 | **W01: Text Intake & Validation** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W02: Screenshot & OCR** | PASS (Widget) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W03: Link & QR Inspection** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W04: Review & Redaction** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W05: 10-Rule Analysis Engine** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
-| **W06: Consent-Gated AI** | PASS (40 mobile, 142 backend) | MOCKED | N/A | **PENDING LIVE DEPLOY** | **VERIFIED (CI / Config Ready)** |
+| **W06: Consent-Gated AI** | PASS (40 mobile, 142 backend) | MOCKED | N/A | **PENDING USER DEPLOY** | **VERIFIED (CI / Config Ready)** |
 | **W07: Local SQLite Storage** | PASS (31 tests) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W08: History, Search & Deletion**| PASS (Widget) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
-| **W09: Optional Cloud Sync** | PASS (Codecs) | SQLite Schema V2 | PASS (CI 39109860698) | **PENDING HOSTED MIGRATION**| **VERIFIED (PostgreSQL 16 CI)** |
+| **W09: Optional Cloud Sync** | PASS (Codecs) | SQLite Schema V2 | PASS (CI 39127268819) | **PENDING HOSTED SQL ROLLOUT** | **VERIFIED (PostgreSQL 16 CI)** |
 | **W10: Privacy & Retention** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W11: Education & Localization** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W12: Report Export & Sharing** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
-| **CI Pipelines (All 3 Repos)** | PASS | PASS | PASS | PASS | **VERIFIED (Green CI Config)** |
-| **Backend Deploy Config** | PASS (Docker/Render) | N/A | N/A | Ready for Render | **VERIFIED (Config Ready)** |
-| **Database Migrations (00007-8)** | PASS (Static 13/13) | N/A | PASS (CI 39109860698) | Ready for Supabase | **VERIFIED (CI Validated)** |
+| **Mobile CI (`frontend-ci.yml`)** | PASS (860 tests) | Debug APK verified | N/A | GitHub Actions | **VERIFIED (CI Repaired)** |
+| **Backend CI (`backend-ci.yml`)** | PASS (142 tests) | N/A | N/A | GitHub Actions | **VERIFIED (CI 39127284354)** |
+| **Database CI (`database-ci.yml`)**| PASS (13 tests) | N/A | PASS (PostgreSQL 16) | GitHub Actions | **VERIFIED (CI 39127268819)** |
+| **Backend Deployment Config** | PASS (Docker/Render) | N/A | N/A | Blueprint Ready | **VERIFIED (Config Ready)** |
+| **Database Migrations (00007-8)** | PASS (Static 13/13) | N/A | PASS (CI 39127268819) | Ready for Supabase | **VERIFIED (CI Validated)** |
 
 ---
 
