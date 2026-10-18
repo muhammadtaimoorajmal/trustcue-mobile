@@ -69,7 +69,7 @@ class AccountService:
             try:
                 base_url = self.settings.SUPABASE_URL.rstrip("/")
                 resp = await client.get(
-                    f"{base_url}/rest/v1/profiles?id=eq.{user_id}&select=id,display_name,terms_version,sync_enabled,created_at,updated_at",
+                    f"{base_url}/rest/v1/profiles?id=eq.{user_id}&select=id,display_name,terms_version,sync_enabled,sync_generation,created_at,updated_at",
                     headers=self._get_auth_headers(),
                 )
                 if resp.status_code == 200:
@@ -78,7 +78,9 @@ class AccountService:
                         row = data[0]
                         display_name = row.get("display_name")
                         sync_enabled = bool(row.get("sync_enabled", False))
+                        sync_generation = int(row.get("sync_generation", 1))
                         self.app_state.set_sync_enabled(user_id, sync_enabled)
+                        self.app_state.set_sync_generation(user_id, sync_generation)
                         if display_name is not None:
                             self.app_state.set_display_name(user_id, display_name)
                         raw_created = row.get("created_at")
@@ -108,6 +110,7 @@ class AccountService:
             emailVerified=email_verified,
             createdAt=created_at,
             syncEnabled=sync_enabled,
+            syncGeneration=self.app_state.get_sync_generation(user_id),
             quotaRemainingToday=remaining_quota,
         )
 
@@ -173,6 +176,7 @@ class AccountService:
             emailVerified=email_verified,
             createdAt=created_at,
             syncEnabled=effective_sync_enabled,
+            syncGeneration=self.app_state.get_sync_generation(user_id),
             quotaRemainingToday=remaining_quota,
         )
 

@@ -142,6 +142,7 @@ def test_profile_retrieval_success(auth_client: TestClient) -> None:
     assert data["email"] == email
     assert data["emailVerified"] is True
     assert data["syncEnabled"] is False
+    assert data["syncGeneration"] == 1
     assert data["quotaRemainingToday"] == 15
 
     # Check valid ISO 8601 UTC timestamp

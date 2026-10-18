@@ -36,6 +36,12 @@ class UserProfileResponse(BaseModel):
         alias="syncEnabled",
         description="Whether encrypted cloud sync is enabled.",
     )
+    sync_generation: int = Field(
+        default=1,
+        ge=1,
+        alias="syncGeneration",
+        description="Monotonic cloud backup generation counter.",
+    )
     quota_remaining_today: int = Field(
         default=15,
         ge=0,
