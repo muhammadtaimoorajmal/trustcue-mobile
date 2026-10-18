@@ -11,6 +11,7 @@ class UserProfile {
   final bool emailVerified;
   final DateTime createdAt;
   final bool syncEnabled;
+  final int syncGeneration;
   final int quotaRemainingToday;
 
   const UserProfile({
@@ -20,6 +21,7 @@ class UserProfile {
     required this.emailVerified,
     required this.createdAt,
     required this.syncEnabled,
+    this.syncGeneration = 1,
     required this.quotaRemainingToday,
   });
 
@@ -31,6 +33,7 @@ class UserProfile {
       emailVerified: json['emailVerified'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
       syncEnabled: json['syncEnabled'] as bool? ?? false,
+      syncGeneration: json['syncGeneration'] as int? ?? 1,
       quotaRemainingToday: json['quotaRemainingToday'] as int? ?? 15,
     );
   }
@@ -39,6 +42,7 @@ class UserProfile {
     String? displayName,
     int? quotaRemainingToday,
     bool? syncEnabled,
+    int? syncGeneration,
   }) {
     return UserProfile(
       userId: userId,
@@ -47,6 +51,7 @@ class UserProfile {
       emailVerified: emailVerified,
       createdAt: createdAt,
       syncEnabled: syncEnabled ?? this.syncEnabled,
+      syncGeneration: syncGeneration ?? this.syncGeneration,
       quotaRemainingToday: quotaRemainingToday ?? this.quotaRemainingToday,
     );
   }

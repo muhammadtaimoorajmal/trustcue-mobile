@@ -40,15 +40,18 @@ class DeleteConfirmationDialog extends StatelessWidget {
           const Expanded(child: Text('Delete saved report?')),
         ],
       ),
-      content: Text(
-        isSyncEnabled
-            ? 'This report is backed up to your cloud account.\n\n'
-                  '• Delete from device only: Removes local text and findings while preserving the cloud backup summary.\n'
-                  '• Delete from device & cloud: Permanently removes the report from this device and wipes the cloud backup.'
-            : 'This removes the saved report from this device.\n\n'
-                  'Reviewed text and associated indicator findings will be permanently deleted from local storage.',
-        style: theme.textTheme.bodyMedium,
+      content: SingleChildScrollView(
+        child: Text(
+          isSyncEnabled
+              ? 'This report is backed up to your cloud account.\n\n'
+                    '• Delete from device only: Removes local text and findings while preserving the cloud backup summary.\n'
+                    '• Delete from device & cloud: Permanently removes the report from this device and wipes the cloud backup.'
+              : 'This removes the saved report from this device.\n\n'
+                    'Reviewed text and associated indicator findings will be permanently deleted from local storage.',
+          style: theme.textTheme.bodyMedium,
+        ),
       ),
+      actionsOverflowButtonSpacing: 8,
       actions: isSyncEnabled
           ? [
               TextButton(

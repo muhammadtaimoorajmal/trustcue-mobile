@@ -71,8 +71,8 @@ class _HistoryReportCardState extends State<HistoryReportCard> {
                     ),
                     tooltip: 'Delete report from device',
                     constraints: const BoxConstraints(
-                      minWidth: 40,
-                      minHeight: 40,
+                      minWidth: 48,
+                      minHeight: 48,
                     ),
                     onPressed: widget.onDelete,
                   ),

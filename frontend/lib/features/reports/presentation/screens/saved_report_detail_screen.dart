@@ -220,10 +220,11 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
             children: [
               _buildSourceBadge(theme, report.snapshot.source),
-              const SizedBox(width: 8),
               if (report.hasAiAnalysis)
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -518,11 +519,14 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
                 spacing: 8,
                 runSpacing: 2,
                 children: [
-                  Text(
-                    '"${ref.exactExcerpt}"',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.w600,
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      '"${ref.exactExcerpt}"',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   Text(

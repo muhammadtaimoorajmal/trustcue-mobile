@@ -53,6 +53,7 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
             return IconButton(
               icon: const Icon(Icons.ios_share_rounded),
               tooltip: 'export_action_tooltip'.tr,
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               onPressed: () => _openExportSheet(context),
             );
           }),
@@ -655,7 +656,10 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -675,16 +679,12 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  isAi
-                      ? 'Groq Cloud • ${finding.producerId}'
-                      : 'Rule provenance: ${finding.producerId} (on-device local rule)',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.hintColor,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+              Text(
+                isAi
+                    ? 'Groq Cloud • ${finding.producerId}'
+                    : 'Rule provenance: ${finding.producerId} (on-device local rule)',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.hintColor,
                 ),
               ),
             ],
@@ -719,11 +719,14 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
                 spacing: 8,
                 runSpacing: 2,
                 children: [
-                  Text(
-                    '"${ref.exactExcerpt}"',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.w600,
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      '"${ref.exactExcerpt}"',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   Text(

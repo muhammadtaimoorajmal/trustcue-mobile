@@ -224,39 +224,44 @@ class _InputOptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 28, color: theme.colorScheme.primary),
-              const SizedBox(width: 12),
-              Expanded(child: Text(title, style: theme.textTheme.titleMedium)),
-            ],
-          ),
-          if (statusText != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              statusText!,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.bold,
+    return Semantics(
+      container: true,
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 28, color: theme.colorScheme.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(title, style: theme.textTheme.titleMedium),
+                ),
+              ],
+            ),
+            if (statusText != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                statusText!,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
+            ],
+            const SizedBox(height: 8),
+            Text(description, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 12),
+            AppButton.secondary(
+              label: actionLabel,
+              onPressed: () {
+                if (Get.currentRoute != route) {
+                  Get.toNamed(route);
+                }
+              },
             ),
           ],
-          const SizedBox(height: 8),
-          Text(description, style: theme.textTheme.bodyMedium),
-          const SizedBox(height: 12),
-          AppButton.secondary(
-            label: actionLabel,
-            onPressed: () {
-              if (Get.currentRoute != route) {
-                Get.toNamed(route);
-              }
-            },
-          ),
-        ],
+        ),
       ),
     );
   }

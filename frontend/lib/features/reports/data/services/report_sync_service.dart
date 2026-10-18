@@ -55,6 +55,7 @@ class ReportSyncService {
   Future<Result<SyncCycleResult>> synchronize({
     required String accountId,
     required bool syncEnabled,
+    int syncGeneration = 1,
   }) async {
     if (!syncEnabled) {
       return Result.success(
@@ -107,6 +108,7 @@ class ReportSyncService {
             clientReportId: summary.id,
             snapshotId: summary.snapshotId,
             schemaVersion: summary.schemaVersion,
+            syncGeneration: syncGeneration,
             reportPayload: payload,
             isDeleted: false,
             clientUpdatedAt: summary.savedAt,
@@ -122,9 +124,10 @@ class ReportSyncService {
             clientReportId: tombId,
             snapshotId: 'tombstone',
             schemaVersion: 1,
+            syncGeneration: syncGeneration,
             reportPayload: const {
               'formatVersion': 1,
-              'outcomeState': 'deleted',
+              'outcomeState': 'cautious',
             },
             isDeleted: true,
             deletedAt: now,

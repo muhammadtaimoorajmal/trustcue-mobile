@@ -347,5 +347,82 @@ void main() {
       expect(firstResult.isSuccess, isTrue);
       expect(service.isSyncing, isFalse);
     });
+
+    test('synchronize pushes pending local tombstones with cautious outcomeState and matching syncGeneration', () async {
+      // Record a tombstone locally
+      repository.pendingTombstoneIds.add('rep-tomb-test');
+
+      final mockHttp = MockClient((request) async {
+        if (request.method == 'POST' &&
+            request.url.path == '/api/v1/sync/reports') {
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          final list = body['reports'] as List;
+          expect(list.length, equals(1));
+          final tomb = list[0] as Map<String, dynamic>;
+          expect(tomb['clientReportId'], equals('rep-tomb-test'));
+          expect(tomb['isDeleted'], isTrue);
+          expect(tomb['syncGeneration'], equals(3));
+          expect(tomb['reportPayload']['outcomeState'], equals('cautious'));
+
+          return http.Response(
+            jsonEncode({
+              'status': 'success',
+              'acceptedCount': 1,
+              'rejectedCount': 0,
+              'serverTimestamp': '2026-10-18T12:00:00Z',
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+
+        if (request.method == 'GET' &&
+            request.url.path == '/api/v1/sync/reports') {
+          return http.Response(
+            jsonEncode({
+              'status': 'success',
+              'reports': [],
+              'hasMore': false,
+              'serverTimestamp': '2026-10-18T12:00:00Z',
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+
+        return http.Response('Not found', 404);
+      });
+
+      final syncClient = SyncApiClient(
+        baseUrl: 'http://localhost:8000',
+        httpClient: mockHttp,
+        tokenProvider: () async => 'token-123',
+      );
+      final accountClient = AccountApiClient(
+        baseUrl: 'http://localhost:8000',
+        httpClient: mockHttp,
+        tokenProvider: () async => 'token-123',
+      );
+
+      final service = ReportSyncService(
+        repository: repository,
+        syncApiClient: syncClient,
+        accountApiClient: accountClient,
+      );
+
+      final syncResult = await service.synchronize(
+        accountId: 'usr-123',
+        syncEnabled: true,
+        syncGeneration: 3,
+      );
+
+      expect(syncResult.isSuccess, isTrue);
+      expect(syncResult.valueOrNull?.pushedCount, equals(1));
+      // Tombstone cleared locally
+      final remainingTombstones = await repository.getPendingTombstones(
+        'usr-123',
+      );
+      expect(remainingTombstones.valueOrNull, isEmpty);
+    });
   });
 }

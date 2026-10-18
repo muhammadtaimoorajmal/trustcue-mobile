@@ -86,6 +86,10 @@ class ExportReportSheet extends StatelessWidget {
                     IconButton(
                       icon: const Icon(Icons.close),
                       tooltip: 'close'.tr,
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -114,30 +118,22 @@ class ExportReportSheet extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Row(
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 8,
                           children: [
-                            Expanded(
-                              child: ChoiceChip(
-                                label: Center(
-                                  child: Text('export_format_plain_text'.tr),
-                                ),
-                                selected:
-                                    options.format == ExportFormat.plainText,
-                                onSelected: (_) => controller.setFormat(
-                                  ExportFormat.plainText,
-                                ),
-                              ),
+                            ChoiceChip(
+                              label: Text('export_format_plain_text'.tr),
+                              selected:
+                                  options.format == ExportFormat.plainText,
+                              onSelected: (_) =>
+                                  controller.setFormat(ExportFormat.plainText),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: ChoiceChip(
-                                label: Center(
-                                  child: Text('export_format_pdf'.tr),
-                                ),
-                                selected: options.format == ExportFormat.pdf,
-                                onSelected: (_) =>
-                                    controller.setFormat(ExportFormat.pdf),
-                              ),
+                            ChoiceChip(
+                              label: Text('export_format_pdf'.tr),
+                              selected: options.format == ExportFormat.pdf,
+                              onSelected: (_) =>
+                                  controller.setFormat(ExportFormat.pdf),
                             ),
                           ],
                         ),

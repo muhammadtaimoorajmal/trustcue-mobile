@@ -51,6 +51,10 @@ class HistoryFilterBar extends StatelessWidget {
                 ? IconButton(
                     icon: const Icon(Icons.clear, size: 18),
                     tooltip: 'Clear search',
+                    constraints: const BoxConstraints(
+                      minWidth: 48,
+                      minHeight: 48,
+                    ),
                     onPressed: onClearSearch,
                   )
                 : null,

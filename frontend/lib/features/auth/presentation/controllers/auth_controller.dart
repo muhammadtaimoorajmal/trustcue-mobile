@@ -253,6 +253,7 @@ class AuthController extends GetxController {
     final result = await effectiveService.synchronize(
       accountId: currentUser.id,
       syncEnabled: currentProfile.syncEnabled,
+      syncGeneration: currentProfile.syncGeneration,
     );
     isSyncing.value = false;
 
@@ -268,6 +269,7 @@ class AuthController extends GetxController {
   /// Purges cloud backup records without touching local device reports.
   Future<bool> purgeCloudBackups() async {
     final currentUser = user.value;
+    final currentProfile = profile.value;
     final effectiveService = _effectiveSyncService;
     if (currentUser == null ||
         !isAuthenticated ||
@@ -286,6 +288,12 @@ class AuthController extends GetxController {
 
     if (result.isSuccess) {
       lastSyncTime.value = null;
+      if (currentProfile != null) {
+        profile.value = currentProfile.copyWith(
+          syncEnabled: false,
+          syncGeneration: currentProfile.syncGeneration + 1,
+        );
+      }
       return true;
     } else {
       syncError.value = result.failureOrNull?.message;

@@ -325,10 +325,12 @@ class AccountScreen extends GetView<AuthController> {
                       color: theme.colorScheme.primary,
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      '$quota of 15 analysis queries remaining today',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Text(
+                        '$quota of 15 analysis queries remaining today',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -380,17 +382,20 @@ class AccountScreen extends GetView<AuthController> {
                     ),
                     Obx(() {
                       final isSyncing = controller.isSyncing.value;
-                      return Switch.adaptive(
-                        value: syncEnabled,
-                        onChanged: isSyncing
-                            ? null
-                            : (val) {
-                                if (val) {
-                                  controller.toggleCloudSync(true);
-                                } else {
-                                  _showDisableSyncDialog(context);
-                                }
-                              },
+                      return Semantics(
+                        label: 'Cloud Report Backup',
+                        child: Switch.adaptive(
+                          value: syncEnabled,
+                          onChanged: isSyncing
+                              ? null
+                              : (val) {
+                                  if (val) {
+                                    controller.toggleCloudSync(true);
+                                  } else {
+                                    _showDisableSyncDialog(context);
+                                  }
+                                },
+                        ),
                       );
                     }),
                   ],

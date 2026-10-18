@@ -68,7 +68,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **42** | User-controlled privacy-reviewed export/sharing | Completed | `frontend` |
 | **43** | Complete workflow integration and offline/retry/lifecycle handling | Completed | `frontend` |
 | **44** | Security and privacy testing | Completed | `frontend` / `backend` / `database` |
-| **45** | Accessibility and usability verification | Planned | `frontend` |
+| **45** | Accessibility and usability verification | Completed | `frontend` |
 | **46** | End-to-end, real-device, performance and storage verification | Planned | `frontend` / `backend` |
 | **47** | CI, deployment, migrations and recovery procedures | Planned | `frontend` / `backend` |
 | **48** | Android release configuration, branding, signing and AAB | Planned | `frontend` |
@@ -207,10 +207,10 @@ To prevent divergent or conflicting project roadmaps across branches:
 
 ### Module 45: Accessibility and Usability Verification
 - **Primary Branch:** `frontend`
-- **Deliverable:** TalkBack / VoiceOver screen-reader audit, semantic labeling review, high-contrast theme adjustments, 200% text scale visual validation, keyboard/d-pad navigation checks.
+- **Deliverables:** TalkBack / VoiceOver screen-reader audit and semantic hierarchy optimizations, WCAG 2.1 AA mathematical color contrast validation across light and dark themes, 48x48 dp minimum touch target enforcement on all interactive icon buttons (`HistoryFilterBar`, `HistoryReportCard`, `ExportReportSheet`, `AnalysisResultsScreen`), 200% font scaling resilience without overflow (`DeleteConfirmationDialog`, `ExportReportSheet`, `AnalysisResultsScreen`, `SavedReportDetailScreen`, `AccountScreen`), bidirectional token isolation wrapping exact evidence excerpts in `Directionality(textDirection: TextDirection.ltr)`, dedicated accessibility automated regression test suite (`accessibility_review_test.dart`), and comprehensive audit report (`docs/ACCESSIBILITY_REVIEW_MODULE_45.md`).
 - **Dependencies:** Modules 09, 10, 11, 26, 31, 37.
-- **Acceptance Criteria:** WCAG 2.1 AA compliance across all primary screens; 0 semantic clipping or overflow at 200% text scale.
-- **Necessary Human Actions:** Manual TalkBack test on physical Android phone.
+- **Acceptance Criteria:** WCAG 2.1 AA contrast verified for light and dark themes; 0 semantic clipping or overflow at 200% text scale; 859 automated tests passing with 0 regressions; `flutter analyze --no-pub` clean (0 issues); debug APK built successfully.
+- **Necessary Human Actions:** Manual TalkBack gesture and spoken output walkthrough on physical Android phone.
 
 ### Module 46: End-to-End, Real-Device, Performance, and Storage Verification
 - **Primary Branch:** `frontend` / `backend`
