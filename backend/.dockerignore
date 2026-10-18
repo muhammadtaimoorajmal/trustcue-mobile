@@ -1,0 +1,35 @@
+# Git & CI
+.git
+.github
+.gitignore
+
+# Environment files and credentials (CRITICAL: zero secrets in image)
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.cert
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+
+# Test & coverage artifacts
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+tests/
+
+# Documentation & IDE
+docs/
+.vscode/
+.idea/
+*.md
+!README.md
