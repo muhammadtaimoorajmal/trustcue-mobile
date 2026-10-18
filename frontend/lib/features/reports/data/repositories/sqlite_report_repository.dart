@@ -48,6 +48,9 @@ class SqliteReportRepository implements LocalReportRepository {
   /// Visible for testing to check current connection state.
   bool get isOpen => _db != null && _db!.isOpen;
 
+  /// Visible for testing to inspect underlying database directly in benchmarks.
+  Database? get testDatabase => _db;
+
   @override
   Future<Result<void>> initialize() async {
     if (_db != null && _db!.isOpen) {
@@ -597,50 +600,25 @@ class SqliteReportRepository implements LocalReportRepository {
 
     try {
       return await db.transaction<Result<int>>((txn) async {
-        // 1. Identify snapshots referenced by reports owned by this account
-        final reportRows = await txn.query(
-          DatabaseConstants.tableReports,
-          columns: [
-            DatabaseConstants.colReportId,
-            DatabaseConstants.colReportSnapshotId,
-          ],
-          where: '${DatabaseConstants.colReportAccountId} = ?',
-          whereArgs: [cleanId],
-        );
-
-        if (reportRows.isEmpty) {
-          return const Result.success(0);
-        }
-
-        final snapshotIds = reportRows
-            .map((r) => r[DatabaseConstants.colReportSnapshotId] as String?)
-            .whereType<String>()
-            .toSet();
-
-        // 2. Delete all report rows for this account
+        // 1. Delete all report rows for this account
         final deletedCount = await txn.delete(
           DatabaseConstants.tableReports,
           where: '${DatabaseConstants.colReportAccountId} = ?',
           whereArgs: [cleanId],
         );
 
-        // 3. For each snapshot, check if any remaining reports (guest or other accounts) still reference it
-        for (final snapId in snapshotIds) {
-          final remaining = await txn.query(
-            DatabaseConstants.tableReports,
-            columns: [DatabaseConstants.colReportId],
-            where: '${DatabaseConstants.colReportSnapshotId} = ?',
-            whereArgs: [snapId],
-            limit: 1,
-          );
-          if (remaining.isEmpty) {
-            await txn.delete(
-              DatabaseConstants.tableSnapshots,
-              where: '${DatabaseConstants.colSnapshotId} = ?',
-              whereArgs: [snapId],
-            );
-          }
+        if (deletedCount == 0) {
+          return const Result.success(0);
         }
+
+        // 2. Atomically prune orphan snapshots no longer referenced by any report
+        await txn.rawDelete('''
+          DELETE FROM ${DatabaseConstants.tableSnapshots}
+          WHERE ${DatabaseConstants.colSnapshotId} NOT IN (
+            SELECT DISTINCT ${DatabaseConstants.colReportSnapshotId}
+            FROM ${DatabaseConstants.tableReports}
+          )
+        ''');
 
         // 4. Delete sync metadata for this account
         await txn.delete(
@@ -676,45 +654,23 @@ class SqliteReportRepository implements LocalReportRepository {
 
     try {
       return await db.transaction<Result<int>>((txn) async {
-        final reportRows = await txn.query(
-          DatabaseConstants.tableReports,
-          columns: [
-            DatabaseConstants.colReportId,
-            DatabaseConstants.colReportSnapshotId,
-          ],
-          where: '${DatabaseConstants.colReportAccountId} IS NULL',
-        );
-
-        if (reportRows.isEmpty) {
-          return const Result.success(0);
-        }
-
-        final snapshotIds = reportRows
-            .map((r) => r[DatabaseConstants.colReportSnapshotId] as String?)
-            .whereType<String>()
-            .toSet();
-
         final deletedCount = await txn.delete(
           DatabaseConstants.tableReports,
           where: '${DatabaseConstants.colReportAccountId} IS NULL',
         );
 
-        for (final snapId in snapshotIds) {
-          final remaining = await txn.query(
-            DatabaseConstants.tableReports,
-            columns: [DatabaseConstants.colReportId],
-            where: '${DatabaseConstants.colReportSnapshotId} = ?',
-            whereArgs: [snapId],
-            limit: 1,
-          );
-          if (remaining.isEmpty) {
-            await txn.delete(
-              DatabaseConstants.tableSnapshots,
-              where: '${DatabaseConstants.colSnapshotId} = ?',
-              whereArgs: [snapId],
-            );
-          }
+        if (deletedCount == 0) {
+          return const Result.success(0);
         }
+
+        // Atomically prune orphan snapshots no longer referenced by any report
+        await txn.rawDelete('''
+          DELETE FROM ${DatabaseConstants.tableSnapshots}
+          WHERE ${DatabaseConstants.colSnapshotId} NOT IN (
+            SELECT DISTINCT ${DatabaseConstants.colReportSnapshotId}
+            FROM ${DatabaseConstants.tableReports}
+          )
+        ''');
 
         return Result.success(deletedCount);
       });
@@ -766,60 +722,33 @@ class SqliteReportRepository implements LocalReportRepository {
           return const Result.success(0);
         }
 
-        final reportRows = await txn.query(
-          DatabaseConstants.tableReports,
-          columns: [
-            DatabaseConstants.colReportId,
-            DatabaseConstants.colReportSnapshotId,
-          ],
-          where: whereClause,
-          whereArgs: whereArgs,
-        );
-
-        if (reportRows.isEmpty) {
-          return const Result.success(0);
-        }
-
-        final reportIds = reportRows
-            .map((r) => r[DatabaseConstants.colReportId] as String?)
-            .whereType<String>()
-            .toList();
-        final snapshotIds = reportRows
-            .map((r) => r[DatabaseConstants.colReportSnapshotId] as String?)
-            .whereType<String>()
-            .toSet();
-
         final deletedCount = await txn.delete(
           DatabaseConstants.tableReports,
           where: whereClause,
           whereArgs: whereArgs,
         );
 
-        for (final snapId in snapshotIds) {
-          final remaining = await txn.query(
-            DatabaseConstants.tableReports,
-            columns: [DatabaseConstants.colReportId],
-            where: '${DatabaseConstants.colReportSnapshotId} = ?',
-            whereArgs: [snapId],
-            limit: 1,
-          );
-          if (remaining.isEmpty) {
-            await txn.delete(
-              DatabaseConstants.tableSnapshots,
-              where: '${DatabaseConstants.colSnapshotId} = ?',
-              whereArgs: [snapId],
-            );
-          }
+        if (deletedCount == 0) {
+          return const Result.success(0);
         }
 
+        // Atomically prune orphan snapshots no longer referenced by any report
+        await txn.rawDelete('''
+          DELETE FROM ${DatabaseConstants.tableSnapshots}
+          WHERE ${DatabaseConstants.colSnapshotId} NOT IN (
+            SELECT DISTINCT ${DatabaseConstants.colReportSnapshotId}
+            FROM ${DatabaseConstants.tableReports}
+          )
+        ''');
+
         // Clean up sync metadata for pruned reports without issuing tombstones
-        for (final repId in reportIds) {
-          await txn.delete(
-            DatabaseConstants.tableSyncMetadata,
-            where: '${DatabaseConstants.colSyncReportId} = ?',
-            whereArgs: [repId],
-          );
-        }
+        await txn.rawDelete('''
+          DELETE FROM ${DatabaseConstants.tableSyncMetadata}
+          WHERE ${DatabaseConstants.colSyncReportId} NOT IN (
+            SELECT ${DatabaseConstants.colReportId}
+            FROM ${DatabaseConstants.tableReports}
+          )
+        ''');
 
         return Result.success(deletedCount);
       });

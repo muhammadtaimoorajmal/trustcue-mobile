@@ -89,7 +89,7 @@ class PdfExportBuilder {
       }
     }
     if (data.hasReviewedText && !isStringSupported(data.reviewedText!)) {
-      return 'PDF export is unavailable because the reviewed message content contains unsupported script (such as Urdu or emojis). Standard PDF typography cannot shape or render this script without losing content. Please export as Plain Text (.txt) for 100% complete, lossless fidelity.';
+      return 'PDF export is unavailable because the reviewed message content contains unsupported non-Latin script (such as Urdu or emojis). Standard PDF typography cannot shape or render this script without losing content. Please export as Plain Text (.txt) for 100% complete, lossless fidelity.';
     }
     return null;
   }

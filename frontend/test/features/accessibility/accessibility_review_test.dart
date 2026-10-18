@@ -18,6 +18,7 @@ import 'package:trustcue_mobile/features/export/domain/models/export_report_data
 import 'package:trustcue_mobile/features/export/presentation/controllers/export_controller.dart';
 import 'package:trustcue_mobile/features/export/presentation/widgets/export_report_sheet.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
+import 'package:trustcue_mobile/features/localization/domain/models/app_language.dart';
 import 'package:trustcue_mobile/features/localization/presentation/translations/app_translations.dart';
 import 'package:trustcue_mobile/features/reports/presentation/widgets/delete_confirmation_dialog.dart';
 import 'package:trustcue_mobile/features/reports/presentation/widgets/history_filter_bar.dart';
@@ -306,20 +307,65 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    test('determineExcerptDirection identifies script direction correctly', () {
+      expect(
+        determineExcerptDirection('Urgent: Pay immediately'),
+        equals(TextDirection.ltr),
+      );
+      expect(
+        determineExcerptDirection('https://trustcue-auth-fake.com/login'),
+        equals(TextDirection.ltr),
+      );
+      expect(
+        determineExcerptDirection('فوری طور پر رقم منتقل کریں'),
+        equals(TextDirection.rtl),
+      );
+      expect(
+        determineExcerptDirection('انتباہ: آپ کا اکاؤنٹ معطل ہو جائے گا'),
+        equals(TextDirection.rtl),
+      );
+      expect(
+        determineExcerptDirection('Alert: آپ کا PIN درج کریں'),
+        equals(TextDirection.rtl),
+      );
+    });
+
     testWidgets(
-      'Evidence excerpt enforces LTR directionality within RTL ancestor',
+      'Evidence excerpt and offset render with correct dynamic directionalities',
       (tester) async {
+        const urduExcerpt = 'فوری ادائیگی کریں';
+        const englishExcerpt = 'Urgent: Pay immediately';
+        const offsetText = 'offset [10, 25)';
+
         await tester.pumpWidget(
-          const MaterialApp(
+          MaterialApp(
             home: Directionality(
               textDirection: TextDirection.rtl,
               child: Scaffold(
-                body: Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Text(
-                    '"Urgent: Pay immediately"',
-                    key: Key('evidence_excerpt'),
-                  ),
+                body: Column(
+                  children: [
+                    Directionality(
+                      textDirection: determineExcerptDirection(englishExcerpt),
+                      child: const Text(
+                        '"$englishExcerpt"',
+                        key: Key('english_excerpt'),
+                      ),
+                    ),
+                    Directionality(
+                      textDirection: determineExcerptDirection(urduExcerpt),
+                      child: const Text(
+                        '"$urduExcerpt"',
+                        key: Key('urdu_excerpt'),
+                      ),
+                    ),
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: const Text(
+                        offsetText,
+                        key: Key('offset_indicator'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -327,10 +373,20 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final textElement = tester.element(
-          find.byKey(const Key('evidence_excerpt')),
+        final englishElement = tester.element(
+          find.byKey(const Key('english_excerpt')),
         );
-        expect(Directionality.of(textElement), equals(TextDirection.ltr));
+        expect(Directionality.of(englishElement), equals(TextDirection.ltr));
+
+        final urduElement = tester.element(
+          find.byKey(const Key('urdu_excerpt')),
+        );
+        expect(Directionality.of(urduElement), equals(TextDirection.rtl));
+
+        final offsetElement = tester.element(
+          find.byKey(const Key('offset_indicator')),
+        );
+        expect(Directionality.of(offsetElement), equals(TextDirection.ltr));
       },
     );
   });

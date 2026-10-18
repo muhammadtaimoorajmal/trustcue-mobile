@@ -26,9 +26,19 @@ void main() {
       await preferences.setInt(OnboardingPreferences.key, 1);
 
       app.main();
+      await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
 
+      // Ensure StartupScreen completes asynchronous version check and reaches Home screen
+      int retries = 0;
+      while (Get.currentRoute != AppRoutes.home && retries < 10) {
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pumpAndSettle();
+        retries++;
+      }
+
       expect(Get.currentRoute, AppRoutes.home);
+      expect(find.text('Understand the signals.'), findsOneWidget);
 
       // =========================================================================
       // STEP 1: VERIFY OFFLINE TEXT INPUT, REVIEW, AND LOCAL ANALYSIS PIPELINE
@@ -66,13 +76,19 @@ void main() {
       expect(Get.currentRoute, AppRoutes.inputReview);
 
       // Confirm reviewed text and run on-device analysis
-      final confirmBtn = find.widgetWithText(AppButton, 'Confirm reviewed text');
+      final confirmBtn = find.widgetWithText(
+        AppButton,
+        'Confirm reviewed text',
+      );
       await tester.ensureVisible(confirmBtn);
       await tester.pumpAndSettle();
       await tester.tap(confirmBtn);
       await tester.pumpAndSettle();
 
-      final analyzeBtn = find.widgetWithText(AppButton, 'Analyze on this device');
+      final analyzeBtn = find.widgetWithText(
+        AppButton,
+        'Analyze on this device',
+      );
       await tester.ensureVisible(analyzeBtn);
       await tester.pumpAndSettle();
       await tester.tap(analyzeBtn);
@@ -90,6 +106,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ExportReportSheet), findsOneWidget);
+
+      // Opt in to include reviewed message text (which contains Urdu)
+      final includeTextTile = find.text('Include reviewed message text');
+      expect(includeTextTile, findsOneWidget);
+      await tester.tap(includeTextTile);
+      await tester.pumpAndSettle();
 
       // Switch to PDF Document format
       await tester.tap(find.text('PDF Document (.pdf)'));

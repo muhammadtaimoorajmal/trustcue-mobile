@@ -10,6 +10,7 @@ import 'package:trustcue_mobile/features/export/domain/services/export_data_extr
 import 'package:trustcue_mobile/features/export/presentation/controllers/export_controller.dart';
 import 'package:trustcue_mobile/features/export/presentation/widgets/export_report_sheet.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
+import 'package:trustcue_mobile/features/localization/domain/models/app_language.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report.dart';
 import 'package:trustcue_mobile/features/reports/presentation/controllers/saved_report_detail_controller.dart';
 
@@ -195,18 +196,32 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
   }
 
   void _openExportSheet(BuildContext context, SavedReport report) {
-    final exportController = ExportController(
-      hasSourceText: report.snapshot.text.isNotEmpty,
-      hasAiFindings: report.hasAiAnalysis,
-      hasEvidenceQuotes:
-          report.localReport.findings.any((f) => f.evidence.isNotEmpty) ||
-          (report.aiReport?.findings.any((f) => f.evidence.isNotEmpty) ??
-              false),
-      dataFactory: (options) =>
-          ExportDataExtractor.fromSavedReport(report: report, options: options),
-    );
+    final exportController = Get.isRegistered<ExportController>()
+        ? Get.find<ExportController>()
+        : Get.put(
+            ExportController(
+              hasSourceText: report.snapshot.text.isNotEmpty,
+              hasAiFindings: report.hasAiAnalysis,
+              hasEvidenceQuotes:
+                  report.localReport.findings.any(
+                    (f) => f.evidence.isNotEmpty,
+                  ) ||
+                  (report.aiReport?.findings.any(
+                        (f) => f.evidence.isNotEmpty,
+                      ) ??
+                      false),
+              dataFactory: (options) => ExportDataExtractor.fromSavedReport(
+                report: report,
+                options: options,
+              ),
+            ),
+          );
 
-    ExportReportSheet.show(context, controller: exportController);
+    ExportReportSheet.show(context, controller: exportController).then((_) {
+      if (Get.isRegistered<ExportController>()) {
+        Get.delete<ExportController>();
+      }
+    });
   }
 
   Widget _buildMetadataBanner(ThemeData theme, SavedReport report) {
@@ -520,7 +535,7 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
                 runSpacing: 2,
                 children: [
                   Directionality(
-                    textDirection: TextDirection.ltr,
+                    textDirection: determineExcerptDirection(ref.exactExcerpt),
                     child: Text(
                       '"${ref.exactExcerpt}"',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -529,10 +544,13 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
                       ),
                     ),
                   ),
-                  Text(
-                    'offset [${ref.startOffset}, ${ref.endOffset})',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.hintColor,
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      'offset [${ref.startOffset}, ${ref.endOffset})',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.hintColor,
+                      ),
                     ),
                   ),
                 ],

@@ -36,10 +36,13 @@ class ExportController extends GetxController {
     ExportOptions initialOptions = const ExportOptions(),
   }) : storageService = storageService ?? DefaultExportStorageService(),
        shareLauncher = shareLauncher ?? DefaultShareLauncher(),
-       options = Rx<ExportOptions>(initialOptions);
+       options = Rx<ExportOptions>(initialOptions),
+       reportData = Rx<ExportReportData>(dataFactory(initialOptions)) {
+    _refreshPreview();
+  }
 
   final Rx<ExportOptions> options;
-  late final Rx<ExportReportData> reportData;
+  final Rx<ExportReportData> reportData;
   final RxString previewText = ''.obs;
   final RxBool isGenerating = false.obs;
   final RxBool isSharing = false.obs;
@@ -49,8 +52,10 @@ class ExportController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    reportData = Rx<ExportReportData>(dataFactory(options.value));
-    _refreshPreview();
+    if (previewText.value.isEmpty) {
+      reportData.value = dataFactory(options.value);
+      _refreshPreview();
+    }
   }
 
   /// Whether the current report data can be faithfully rendered in PDF format.

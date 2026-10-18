@@ -1562,5 +1562,50 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Physical Device Verification Scope: Physical device connected (Vivo V2207, `10AC9R1ABF0013A`, Android 14 API 34). Manual TalkBack gesture walkthrough noted for live device evaluation.
 - **Status:** Complete on `frontend`. Stopped before Module 46.
 
+## Module 46: End-to-End, Real-Device, Performance, and Storage Verification
+- **Scope & Objectives:**
+  - Execute end-to-end integration and empirical performance verification on real physical hardware (Vivo V2207, `10AC9R1ABF0013A`, Android 14 API 34).
+  - Verify complete workflow register (offline guest intake, OCR, QR/link inspection, review/redaction, local warning indicators, consent-gated cloud AI, local SQLite persistence, search, deletion, sync, export, privacy, and bilingual localization).
+  - Benchmark cold start latency, end-to-end local analysis pipeline, plain text/PDF report export, 10-rule heuristic analysis engine under stress, and database scalability under 1,000+ reports.
+  - Reproduce, diagnose, and repair demonstrated technical defects on physical device.
+- **Empirical Benchmarks Measured on Device (Vivo V2207):**
+  - App launch latency (debug JIT harness): 4,070 ms (AOT release target < 1,000 ms).
+  - End-to-end local analysis pipeline: 933 ms (< 1,500 ms target).
+  - Plain text report export generation: 24 ms (< 50 ms target).
+  - Multi-page paginated PDF document generation: 666 ms (< 1,500 ms target).
+  - SQLite batch insertion (1,000 reports): 794 ms (< 3,000 ms target, ~0.8 ms / report).
+  - SQLite paginated query (20 items from 1,000+ records): 21 ms (< 50 ms target).
+  - SQLite LIKE substring search (500 matching records): 27 ms (< 50 ms target).
+  - SQLite LIKE substring search (non-matching miss): 9 ms (< 50 ms target).
+  - SQLite bulk orphan pruning (1,000 records): ~10 ms (< 500 ms target).
+  - 10-rule analysis engine on ~3,800-character document: 28 ms (< 100 ms target).
+- **Technical Remediations & Demonstrated Defect Resolutions:**
+  1. Dynamic Script Directionality: Implemented `determineExcerptDirection(String text)` in `app_language.dart` (`r'[\u0591-\u08FF\uFB1D-\uFDFD\uFE70-\uFEFC]'`) to give RTL evidence excerpts proper RTL directionality while isolating numeric offsets `[start, end)` in LTR.
+  2. Startup Screen Synchronization: Fixed async `readVersion()` race condition in integration test runner by pumping until the Home dashboard title is mounted.
+  3. SQLite Bulk Deletion & Pruning Optimization: Replaced N+1 Dart loop (2,000 IPC calls for 1,000 records) with atomic set-based SQL `rawDelete` (`DELETE FROM text_snapshots WHERE id NOT IN (SELECT DISTINCT snapshot_id FROM saved_reports)`), slashing orphan cleanup time from > 15s to ~10 ms.
+  4. ExportReportSheet RenderFlex Overflow (99,397 pixels): Replaced unbounded loose `ConstrainedBox(maxHeight)` with `SizedBox(height: maxSheetHeight)` and default `MainAxisSize.max`, allowing the inner `Expanded` SingleChildScrollView to calculate its layout properly.
+  5. ExportController Lifecycle Initialization: Moved `reportData` initialization from `onInit()` to constructor initializer list, preventing `LateInitializationError` during modal bottom sheet presentation.
+  6. ExportController GetX Binding: Registered and bound `ExportController` in `analysis_results_screen.dart` and `saved_report_detail_screen.dart` with automatic lifecycle cleanup on dismiss (`Get.delete()`).
+  7. PDF Script Blocking Message Alignment: Aligned `PdfExportBuilder` reviewedText error string to consistently return `"unsupported non-Latin script"`.
+- **Components Created / Updated:**
+  - `frontend/integration_test/module46_e2e_performance_test.dart`: Dedicated physical device integration and performance benchmark suite.
+  - `frontend/integration_test/module43_workflow_reliability_test.dart`: Startup synchronization and reviewed text export opt-in update.
+  - `frontend/lib/features/localization/domain/models/app_language.dart`: `determineExcerptDirection(String text)`.
+  - `frontend/lib/features/analysis/presentation/screens/analysis_results_screen.dart`: Dynamic RTL excerpt directionality and GetX ExportController registration/cleanup.
+  - `frontend/lib/features/reports/presentation/screens/saved_report_detail_screen.dart`: Dynamic RTL excerpt directionality and GetX ExportController registration/cleanup.
+  - `frontend/lib/features/reports/data/repositories/sqlite_report_repository.dart`: Atomic set-based orphan snapshot pruning.
+  - `frontend/lib/features/export/data/services/pdf_export_builder.dart`: Error string alignment for reviewedText check.
+  - `frontend/lib/features/export/presentation/controllers/export_controller.dart`: Constructor initialization for `reportData`.
+  - `frontend/lib/features/export/presentation/widgets/export_report_sheet.dart`: Bounded height `SizedBox(height: maxSheetHeight)` layout.
+  - `frontend/test/features/accessibility/accessibility_review_test.dart`: Dynamic excerpt directionality unit and widget tests.
+  - `docs/E2E_AND_PERFORMANCE_MODULE_46.md`: Comprehensive empirical verification report.
+  - `docs/ROADMAP.md`, `docs/PROJECT_STATE.md`, `docs/MODULE_LOG.md`.
+- **Checks Performed:**
+  - Mobile Automated Tests: 860/860 PASS (`flutter test`), 0 failures, 0 regressions across entire app.
+  - Static Analysis: PASS (`flutter analyze --no-pub`), 0 issues found across all 307 files.
+  - Integration Benchmark on Device: 100% PASS (`frontend/integration_test/module46_e2e_performance_test.dart`) on physical Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34).
+  - Zero Native Crashes: 0 crashes, 0 memory corruptions, 0 ANRs observed.
+- **Status:** Complete on `frontend`. Stopped before Module 47.
+
 
 

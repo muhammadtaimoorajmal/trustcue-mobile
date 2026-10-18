@@ -45,3 +45,11 @@ enum AppLanguage {
     return AppLanguage.system;
   }
 }
+
+/// Detects whether [text] contains right-to-left (RTL) script characters (e.g., Arabic, Urdu, Hebrew).
+///
+/// Returns [TextDirection.rtl] if RTL characters are detected, otherwise [TextDirection.ltr].
+TextDirection determineExcerptDirection(String text) {
+  final rtlPattern = RegExp(r'[\u0591-\u08FF\uFB1D-\uFDFD\uFE70-\uFEFC]');
+  return rtlPattern.hasMatch(text) ? TextDirection.rtl : TextDirection.ltr;
+}

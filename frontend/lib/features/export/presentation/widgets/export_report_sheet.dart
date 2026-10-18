@@ -40,12 +40,11 @@ class ExportReportSheet extends StatelessWidget {
       color: colorScheme.surface,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       clipBehavior: Clip.antiAlias,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxSheetHeight),
+      child: SizedBox(
+        height: maxSheetHeight,
         child: SafeArea(
           top: false,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Top drag handle

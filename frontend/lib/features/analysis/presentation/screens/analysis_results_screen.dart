@@ -17,6 +17,7 @@ import 'package:trustcue_mobile/features/export/presentation/controllers/export_
 import 'package:trustcue_mobile/features/export/presentation/widgets/export_report_sheet.dart';
 import 'package:trustcue_mobile/features/feedback/domain/models/app_feedback.dart';
 import 'package:trustcue_mobile/features/feedback/presentation/widgets/feedback_dialog.dart';
+import 'package:trustcue_mobile/features/localization/domain/models/app_language.dart';
 
 /// Screen displaying deterministic on-device analysis results, scope limitations,
 /// factual evidence trail, prioritized protective actions, and optional protected
@@ -720,7 +721,7 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
                 runSpacing: 2,
                 children: [
                   Directionality(
-                    textDirection: TextDirection.ltr,
+                    textDirection: determineExcerptDirection(ref.exactExcerpt),
                     child: Text(
                       '"${ref.exactExcerpt}"',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -729,10 +730,13 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
                       ),
                     ),
                   ),
-                  Text(
-                    'offset [${ref.startOffset}, ${ref.endOffset})',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.hintColor,
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      'offset [${ref.startOffset}, ${ref.endOffset})',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.hintColor,
+                      ),
                     ),
                   ),
                 ],
@@ -1329,21 +1333,29 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
     final snapshot = controller.args?.snapshot;
     if (assessment == null || snapshot == null) return;
 
-    final exportController = ExportController(
-      hasSourceText: snapshot.text.isNotEmpty,
-      hasAiFindings: controller.aiReport.value != null,
-      hasEvidenceQuotes: assessment.groupedIndicators.any(
-        (g) => g.findings.any((f) => f.evidence.isNotEmpty),
-      ),
-      dataFactory: (options) => ExportDataExtractor.fromAssessment(
-        assessment: assessment,
-        snapshot: snapshot,
-        aiReport: controller.aiReport.value,
-        options: options,
-      ),
-    );
+    final exportController = Get.isRegistered<ExportController>()
+        ? Get.find<ExportController>()
+        : Get.put(
+            ExportController(
+              hasSourceText: snapshot.text.isNotEmpty,
+              hasAiFindings: controller.aiReport.value != null,
+              hasEvidenceQuotes: assessment.groupedIndicators.any(
+                (g) => g.findings.any((f) => f.evidence.isNotEmpty),
+              ),
+              dataFactory: (options) => ExportDataExtractor.fromAssessment(
+                assessment: assessment,
+                snapshot: snapshot,
+                aiReport: controller.aiReport.value,
+                options: options,
+              ),
+            ),
+          );
 
-    ExportReportSheet.show(context, controller: exportController);
+    ExportReportSheet.show(context, controller: exportController).then((_) {
+      if (Get.isRegistered<ExportController>()) {
+        Get.delete<ExportController>();
+      }
+    });
   }
 
   Widget _buildLocalSaveAction(ThemeData theme) {
