@@ -104,7 +104,7 @@ PID_PURGE=$!
 # Once Purge commits, trigger unblocks, sees generation is now 3 and sync is disabled, and raises exception.
 sleep 0.5
 set +e
-psql_cmd -c "
+ERROR_OUTPUT=$(psql_cmd -c "
 SELECT auth.set_test_user('$USER_ID'::uuid, 'authenticated');
 INSERT INTO public.synced_reports (
     user_id, client_report_id, snapshot_id, sync_generation, report_payload, client_updated_at
@@ -113,14 +113,19 @@ INSERT INTO public.synced_reports (
     '{\"formatVersion\": 1, \"outcomeState\": \"cautious\", \"hasAiAnalysis\": false, \"indicatorCount\": 0, \"categories\": [], \"source\": \"messageText\"}'::jsonb,
     now()
 );
-" 2>&1 | grep -E "(Stale generation|Sync opt-in required)"
-INSERT_STATUS=$?
+" 2>&1)
+PSQL_EXIT_CODE=$?
 set -e
 
 wait $PID_PURGE
 
-if [ $INSERT_STATUS -ne 0 ]; then
-  echo "FAIL: Concurrent upload was NOT rejected by write validation trigger!"
+if [ $PSQL_EXIT_CODE -eq 0 ]; then
+  echo "FAIL: Concurrent upload unexpectedly succeeded!"
+  exit 1
+fi
+
+if ! echo "$ERROR_OUTPUT" | grep -qE "(Stale generation|Sync opt-in required)"; then
+  echo "FAIL: Concurrent upload was rejected but with unexpected error: $ERROR_OUTPUT"
   exit 1
 fi
 
