@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrustCue - Account and Data Deletion</title>
+  <style>
+    :root {
+      --primary: #0A2540;
+      --accent: #00695C;
+      --accent-light: #4DB6AC;
+      --danger: #D32F2F;
+      --bg: #F8F9FA;
+      --card-bg: #FFFFFF;
+      --text: #1A1A1A;
+      --text-muted: #555555;
+      --border: #E0E0E0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background-color: var(--bg);
+      margin: 0;
+      padding: 0;
+    }
+    .header {
+      background-color: var(--primary);
+      color: #FFFFFF;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      border-bottom: 4px solid var(--accent);
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 2.2rem;
+      letter-spacing: -0.5px;
+    }
+    .header p {
+      margin: 0.5rem 0 0;
+      color: var(--accent-light);
+      font-size: 1.1rem;
+    }
+    .container {
+      max-width: 840px;
+      margin: 2rem auto;
+      padding: 0 1.5rem 3rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border: 1px solid var(--border);
+    }
+    h2 {
+      color: var(--primary);
+      margin-top: 0;
+      font-size: 1.4rem;
+      border-bottom: 2px solid var(--accent-light);
+      padding-bottom: 0.4rem;
+    }
+    h3 {
+      color: var(--accent);
+      font-size: 1.1rem;
+    }
+    ol, ul {
+      padding-left: 1.4rem;
+    }
+    li {
+      margin-bottom: 0.6rem;
+    }
+    .alert-box {
+      background-color: #FFEBEE;
+      border-left: 4px solid var(--danger);
+      padding: 1rem 1.2rem;
+      margin: 1.2rem 0;
+      border-radius: 0 4px 4px 0;
+      color: #B71C1C;
+    }
+    .email-button {
+      display: inline-block;
+      background-color: var(--accent);
+      color: #FFFFFF;
+      padding: 0.75rem 1.5rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+      margin-top: 0.5rem;
+    }
+    .email-button:hover {
+      background-color: #004D40;
+    }
+    .footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+    }
+    a {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>TrustCue Account Deletion</h1>
+    <p>Permanent Account and Cloud Data Removal</p>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <p><strong>Application:</strong> TrustCue (<code>io.github.muhammadtaimoorajmal.trustcue</code>)</p>
+      <p><strong>Policy Compliance:</strong> Google Play User Data Policy &ndash; Account Deletion Requirement</p>
+      <p>TrustCue provides two direct, discoverable pathways for users to delete their account and associated data.</p>
+    </div>
+
+    <div class="card">
+      <h2>Pathway 1: In-App Deletion (Instant & Automated)</h2>
+      <p>If you have the TrustCue app installed on your Android device:</p>
+      <ol>
+        <li>Open the <strong>TrustCue</strong> app.</li>
+        <li>Tap the <strong>Account</strong> icon in the top navigation bar.</li>
+        <li>Sign in if prompted.</li>
+        <li>Scroll to the bottom of the Account screen and tap <span style="color:var(--danger); font-weight:bold;">Delete Account</span>.</li>
+        <li>Review the permanent deletion disclosures.</li>
+        <li>Re-enter your account password to verify ownership.</li>
+        <li>Tap <strong>Permanently Delete Account</strong>.</li>
+      </ol>
+      <p><strong>Result:</strong> Your account is immediately erased on the server via an atomic database cascade (<code>ON DELETE CASCADE</code>). All auth records, user profile details, quota history, and synced cloud reports are permanently destroyed.</p>
+    </div>
+
+    <div class="card">
+      <h2>Pathway 2: Web / Email Deletion Request</h2>
+      <p>If you have uninstalled the application or cannot access your mobile device, you can request account deletion via email:</p>
+      
+      <div class="alert-box">
+        <strong>Important:</strong> Deletion is permanent and irreversible. All cloud data associated with your email address will be completely purged.
+      </div>
+
+      <p>To request deletion, send an email with the following details:</p>
+      <ul>
+        <li><strong>Send to:</strong> <a href="mailto:muhammadtaimoorajmal@gmail.com?subject=TrustCue%20Account%20Deletion%20Request">muhammadtaimoorajmal@gmail.com</a></li>
+        <li><strong>Subject Line:</strong> <code>TrustCue Account Deletion Request</code></li>
+        <li><strong>Body:</strong> Please state: <em>"I request the permanent deletion of my TrustCue account and all associated cloud data."</em> and include your registered account email address.</li>
+      </ul>
+
+      <p>
+        <a class="email-button" href="mailto:muhammadtaimoorajmal@gmail.com?subject=TrustCue%20Account%20Deletion%20Request&body=Please%20permanently%20delete%20my%20TrustCue%20account%20and%20all%20associated%20cloud%20data.%0A%0ARegistered%20Email:%20">Send Deletion Request Email</a>
+      </p>
+
+      <h3>Processing & Verification Timeline</h3>
+      <ol>
+        <li>We will send a brief confirmation challenge to your registered email to verify ownership.</li>
+        <li>Upon confirmation, your Supabase auth account, profile, quotas, and synced reports will be permanently deleted.</li>
+        <li>Requests are fulfilled within <strong>7 business days</strong>.</li>
+        <li>You will receive a final email confirming deletion.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>Local Device Data Notice</h2>
+      <p>Reports and message drafts created in Guest Mode reside entirely inside your device's sandboxed local SQLite database. They are never uploaded to any server. To delete local device data, either tap <strong>Clear Local Data</strong> in the app's Privacy Center or uninstall the application from Android System Settings.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    &copy; 2026 TrustCue Project &bull; <a href="privacy_policy.html">Privacy Policy</a>
+  </div>
+
+</body>
+</html>
+

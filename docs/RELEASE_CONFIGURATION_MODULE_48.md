@@ -125,6 +125,9 @@ A comprehensive ruleset was created at `frontend/android/app/proguard-rules.pro`
 | **Certificate SHA-256** | `66:B3:FB:99:5D:CA:5A:C2:CA:17:BE:D7:9C:9D:74:65:36:83:21:29:D4:EE:3D:38:45:61:F1:F6:09:CB:CD:9F` |
 | **Certificate SHA-1** | `F4:FF:6A:B9:E1:92:4B:B5:18:1C:18:CE:57:9B:74:B3:AC:FA:7E:67` |
 
+> [!NOTE]
+> **Certificate DN Locality Note:** The certificate was generated using the automated setup script which defaulted `L=London, ST=Greater London, C=GB`. While TrustCue maintainers operate globally, this self-signed upload certificate is cryptographically valid for Play App Signing enrollment. Google Play App Signing ingests this upload certificate solely to authenticate upload deliveries, and derives the public delivery certificate independently. Per project security guidelines, this certificate is preserved without automated regeneration to maintain deterministic signature history.
+
 ### 4.2 Strict Git Hygiene & Secret Exclusion
 - Keystores (`*.jks`, `*.keystore`) and property files (`key.properties`) are strictly excluded in `.gitignore` across project root, `frontend/`, and `frontend/android/`.
 - Neither keystore files nor passwords exist in git tracking or commit history.
@@ -159,9 +162,9 @@ apksigner verify --verbose --print-certs build/app/outputs/flutter-apk/app-relea
 Output results:
 - **Verifies:** `true`
 - **Number of signers:** 1
-- **Signature Scheme v1 (JAR signing):** `true`
+- **Signature Scheme v1 (JAR signing):** `false`
 - **Signature Scheme v2 (APK Signature Scheme v2):** `true`
-- **Signature Scheme v3 (APK Signature Scheme v3):** `true`
+- **Signature Scheme v3 (APK Signature Scheme v3):** `false`
 - **Signature Scheme v4:** `false`
 - **Signer 1 Certificate DN:** `CN=TrustCue Release Signer, OU=Mobile Security, O=TrustCue, L=London, ST=Greater London, C=GB`
 - **Signer 1 SHA-256:** `66b3fb995dca5ac2ca17bed79c9d746536832129d4ee3d384561f1f609cbcd9f`
@@ -196,12 +199,17 @@ Live verification was performed on connected physical hardware:
 
 ### 6.1 Installation & Startup
 1. **Certificate Preflight:** Checked device package manager; no conflicting debug signature or previous installation existed.
-2. **Installation:**
+2. **Pre-install Inspection & In-Place Upgrade Finding:**
+   Running `dumpsys package io.github.muhammadtaimoorajmal.trustcue` confirms:
+   - `firstInstallTime=2026-10-18 21:53:59`
+   - `lastUpdateTime=2026-10-18 21:53:59`
+   - Because `firstInstallTime` equals `lastUpdateTime`, the release build installed on the test device is a clean initial installation (no pre-existing debug or older release build was present). Consequently, while the APK installs and runs cleanly, in-place signature upgrade preservation over a legacy version cannot be retroactively proven on this specific device instance.
+3. **Installation:**
    ```powershell
    adb -s 10AC9R1ABF0013A install -r build/app/outputs/flutter-apk/app-release.apk
    ```
    **Result:** `Performing Streamed Install` -> `Success`.
-3. **Application Launch:**
+4. **Application Launch:**
    ```powershell
    adb -s 10AC9R1ABF0013A shell am start -n io.github.muhammadtaimoorajmal.trustcue/.MainActivity
    ```
@@ -216,6 +224,26 @@ Live verification was performed on connected physical hardware:
   - Native libraries (`libflutter.so`, `libapp.so`) loaded cleanly without link or symbol errors.
   - 0 native crashes (`SIGSEGV`, `SIGABRT`).
   - 0 Android Runtime exceptions or ANRs (`Application Not Responding`).
+
+### 6.3 Real-Device Functional Verification
+Live interactive testing was performed on the connected device (Vivo V2207, Android 14) with synthetic scam messages:
+1. **Database Initialization & Querying:**
+   - Navigated to Saved Reports; successfully executed SQLite query returning `0 saved report(s)` (clean schema initialization).
+2. **On-Device PII Detection & Redaction:**
+   - Input synthetic test message: `"URGENT: Your account is suspended. Call 03001234567 immediately."`
+   - Verified automated redaction detected and masked the phone number (`•••• 4567`).
+3. **Local Heuristic Rule Engine Execution:**
+   - Analyzed message with on-device 10-rule heuristics.
+   - Detected 2 risk indicators: `urgency_or_pressure` and `account_suspension_or_threats`.
+   - Verified grounded evidence spans with exact text offsets `[35, 63)` and `[8, 33)`.
+4. **Export Sheet & Privacy Review:**
+   - Rendered export preview sheet displaying redaction controls and metadata-only toggle.
+5. **Local Storage Operations (CRUD):**
+   - Tapped "Save on this device"; history updated immediately to `1 saved report(s)`.
+   - Executed search query (`"urgent"`); matched 1 report.
+   - Triggered report deletion dialog and confirmed; history cleanly returned to `0 saved report(s)`.
+6. **Offline Guest Resilience:**
+   - Verified Account screen displays offline guest guidance: local heuristic scam analysis, OCR, and link safety remain 100% operational on-device without internet or user account.
 
 ---
 

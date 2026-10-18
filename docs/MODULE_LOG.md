@@ -1676,10 +1676,10 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   7. 4096-bit RSA Keystore & Signing Config: Generated `upload-keystore.jks` with 10,000-day validity and SHA-256 fingerprint `66:B3:FB:99:5D:CA:5A:C2:CA:17:BE:D7:9C:9D:74:65:36:83:21:29:D4:EE:3D:38:45:61:F1:F6:09:CB:CD:9F`. Configured `key.properties` loading in `app/build.gradle.kts` with fail-safe release build enforcement.
   8. Git Hygiene & Secret Exclusion: Excluded all `*.jks`, `*.keystore`, and `key.properties` in root `.gitignore`, `frontend/.gitignore`, and `frontend/android/.gitignore`. Verified zero secrets tracked or staged in Git.
   9. Production Artifact Build & Verification:
-     - Release APK (`build/app/outputs/flutter-apk/app-release.apk`): 108,831,743 bytes (103.79 MB), SHA-256 `883e2f04314632277b01d3df1962fa56f69a6f82f47f98ae501f0b23da330f58`. `apksigner` confirmed Signature Scheme v2/v3 and certificate fingerprint. `aapt dump badging` confirmed non-debuggable flag (`android:debuggable` absent).
+     - Release APK (`build/app/outputs/flutter-apk/app-release.apk`): 108,831,743 bytes (103.79 MB), SHA-256 `883e2f04314632277b01d3df1962fa56f69a6f82f47f98ae501f0b23da330f58`. `apksigner` confirmed Signature Scheme v2 (v1 and v3 false) and certificate fingerprint. `aapt dump badging` confirmed non-debuggable flag (`android:debuggable` absent).
      - Release AAB (`build/app/outputs/bundle/release/app-release.aab`): 82,213,947 bytes (78.41 MB), SHA-256 `7fea32f893512ecf22c3bb229e97101502196d61e719e88c48b567866f2e94fa`.
      - Binary Secret Scan: 0 private configuration files or signing keys packaged.
-  10. Physical Device Live Verification (Vivo V2207, `10AC9R1ABF0013A`, Android 14 API 34): Certificate preflight confirmed no conflicting signature; installed `app-release.apk` (`Success`); launched `io.github.muhammadtaimoorajmal.trustcue/.MainActivity` (PID 21147); verified Impeller OpenGLES engine initialized cleanly; 0 native crashes, 0 ANRs.
+  10. Physical Device Live Verification (Vivo V2207, `10AC9R1ABF0013A`, Android 14 API 34): Certificate preflight confirmed clean initial install (`firstInstallTime == lastUpdateTime`); installed `app-release.apk` (`Success`); launched `io.github.muhammadtaimoorajmal.trustcue/.MainActivity` (PID 21147); verified Impeller OpenGLES engine initialized cleanly; 0 native crashes, 0 ANRs. Reconciled live functional verification: SQLite queried 0 reports cleanly, synthetic message entered, phone number masked (`•••• 4567`), 10-rule heuristics detected 2 risk indicators with grounded offsets `[35, 63)` and `[8, 33)`, export sheet previewed, saved on device (1 report), searched ("urgent"), deleted cleanly (0 reports), and offline guest resilience confirmed.
 - **Components Created / Updated:**
   - `frontend/android/app/build.gradle.kts`: Release signing configuration, fail-safe validation, R8 minification and resource shrinking flags, imports for Properties and FileInputStream.
   - `frontend/android/app/src/main/AndroidManifest.xml`: `INTERNET` permission and `roundIcon` attribute.
@@ -1699,11 +1699,55 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Mobile Static Analysis: PASS (`flutter analyze --no-pub`), 0 issues found across all 311 files.
   - Debug Build Resilience: PASS (`.\gradlew.bat :app:assembleDebug`, 482 tasks up-to-date/executed without release credentials).
   - Missing Secret Build Halt: PASS (release build halts with descriptive `GradleException` when `key.properties` is removed).
-  - Cryptographic Verification: PASS (`apksigner verify --verbose --print-certs` on `app-release.apk`).
+  - Cryptographic Verification: PASS (`apksigner verify --verbose --print-certs` on `app-release.apk`, Signature Scheme v2).
   - Badging & Debug Flag: PASS (`aapt dump badging` on `app-release.apk`, non-debuggable confirmed).
   - Secret Leakage Check: PASS (0 secrets packaged in APK or AAB).
-  - Physical Device Live Installation & Launch: PASS on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34), PID 21147 resumed in foreground, Impeller OpenGLES initialized cleanly, 0 crashes, 0 ANRs.
-- **Status:** Complete on `frontend`. Stopped before Module 49. Exactly 50 numbered roadmap modules preserved.
+  - Physical Device Live Installation & Launch: PASS on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34), PID 21147 resumed in foreground, Impeller OpenGLES initialized cleanly, 0 crashes, 0 ANRs. Reconciled live functional verification performed on device.
+- **Status:** Complete on `frontend` (Commit `018ea0f`). Stopped before Module 49. Exactly 50 numbered roadmap modules preserved.
+
+## Module 49: Play Console Listing, Disclosures, and Testing Tracks
+- **Scope & Objectives:**
+  - Audit official 2026 Google Play Console policies and Developer Program Policies for metadata, spam, deceptive behavior, and Data Safety.
+  - Create complete, policy-compliant store listing metadata: Title (<=30 chars), Short Description (<=80 chars), and Full Description (<=4000 chars) highlighting privacy-first scam awareness, clear functional steps, honest limitations, and zero false claims of scam/fraud certainty.
+  - Design and generate store graphic assets: 512x512 32-bit PNG high-res icon matching brand palette without artificial masks; 1024x500 24-bit PNG feature graphic with centered 800x400 safe zone and zero ranking/pricing claims; and 4 authentic 1080x1920 (9:16 portrait) device screenshots captured from physical Vivo V2207 running release build with synthetic data.
+  - Conduct an exhaustive, code-backed Data Safety audit across all client input modes, SQLite storage, Groq AI transit, and Supabase cloud sync; generate explicit questionnaire answers for Play Console.
+  - Author a standalone, responsive HTML Privacy Policy and an in-app + web URL compliant Account Deletion resource (`docs/privacy/`).
+  - Establish a comprehensive App Access and Testing Track Strategy separating guest access (zero credentials needed) from authenticated reviewer test account instructions, designing a 12–20 tester / 14-day Closed Testing plan, and compiling a centralized Owner-Only Action Register (OWN-01 to OWN-09).
+- **Deliverables & Remediations:**
+  1. Store Listing Specification (`docs/PLAY_STORE_LISTING_MODULE_49.md`): Title: `TrustCue - Scam Awareness` (26/30 chars); Short Description: `Explain scam indicators and verify digital messages with private local checks.` (78/80 chars); Full Description: 2,940/4,000 chars; Category & tags (`Tools` / `Education`); Release notes; and official 2026 Google Play Policy citations.
+  2. Store Graphic Assets (`docs/store_assets/`):
+     - `icon_512.png`: 512x512 32-bit RGBA PNG, brand Deep Navy, Dark Teal shield, Light Teal accents, verification cue, Caution Amber dot.
+     - `feature_graphic_1024x500.png`: 1024x500 24-bit RGB PNG (no alpha), centered within 800x400 safe area, zero promotional or pricing terms.
+     - `screenshots/`: 4 authentic 1080x1920 (9:16 portrait) PNG screenshots captured on physical Vivo V2207 Android 14 running release build with synthetic data (Home Dashboard, Sensitive Data Redaction, Grounded Evidence Spans, Privacy-Reviewed Export).
+  3. Data Safety Section & Code-Backed Matrix (`docs/DATA_SAFETY_AND_DISCLOSURES_MODULE_49.md`): Detailed data practices distinguishing pure-local processing (zero collection in guest mode) from consented Groq AI transit (ephemeral transit collection for scam analysis, up to 30-day provider diagnostic retention) and opt-in Supabase sync (metadata-only, zero message text or evidence spans). Formatted exact Play Console questionnaire declarations.
+  4. Privacy Policy & Web Resources (`docs/privacy/`):
+     - `PRIVACY_POLICY.md` & `privacy_policy.html`: Complete, formal responsive HTML page detailing data collection, on-device heuristics, user rights, Groq AI processing, Supabase sync boundaries, and security measures.
+     - `ACCOUNT_DELETION.md` & `account_deletion.html`: Satisfies Google Play required in-app direct deletion and external web deletion request pathway.
+  5. App Access & Testing Plan (`docs/APP_ACCESS_AND_TESTING_PLAN_MODULE_49.md`): Reviewer app access instructions clarifying that all core features operate without credentials in guest mode; pre-configured test account setup instructions (`play-reviewer@trustcue.internal`); 12–20 tester / 14-day Closed Testing track plan; and Centralized Owner-Only Action Register (OWN-01 to OWN-09) explicitly identifying human tasks.
+- **Components Created / Updated:**
+  - `docs/PLAY_STORE_LISTING_MODULE_49.md`: Complete store listing specification.
+  - `docs/DATA_SAFETY_AND_DISCLOSURES_MODULE_49.md`: Code-backed Data Safety matrix and Play Console questionnaire mapping.
+  - `docs/privacy/PRIVACY_POLICY.md` & `docs/privacy/privacy_policy.html`: Responsive HTML and Markdown Privacy Policy.
+  - `docs/privacy/ACCOUNT_DELETION.md` & `docs/privacy/account_deletion.html`: Compliant two-pathway Account Deletion resource.
+  - `docs/APP_ACCESS_AND_TESTING_PLAN_MODULE_49.md`: App access guide, closed testing strategy, and owner action register.
+  - `docs/store_assets/icon_512.png`: 512x512 high-resolution store icon.
+  - `docs/store_assets/feature_graphic_1024x500.png`: 1024x500 store feature graphic.
+  - `docs/store_assets/screenshots/screen1_home_dashboard.png`: Home dashboard authentic screenshot.
+  - `docs/store_assets/screenshots/screen2_privacy_review.png`: PII redaction authentic screenshot.
+  - `docs/store_assets/screenshots/screen3_analysis_results.png`: Evidence trail authentic screenshot.
+  - `docs/store_assets/screenshots/screen4_evidence_export.png`: Privacy export sheet authentic screenshot.
+  - `docs/RELEASE_CONFIGURATION_MODULE_48.md`: Reconciled apksigner v2 scheme, fresh install finding, and on-device functional test evidence.
+  - `README.md`, `docs/PROJECT_STATE.md`, `docs/ROADMAP.md`, `docs/MODULE_LOG.md`.
+- **Checks Performed:**
+  - Mobile Automated Tests: 860/860 PASS (`flutter test --no-pub`), 0 failures, 0 regressions.
+  - Static Code Analysis: PASS (`flutter analyze --no-pub`), 0 issues found across all 311 files.
+  - Asset Dimensions & Format Verification:
+    - `icon_512.png`: Exactly 512x512 px, 32-bit RGBA PNG, valid dimensions.
+    - `feature_graphic_1024x500.png`: Exactly 1024x500 px, 24-bit RGB PNG (no alpha), valid dimensions.
+    - Screenshots (4 files): Exactly 1080x1920 px, 24-bit RGB PNG, 9:16 aspect ratio, within Play Console bounds (320px–3840px, max <= 2x min).
+  - Physical Device Live Verification (Vivo V2207, Android 14 API 34): Captured 4 authentic screenshots from live release build PID 21147 using synthetic scam text; verified local database query, PII redaction, 10-rule heuristics, export preview sheet, SQLite CRUD, text search, report deletion, and offline guest resilience.
+  - Compliance URL Verification: HTML files validate locally and render cleanly across desktop and mobile browsers.
+- **Status:** Complete on `frontend`. Prepared for submission; pending owner manual actions (OWN-01 to OWN-09) outside IDE. Stopped before Module 50. Exactly 50 numbered roadmap modules preserved.
 
 
 

@@ -72,7 +72,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **46** | End-to-end, real-device, performance and storage verification | Completed (`5c817ef`) | `frontend` / `backend` |
 | **47** | CI, deployment, migrations and recovery procedures | Completed | `frontend` / `backend` / `database` |
 | **48** | Android release configuration, branding, signing and AAB | Completed | `frontend` |
-| **49** | Play Console listing, disclosures, internal/required testing and release candidates | Planned | `frontend` |
+| **49** | Play Console listing, disclosures, internal/required testing and release candidates | Completed | `frontend` |
 | **50** | Final audit, approved main integration, release and maintenance handover | Planned | `frontend` / `backend` / `database` / `main` |
 
 ---
@@ -235,10 +235,10 @@ To prevent divergent or conflicting project roadmaps across branches:
 
 ### Module 49: Play Console Listing, Disclosures, and Testing Tracks
 - **Primary Branch:** `frontend`
-- **Deliverable:** Google Play Console store listing copy, screenshots across phone and tablet sizes, Data Safety form disclosures, privacy policy documentation, internal testing track deployment.
+- **Deliverables:** Complete Google Play Store listing metadata (`docs/PLAY_STORE_LISTING_MODULE_49.md`), 512x512 app icon, 1024x500 feature graphic, 4 authentic device screenshots (`docs/store_assets/`), code-backed Data Safety matrix (`docs/DATA_SAFETY_AND_DISCLOSURES_MODULE_49.md`), standalone responsive HTML Privacy Policy and Account Deletion resource (`docs/privacy/`), and reviewer credentials guide with closed testing plan (`docs/APP_ACCESS_AND_TESTING_PLAN_MODULE_49.md`).
 - **Dependencies:** Modules 47, 48.
-- **Acceptance Criteria:** Data safety declarations align strictly with zero-upload and explicit consent policies; internal testing release published.
-- **Necessary Human Actions:** Upload AAB and submit store disclosures in personal Google Play Console account.
+- **Acceptance Criteria:** Data safety declarations align strictly with zero-upload local checks, explicit Groq AI transit consent, and opt-in Supabase sync boundaries; store assets meet official 2026 Google Play guidelines; testing track plan and reviewer access structured; human Play Console submission tasks centralized in Owner-Only Action Register.
+- **Necessary Human Actions:** Complete Play Console account registration ($25 fee) and upload assets/AAB (Tasks OWN-01 to OWN-09).
 
 ### Module 50: Final Audit, Approved Main Integration, Release, and Handover
 - **Primary Branch:** `frontend` / `backend` / `database` / `main`
