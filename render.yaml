@@ -39,7 +39,7 @@ services:
       - key: SUPABASE_JWT_ISSUER
         value: https://yzqkmoqqvnhfmmrayfko.supabase.co/auth/v1
       - key: CORS_ALLOWED_ORIGINS
-        value: ""
+        value: "[]"
       - key: SUPABASE_ANON_KEY
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
