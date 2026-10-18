@@ -21,17 +21,17 @@ This document provides the complete, policy-compliant store listing copy, metada
 ## 2. Store Listing Metadata & Copy
 
 ### 2.1 Application Title (App Name)
-- **Primary Title:** `TrustCue: Scam Indicators` (26 / 30 characters)
+- **Primary Title:** `TrustCue: Scam Indicators` (25 / 30 characters - verified programmatically)
 - **Alternative Title:** `TrustCue` (8 / 30 characters)
 - **Policy Compliance:** Does not include promotional superlatives ("#1", "Best", "Top"), price terms ("Free"), or call-to-action commands ("Download").
 
 ### 2.2 Short Description
 - **Copy:** `Understand suspicious messages and links with privacy-first on-device checks.`
-- **Character Count:** 78 / 80 characters.
+- **Character Count:** 77 / 80 characters (verified programmatically).
 - **Policy Compliance:** Accurately summarizes core functionality without deceptive claims or keyword stuffing.
 
 ### 2.3 Full Description
-- **Character Count:** 2,940 / 4,000 characters.
+- **Character Count:** 3,358 / 4,000 characters (verified programmatically).
 - **Full Text:**
 
 ```text
@@ -100,6 +100,12 @@ Welcome to TrustCue v0.1.0!
 • Bilingual interface support (English and Urdu).
 • Optional consented Groq Cloud AI analysis.
 ```
+
+### 2.6 Target Audience & Content Rating
+- **Proposed Category:** Tools / Education
+- **Anticipated Content Rating:** Everyone (IARC self-assessment questionnaire pending official Google Play Console submission). TrustCue contains no violence, sexual themes, simulated gambling, user-to-user chat, location sharing, or digital purchases.
+- **Target Age Group:** General audience (18 and older); does not target children under 13 (COPPA compliant; zero child-directed advertising or features).
+- **Compliance Status:** Engineered to adhere to 2026 Google Play Developer Program Policies.
 
 ---
 

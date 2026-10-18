@@ -133,31 +133,77 @@
       <p><strong>Result:</strong> Your account is immediately erased on the server via an atomic database cascade (<code>ON DELETE CASCADE</code>). All auth records, user profile details, quota history, and synced cloud reports are permanently destroyed.</p>
     </div>
 
-    <div class="card">
+        <div class="card">
       <h2>Pathway 2: Web / Email Deletion Request</h2>
-      <p>If you have uninstalled the application or cannot access your mobile device, you can request account deletion via email:</p>
+      <p>If you have uninstalled the application or cannot access your mobile device, you can submit an account deletion request using this form:</p>
       
       <div class="alert-box">
-        <strong>Important:</strong> Deletion is permanent and irreversible. All cloud data associated with your email address will be completely purged.
+        <strong>Important:</strong> Deletion is permanent and irreversible. All cloud data associated with your email address will be completely purged via database cascade.
       </div>
 
-      <p>To request deletion, send an email with the following details:</p>
-      <ul>
-        <li><strong>Send to:</strong> <a href="mailto:muhammadtaimoorajmal@gmail.com?subject=TrustCue%20Account%20Deletion%20Request">muhammadtaimoorajmal@gmail.com</a></li>
-        <li><strong>Subject Line:</strong> <code>TrustCue Account Deletion Request</code></li>
-        <li><strong>Body:</strong> Please state: <em>"I request the permanent deletion of my TrustCue account and all associated cloud data."</em> and include your registered account email address.</li>
-      </ul>
+      <div style="margin: 1.5rem 0; padding: 1.25rem; background: #F1F5F9; border-radius: 6px; border: 1px solid #CBD5E1;">
+        <label for="emailInput" style="display:block; font-weight:600; margin-bottom: 0.5rem;">Your Registered TrustCue Email:</label>
+        <input type="email" id="emailInput" placeholder="name@example.com" style="width: 100%; box-sizing: border-box; padding: 0.65rem 0.8rem; font-size: 1rem; border: 1px solid #94A3B8; border-radius: 4px; margin-bottom: 0.8rem;">
+        
+        <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
+          <button id="sendEmailBtn" onclick="handleSendEmail()" style="background-color: var(--accent); color: white; border: none; padding: 0.75rem 1.4rem; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">
+            Compose Deletion Email
+          </button>
+          <button id="copyBtn" onclick="handleCopyRequest()" style="background-color: #475569; color: white; border: none; padding: 0.75rem 1.4rem; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">
+            Copy Request to Clipboard
+          </button>
+        </div>
+        <p id="actionNotice" style="margin: 0.8rem 0 0; font-size: 0.9rem; color: var(--accent); display: none; font-weight: 600;"></p>
+      </div>
 
-      <p>
-        <a class="email-button" href="mailto:muhammadtaimoorajmal@gmail.com?subject=TrustCue%20Account%20Deletion%20Request&body=Please%20permanently%20delete%20my%20TrustCue%20account%20and%20all%20associated%20cloud%20data.%0A%0ARegistered%20Email:%20">Send Deletion Request Email</a>
-      </p>
+      <script>
+        function handleSendEmail() {
+          var email = document.getElementById('emailInput').value.trim();
+          if (!email) {
+            alert('Please enter your registered TrustCue account email address.');
+            document.getElementById('emailInput').focus();
+            return;
+          }
+          var subject = encodeURIComponent('TrustCue Account Deletion Request');
+          var body = encodeURIComponent('Please permanently delete my TrustCue account and all associated cloud data.\n\nRegistered Account Email: ' + email + '\n\nDate Requested: ' + new Date().toISOString());
+          window.location.href = 'mailto:muhammadtaimoorajmal@gmail.com?subject=' + subject + '&body=' + body;
+          var notice = document.getElementById('actionNotice');
+          notice.textContent = 'Opened mail client. Please send the pre-filled email to complete your request.';
+          notice.style.display = 'block';
+        }
+
+        function handleCopyRequest() {
+          var email = document.getElementById('emailInput').value.trim();
+          if (!email) {
+            alert('Please enter your registered TrustCue account email address.');
+            document.getElementById('emailInput').focus();
+            return;
+          }
+          var text = 'To: muhammadtaimoorajmal@gmail.com\nSubject: TrustCue Account Deletion Request\n\nPlease permanently delete my TrustCue account and all associated cloud data.\nRegistered Account Email: ' + email + '\nDate Requested: ' + new Date().toISOString();
+          navigator.clipboard.writeText(text).then(function() {
+            var notice = document.getElementById('actionNotice');
+            notice.textContent = 'Copied pre-filled deletion request to clipboard! Please paste into your webmail and send to muhammadtaimoorajmal@gmail.com.';
+            notice.style.display = 'block';
+          }).catch(function() {
+            alert('Unable to copy automatically. Please email muhammadtaimoorajmal@gmail.com with subject "TrustCue Account Deletion Request" and your email.');
+          });
+        }
+      </script>
+
+      <h3>Direct Email Details (No-Script Fallback)</h3>
+      <p>If you prefer to send an email manually:</p>
+      <ul>
+        <li><strong>Send To:</strong> <a href="mailto:muhammadtaimoorajmal@gmail.com?subject=TrustCue%20Account%20Deletion%20Request">muhammadtaimoorajmal@gmail.com</a></li>
+        <li><strong>Subject Line:</strong> <code>TrustCue Account Deletion Request</code></li>
+        <li><strong>Body:</strong> <em>"Please permanently delete my TrustCue account and all associated cloud data. Registered Email: [your email]."</em></li>
+      </ul>
 
       <h3>Processing & Verification Timeline</h3>
       <ol>
         <li>We will send a brief confirmation challenge to your registered email to verify ownership.</li>
-        <li>Upon confirmation, your Supabase auth account, profile, quotas, and synced reports will be permanently deleted.</li>
+        <li>Upon confirmation, your Supabase auth account, profile, quotas, and synced reports will be permanently deleted via <code>ON DELETE CASCADE</code>.</li>
         <li>Requests are fulfilled within <strong>7 business days</strong>.</li>
-        <li>You will receive a final email confirming deletion.</li>
+        <li>You will receive a final confirmation email once data is permanently purged.</li>
       </ol>
     </div>
 

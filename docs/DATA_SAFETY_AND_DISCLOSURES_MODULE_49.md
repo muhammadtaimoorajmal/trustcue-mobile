@@ -48,13 +48,14 @@ Google Play policy strictly defines **collection** as any off-device transmissio
 
 ### 2.2 Security Practices Declared in Play Console
 1. **Data Encrypted in Transit:**
-   - All network communication (FastAPI backend, Supabase GoTrue Auth, and Groq Cloud) uses TLS 1.3 encryption. Unencrypted HTTP traffic is rejected.
-2. **Data Encrypted at Rest:**
-   - On-device auth tokens are stored using `flutter_secure_storage` backed by the Android Hardware KeyStore (AES-GCM encryption).
-   - Hosted Supabase database uses disk-level encryption (AES-256) and Row Level Security (RLS) policies.
+   - All network communication (FastAPI backend, Supabase GoTrue Auth, and Groq Cloud) enforces HTTPS (TLS 1.2 / TLS 1.3, empirically verified negotiating `TLSv1.3` with `TLS_AES_256_GCM_SHA384` on October 18, 2026). Plaintext HTTP traffic is rejected.
+2. **Data Encrypted at Rest & Sandboxing:**
+   - **Hardware KeyStore Token Encryption:** Authentication refresh and access tokens are encrypted at rest using `flutter_secure_storage: 11.2.0` backed by the Android Hardware KeyStore (AES-GCM encryption with RSA key wrapping).
+   - **Sandboxed Local SQLite:** Locally saved reports, local feedback, and preferences are stored in the app-private internal storage sandbox (`/data/user/0/io.github.muhammadtaimoorajmal.trustcue/databases/trustcue.db`), protected by Android's Linux UID isolation and `android:allowBackup="false"`. Note: SQLite table rows are stored as standard unencrypted SQLite records, not database-level SQLCipher encrypted.
+   - **Cloud Storage:** Hosted Supabase PostgreSQL database uses host-level volume encryption at rest (AES-256) and strict Row Level Security (RLS) policies. User email resides in `auth.users` and profile display name in `public.profiles`.
 3. **Data Deletion Mechanism Provided:**
    - Users can delete their account and all associated cloud data directly within the app (`Account -> Delete Account`).
-   - An external web-based deletion request page is hosted at `https://muhammadtaimoorajmal.github.io/trustcue-mobile/privacy/account_deletion.html` (and available as Markdown/HTML in the repository) to satisfy Google Play's Two-Pathway Deletion Rule.
+   - A functional external web deletion request resource with interactive email generation and clipboard assistance is provided at `docs/privacy/account_deletion.html` to satisfy Google Play's Two-Pathway Deletion Rule.
 
 ---
 

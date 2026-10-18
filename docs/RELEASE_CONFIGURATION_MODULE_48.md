@@ -142,6 +142,21 @@ In `frontend/android/app/build.gradle.kts`:
   ```
 - **Debug Builds Resilient:** Standard debug builds (`assembleDebug`, CI test runners) do not evaluate release credentials and continue to build cleanly using default debug keystores.
 
+### 4.4 Encrypted Off-Machine Backup Procedure (Owner Action)
+To safeguard release signing credentials against hardware failure without exposing plaintext secrets:
+1. Standard Windows ZIP files do **not** provide encryption, and ordinary cloud sync folders (Google Drive, OneDrive) do not provide client-side zero-knowledge encryption by default.
+2. The verified procedure uses OpenSSL (bundled with Git for Windows at `C:\Program Files\Git\usr\bin\openssl.exe`) to create a mathematically hardened AES-256-CBC encrypted archive with PBKDF2 key derivation:
+   ```powershell
+   # Run from frontend/android/ directory
+   tar -czf - upload-keystore.jks key.properties | & "C:\Program Files\Git\usr\bin\openssl.exe" enc -aes-256-cbc -salt -pbkdf2 -out <external_storage_path>\trustcue_signing_backup.tar.gz.enc
+   ```
+3. OpenSSL interactively prompts for the encryption passphrase without echoing characters to the screen and without saving the password in PowerShell terminal history.
+4. To restore and decrypt:
+   ```powershell
+   & "C:\Program Files\Git\usr\bin\openssl.exe" enc -d -aes-256-cbc -pbkdf2 -in trustcue_signing_backup.tar.gz.enc | tar -xzf -
+   ```
+5. **Status:** Keystore backup status remains explicitly **Pending Owner Execution & Confirmation** (Task OWN-00). Agents do not access external storage or perform this backup outside the workspace.
+
 ---
 
 ## 5. Production Artifact Verification

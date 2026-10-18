@@ -38,8 +38,13 @@ If you have the TrustCue application installed on your device:
 
 If you have uninstalled the app, lost your device, or cannot log in:
 
-### How to Submit a Request
-Send an email to our dedicated data privacy mailbox:
+### 1. Interactive Web Form (`account_deletion.html`)
+Users may access the public web deletion resource hosted at `account_deletion.html`:
+- **Interactive Email Generator:** Enter your registered account email and click **Compose Deletion Email** to automatically launch your default mail client with pre-filled subject, body, and timestamp.
+- **Clipboard Generator:** Click **Copy Request to Clipboard** to copy the formatted text for webmail clients (Gmail, Outlook, Yahoo).
+
+### 2. Direct Email Submission
+Send an email directly to our dedicated data privacy mailbox:
 - **Recipient:** `muhammadtaimoorajmal@gmail.com`
 - **Subject:** `TrustCue Account Deletion Request`
 - **Required Details:**
@@ -47,12 +52,12 @@ Send an email to our dedicated data privacy mailbox:
   2. A statement confirming: *"I request the permanent deletion of my TrustCue account and all associated cloud data."*
 
 ### Verification & Processing Timeline
-1. **Identity Verification:** To prevent unauthorized deletion requests, our system sends a one-time verification challenge or verification link to the registered email address.
-2. **Execution:** Upon successful confirmation, our system executes an administrative account purge:
+1. **Identity Verification:** To prevent unauthorized deletion requests, our system sends a one-time confirmation challenge to the registered email address.
+2. **Execution:** Upon successful confirmation, our system executes an administrative account purge using the Supabase GoTrue Auth API (`auth.admin.deleteUser(id)`):
    - Your Supabase authentication user record (`auth.users`) is permanently deleted.
-   - Your profile record (`public.profiles`) is deleted.
-   - Your daily quota records (`public.ai_usage_quotas`) are deleted.
-   - Any cloud-synchronized report metadata (`public.synced_reports`) is permanently deleted.
+   - Your profile record (`public.profiles`) is deleted via `ON DELETE CASCADE`.
+   - Your daily quota records (`public.ai_usage_quotas`) are deleted via `ON DELETE CASCADE`.
+   - Any cloud-synchronized report metadata (`public.synced_reports`) is permanently deleted via `ON DELETE CASCADE`.
 3. **Timeline:** Deletion requests are processed and completed within **7 business days**.
 4. **Confirmation:** You will receive a final confirmation email once your account and all associated data have been permanently purged.
 

@@ -54,7 +54,15 @@ Note: The test account is pre-verified. No SMS 2FA is required. Cloud AI analysi
 ```
 
 > [!IMPORTANT]
-> **Secret Protection:** Reviewer passwords and private API keys must **never** be committed to Git or documentation. The repository owner creates the test account in the Supabase Dashboard (`Authentication -> Users`) and inputs credentials directly into the private Google Play Console form.
+> **Secret Protection & Auto-Confirm Requirement:**
+> Reviewer passwords and private API keys must **never** be committed to Git or documentation.
+> Because non-deliverable internal domains (e.g. `@trustcue.internal`) cannot receive external emails, the repository owner must create the test user directly in the Supabase Dashboard:
+> 1. In Supabase Dashboard, navigate to **Authentication -> Users**.
+> 2. Click **Add User -> Create User**.
+> 3. Enter email: `play_reviewer@trustcue.internal` (or an owner-controlled test address).
+> 4. Enter a strong, private password.
+> 5. Ensure **"Auto Confirm User?" / "Confirm Email"** is toggled **ON**. This sets `email_confirmed_at` immediately upon creation, allowing Google Play reviewers to log in instantly without waiting for or receiving an email verification link.
+> 6. Input these credentials directly into the private Google Play Console App Access form.
 
 ---
 
@@ -105,6 +113,7 @@ In strict adherence to the project boundary rules (no developer account fees, no
 
 | Action ID | Domain | Responsibility / Action | Status / Prerequisite |
 |---|---|---|---|
+| **OWN-00** | Cryptographic Key Backup | Execute verified AES-256 encrypted backup of `upload-keystore.jks` and `key.properties` to external physical media outside the laptop using OpenSSL with PBKDF2: `tar -czf - upload-keystore.jks key.properties \| & "C:\Program Files\Git\usr\bin\openssl.exe" enc -aes-256-cbc -salt -pbkdf2 -out <destination>\trustcue_signing_backup.tar.gz.enc`. The tool prompts interactively for an encryption password without echoing or saving it in command logs. Note: standard Windows ZIP does not encrypt files, and ordinary cloud sync is not client-side encrypted by default. | Pending Owner Execution & Confirmation |
 | **OWN-01** | Developer Registration | Register personal or organizational Google Play Developer account ($25 one-time Google fee). | Owner Action (Outside codebase) |
 | **OWN-02** | Identity Verification | Complete Google identity verification (Government ID, legal name, address verification). | Owner Action |
 | **OWN-03** | Web Resource Hosting | Publish `docs/privacy/privacy_policy.html` and `account_deletion.html` to a public URL (e.g. GitHub Pages at `https://<username>.github.io/trustcue-mobile/privacy/...`). | Prepared in repo; pending owner publish |
