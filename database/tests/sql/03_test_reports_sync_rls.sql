@@ -50,7 +50,7 @@ BEGIN
             'a0000000-0000-0000-0000-000000000001',
             'rep-anon-001',
             'snap-anon-001',
-            '{"formatVersion": 1, "outcomeState": "suspicious", "hasAiAnalysis": false, "indicatorCount": 1, "categories": ["urgency"], "source": "messageText"}'::jsonb,
+            '{"formatVersion": 1, "outcomeState": "suspicious", "hasAiAnalysis": false, "indicatorCount": 1, "categories": ["urgency_or_pressure"], "source": "messageText"}'::jsonb,
             now()
         );
         RAISE EXCEPTION 'RLS Failure: Anonymous user was allowed to insert a synced report!';
@@ -74,7 +74,7 @@ INSERT INTO public.synced_reports (
     'snap-a-001',
     1,
     1,
-    '{"formatVersion": 1, "outcomeState": "indicatorsDetected", "hasAiAnalysis": false, "indicatorCount": 1, "categories": ["urgency"], "source": "messageText"}'::jsonb,
+    '{"formatVersion": 1, "outcomeState": "indicatorsDetected", "hasAiAnalysis": false, "indicatorCount": 1, "categories": ["urgency_or_pressure"], "source": "messageText"}'::jsonb,
     now()
 );
 
