@@ -182,4 +182,201 @@ CREATE POLICY "reports_delete_own"
     TO authenticated
     USING (auth.uid() = public.synced_reports.user_id);
 
+-- 5. Atomic write validation trigger with profile FOR SHARE row lock
+-- Enforces concurrency protection against purge races for ALL write paths (direct client RLS and service-role)
+CREATE OR REPLACE FUNCTION public.fn_validate_synced_report_write()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $$
+DECLARE
+    v_profile_gen INT;
+    v_sync_enabled BOOLEAN;
+    v_purged_at TIMESTAMPTZ;
+BEGIN
+    -- 1. Synchronize with concurrent purge: acquire FOR SHARE lock on user profile.
+    -- This blocks if a purge is currently in progress (FOR UPDATE), and forces any concurrent purge
+    -- to wait until this write transaction commits.
+    SELECT sync_generation, sync_enabled, sync_purged_at
+    INTO v_profile_gen, v_sync_enabled, v_purged_at
+    FROM public.profiles
+    WHERE id = NEW.user_id
+    FOR SHARE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'User profile not found for ID %', NEW.user_id;
+    END IF;
+
+    -- 2. Invariant A: Active reports require sync_enabled = true on the profile (tombstones permitted when opted out)
+    IF NOT NEW.is_deleted AND NOT v_sync_enabled THEN
+        RAISE EXCEPTION 'Sync opt-in required: profile sync_enabled must be true to write active reports';
+    END IF;
+
+    -- 3. Invariant B: sync_generation must match the profile current generation
+    IF NEW.sync_generation <> v_profile_gen THEN
+        RAISE EXCEPTION 'Stale generation: report sync_generation (%) does not match profile sync_generation (%)',
+            NEW.sync_generation, v_profile_gen;
+    END IF;
+
+    -- 4. Invariant C: client_updated_at must strictly postdate sync_purged_at
+    IF v_purged_at IS NOT NULL AND NEW.client_updated_at <= v_purged_at THEN
+        RAISE EXCEPTION 'Stale timestamp: report client_updated_at (%) precedes or equals last cloud purge (%)',
+            NEW.client_updated_at, v_purged_at;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+COMMENT ON FUNCTION public.fn_validate_synced_report_write() IS 'Validates report writes under a profile FOR SHARE lock, preventing check-then-write races with cloud purge.';
+
+DROP TRIGGER IF EXISTS tr_validate_synced_report_write ON public.synced_reports;
+CREATE TRIGGER tr_validate_synced_report_write
+    BEFORE INSERT OR UPDATE ON public.synced_reports
+    FOR EACH ROW
+    EXECUTE FUNCTION public.fn_validate_synced_report_write();
+
+-- 6. Atomic batch upload RPC function
+CREATE OR REPLACE FUNCTION public.sync_push_reports(
+    target_user_id UUID DEFAULT NULL,
+    reports JSONB DEFAULT '[]'::jsonb
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $$
+DECLARE
+    caller_role text;
+    effective_user_id UUID;
+    v_profile_gen INT;
+    v_sync_enabled BOOLEAN;
+    v_purged_at TIMESTAMPTZ;
+    v_item JSONB;
+    v_accepted_count INT := 0;
+    v_synced_ids TEXT[] := ARRAY[]::TEXT[];
+    v_client_report_id TEXT;
+    v_snapshot_id TEXT;
+    v_schema_version INT;
+    v_revision INT;
+    v_item_gen INT;
+    v_report_payload JSONB;
+    v_is_deleted BOOLEAN;
+    v_deleted_at TIMESTAMPTZ;
+    v_client_updated_at TIMESTAMPTZ;
+BEGIN
+    caller_role := auth.role();
+
+    IF caller_role = 'service_role' OR (session_user = 'postgres' AND (caller_role IS NULL OR caller_role = 'service_role')) THEN
+        effective_user_id := COALESCE(target_user_id, auth.uid());
+    ELSIF caller_role = 'authenticated' THEN
+        effective_user_id := auth.uid();
+        IF target_user_id IS NOT NULL AND target_user_id <> auth.uid() THEN
+            RAISE EXCEPTION 'Access denied: cannot push reports for another user';
+        END IF;
+    ELSE
+        RAISE EXCEPTION 'Access denied: insufficient privileges to push synced reports';
+    END IF;
+
+    IF effective_user_id IS NULL THEN
+        RAISE EXCEPTION 'User ID must not be null for cloud report push';
+    END IF;
+
+    -- Synchronize with concurrent purge: acquire FOR SHARE lock on user profile
+    SELECT sync_generation, sync_enabled, sync_purged_at
+    INTO v_profile_gen, v_sync_enabled, v_purged_at
+    FROM public.profiles
+    WHERE id = effective_user_id
+    FOR SHARE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'User profile not found for ID %', effective_user_id;
+    END IF;
+
+    IF jsonb_typeof(reports) <> 'array' THEN
+        RAISE EXCEPTION 'Reports payload must be a JSON array';
+    END IF;
+
+    FOR v_item IN SELECT * FROM jsonb_array_elements(reports)
+    LOOP
+        v_client_report_id := v_item->>'client_report_id';
+        v_snapshot_id := v_item->>'snapshot_id';
+        v_schema_version := COALESCE((v_item->>'schema_version')::int, 1);
+        v_revision := COALESCE((v_item->>'revision')::int, 1);
+        v_item_gen := COALESCE((v_item->>'sync_generation')::int, 1);
+        v_report_payload := v_item->'report_payload';
+        v_is_deleted := COALESCE((v_item->>'is_deleted')::boolean, FALSE);
+        v_deleted_at := (v_item->>'deleted_at')::timestamptz;
+        v_client_updated_at := (v_item->>'client_updated_at')::timestamptz;
+
+        -- Invariant A: Active reports require sync_enabled = true
+        IF NOT v_is_deleted AND NOT v_sync_enabled THEN
+            CONTINUE;
+        END IF;
+
+        -- Invariant B: sync_generation must match current profile generation
+        IF v_item_gen <> v_profile_gen THEN
+            CONTINUE;
+        END IF;
+
+        -- Invariant C: client_updated_at must strictly postdate last purge
+        IF v_purged_at IS NOT NULL AND v_client_updated_at <= v_purged_at THEN
+            CONTINUE;
+        END IF;
+
+        INSERT INTO public.synced_reports (
+            user_id,
+            client_report_id,
+            snapshot_id,
+            schema_version,
+            revision,
+            sync_generation,
+            report_payload,
+            is_deleted,
+            deleted_at,
+            client_updated_at,
+            updated_at
+        ) VALUES (
+            effective_user_id,
+            v_client_report_id,
+            v_snapshot_id,
+            v_schema_version,
+            v_revision,
+            v_item_gen,
+            v_report_payload,
+            v_is_deleted,
+            v_deleted_at,
+            v_client_updated_at,
+            timezone('utc'::text, now())
+        )
+        ON CONFLICT (user_id, client_report_id) DO UPDATE SET
+            snapshot_id = EXCLUDED.snapshot_id,
+            schema_version = EXCLUDED.schema_version,
+            revision = EXCLUDED.revision,
+            sync_generation = EXCLUDED.sync_generation,
+            report_payload = EXCLUDED.report_payload,
+            is_deleted = EXCLUDED.is_deleted,
+            deleted_at = EXCLUDED.deleted_at,
+            client_updated_at = EXCLUDED.client_updated_at,
+            updated_at = timezone('utc'::text, now())
+        WHERE public.synced_reports.client_updated_at <= EXCLUDED.client_updated_at;
+
+        v_accepted_count := v_accepted_count + 1;
+        v_synced_ids := array_append(v_synced_ids, v_client_report_id);
+    END LOOP;
+
+    RETURN jsonb_build_object(
+        'accepted_count', v_accepted_count,
+        'synced_ids', to_jsonb(v_synced_ids),
+        'server_timestamp', timezone('utc'::text, now())
+    );
+END;
+$$;
+
+COMMENT ON FUNCTION public.sync_push_reports(UUID, JSONB) IS 'Atomically validates profile generation and inserts/upserts report summaries under a profile FOR SHARE lock to serialize with purge.';
+
+REVOKE ALL ON FUNCTION public.sync_push_reports(UUID, JSONB) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.sync_push_reports(UUID, JSONB) TO authenticated, service_role, postgres;
+
 COMMIT;

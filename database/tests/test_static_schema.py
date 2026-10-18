@@ -175,7 +175,10 @@ class TestDatabaseMigrations(unittest.TestCase):
         self.assertIn("public.synced_reports.is_deleted = TRUE", content)
         self.assertIn("public.synced_reports.sync_generation = public.profiles.sync_generation", content)
         self.assertIn("FOR UPDATE", content)
-        self.assertNotIn("NEW.", content)
+        self.assertIn("FOR SHARE", content)
+        self.assertIn("fn_validate_synced_report_write", content)
+        self.assertIn("tr_validate_synced_report_write", content)
+        self.assertIn("FUNCTION public.sync_push_reports", content)
 
 
 
@@ -203,6 +206,7 @@ class TestSQLRegressionSuites(unittest.TestCase):
             "05_test_quota_reservation.sql",
             "06_test_sync_opt_in_rls.sql",
             "07_test_sync_purge_and_allowlist.sql",
+            "08_test_concurrent_upload_purge.sql",
         ]
         actual_files = sorted([f.name for f in TESTS_SQL_DIR.glob("*.sql")])
         self.assertEqual(actual_files, expected_tests)
