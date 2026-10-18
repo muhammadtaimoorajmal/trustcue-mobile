@@ -86,3 +86,57 @@ During Module 43 verification, the bounded test execution command timed out at 1
 - [x] Frontend: Formatter clean (0 files changed).
 - [x] Frontend: Debug APK successfully compiled (`build\app\outputs\flutter-apk\app-debug.apk`).
 - [x] Physical device execution verified on Vivo V2207 (Android 14 API 34).
+- [x] Database CI: GitHub Actions run 39109860698 PASSED (PostgreSQL 16 Migration & RLS Enforcement: exit code 0).
+- [x] Backend CI: GitHub Actions run 39109879630 PASSED (Lint, Contract & Tests: exit code 0).
+
+---
+
+## 6. Database CI Repair & Final Closeout Verification
+
+### 6.1 Database CI Failure Root Cause Analysis
+- **Failed Run URL:** `https://github.com/muhammadtaimoorajmal/trustcue-mobile/actions/runs/39060524272` (Job ID: `117477408373`)
+- **Tested Commit:** `501fad7e3dd6b52489d62f5f738013d0dfcbb21b`
+- **Failing Step:** Step 7 ("Apply Migrations Sequentially")
+- **PostgreSQL Error:**
+  ```text
+  psql:database/migrations/00008_harden_sync_purge_and_allowlist.sql:129: ERROR: missing FROM-clause entry for table "new"
+  ```
+- **Diagnostic Root Cause:** PostgreSQL Row Level Security `WITH CHECK` clauses evaluate expressions directly against candidate table columns (`public.synced_reports.client_updated_at`, `public.synced_reports.is_deleted`). The pseudo-record `NEW` is exclusive to PL/pgSQL trigger functions and does not exist in `CREATE POLICY` statements. PostgreSQL therefore parsed `NEW` as a table name missing from the `FROM` clause (SQLSTATE `42P01`).
+
+### 6.2 Hardening & Remediation Measures
+1. **RLS Policy Syntax & Column Qualification (`00008_harden_sync_purge_and_allowlist.sql`):**
+   - Removed `NEW.` references from `reports_insert_own` and `reports_update_own`.
+   - Explicitly qualified candidate row columns with table scope (`public.synced_reports.user_id`, `public.synced_reports.sync_generation`, `public.synced_reports.client_updated_at`, `public.synced_reports.is_deleted`) to eliminate resolution ambiguity against `public.profiles` in subqueries.
+2. **Dual-Pillar Stale Upload Prevention (Sync Generation & Purge Timestamp):**
+   - Added `sync_generation INT NOT NULL DEFAULT 1 CHECK (sync_generation >= 1)` to `public.synced_reports`.
+   - RLS requires `public.synced_reports.sync_generation >= public.profiles.sync_generation` AND `(public.profiles.sync_purged_at IS NULL OR public.synced_reports.client_updated_at > public.profiles.sync_purged_at)`.
+   - In `purge_synced_reports()`, `UPDATE public.profiles SET sync_generation = sync_generation + 1, sync_purged_at = timezone('utc'::text, now()), sync_enabled = FALSE WHERE id = effective_user_id;` atomically locks the profile row, preventing concurrent writes and invalidating past generations even if client device clocks are skewed.
+3. **Payload Allowlist & Tombstone Safety:**
+   - Enforced exact JSON key subtraction: `(report_payload - ARRAY['formatVersion', 'outcomeState', 'hasAiAnalysis', 'indicatorCount', 'categories', 'source']) = '{}'::jsonb` and forbidden key checks for ALL rows, closing the vulnerability where sensitive unvetted data could be smuggled under `is_deleted = TRUE`.
+   - Enforced strict enum values for `outcomeState` (`'indicatorsDetected'`, `'noIndicatorsMatched'`, `'limitedCoverage'`, `'cautious'`) and `source` (`'messageText'`, `'screenshot'`, `'link'`, `'qrCode'`).
+   - Enforced integer range bounds: `formatVersion BETWEEN 1 AND 10`, `indicatorCount BETWEEN 0 AND 1000`, `jsonb_array_length(categories) <= 50`.
+   - Wrapped constraint in `( ... ) IS TRUE` to fail-closed on SQL three-valued logic.
+4. **Opt-Out Tombstone Support:**
+   - Permitted users who have opted out (`sync_enabled = false`) to insert fresh tombstones and update existing records to `is_deleted = true`, allowing account holders to delete their data without re-enabling cloud sync. Active report uploads remain strictly denied.
+5. **Backend & Frontend Alignment:**
+   - `sync_service.py` and `state.py`: updated to retrieve `sync_generation`, filter stale generation items, pass `sync_generation` to PostgREST, and return `syncGeneration` in pull records.
+   - `cloud_sync_models.dart`: added `syncGeneration` field with backward-compatible default `1`.
+
+### 6.3 Automated CI Verification Evidence
+- **Database CI (GitHub Actions Run 39109860698):**
+  - Branch: `database` (commit `84cbd61`)
+  - Status: **Completed — Success** (Exit Code 0)
+  - Static Schema & Policy Validation: Passed (13/13 unit tests)
+  - PostgreSQL 16 Migration & RLS Enforcement: Passed (Applied migrations 00001–00008 sequentially, loaded synthetic seeds, executed all 7 SQL regression test suites including 13 test steps in suite 07 without error).
+  - Run URL: `https://github.com/muhammadtaimoorajmal/trustcue-mobile/actions/runs/39109860698`
+- **Backend CI (GitHub Actions Run 39109879630):**
+  - Branch: `backend` (commit `f5564a6`)
+  - Status: **Completed — Success** (Exit Code 0)
+  - Lint, Contract & Tests: Passed (142/142 tests, 0 ruff issues)
+  - Run URL: `https://github.com/muhammadtaimoorajmal/trustcue-mobile/actions/runs/39109879630`
+- **Frontend Verification:**
+  - 852 automated tests passed (`flutter test`).
+  - Analyzer clean (`flutter analyze --no-pub`, 0 issues).
+  - Formatting clean (`dart format`).
+
+

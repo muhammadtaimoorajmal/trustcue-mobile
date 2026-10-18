@@ -5,6 +5,7 @@ class CloudReportItem {
   final String clientReportId;
   final String snapshotId;
   final int schemaVersion;
+  final int syncGeneration;
   final Map<String, dynamic> reportPayload;
   final bool isDeleted;
   final DateTime? deletedAt;
@@ -14,6 +15,7 @@ class CloudReportItem {
     required this.clientReportId,
     required this.snapshotId,
     this.schemaVersion = 1,
+    this.syncGeneration = 1,
     required this.reportPayload,
     this.isDeleted = false,
     this.deletedAt,
@@ -25,6 +27,7 @@ class CloudReportItem {
       'clientReportId': clientReportId,
       'snapshotId': snapshotId,
       'schemaVersion': schemaVersion,
+      'syncGeneration': syncGeneration,
       'reportPayload': reportPayload,
       'isDeleted': isDeleted,
       if (deletedAt != null) 'deletedAt': deletedAt!.toUtc().toIso8601String(),
@@ -39,6 +42,7 @@ class CloudReportRecord {
   final String snapshotId;
   final int schemaVersion;
   final int revision;
+  final int syncGeneration;
   final Map<String, dynamic> reportPayload;
   final bool isDeleted;
   final DateTime? deletedAt;
@@ -52,6 +56,7 @@ class CloudReportRecord {
     required this.snapshotId,
     required this.schemaVersion,
     required this.revision,
+    this.syncGeneration = 1,
     required this.reportPayload,
     required this.isDeleted,
     this.deletedAt,
@@ -67,6 +72,7 @@ class CloudReportRecord {
       snapshotId: json['snapshotId'] as String,
       schemaVersion: json['schemaVersion'] as int? ?? 1,
       revision: json['revision'] as int? ?? 1,
+      syncGeneration: json['syncGeneration'] as int? ?? 1,
       reportPayload: (json['reportPayload'] as Map).cast<String, dynamic>(),
       isDeleted: json['isDeleted'] as bool? ?? false,
       deletedAt: json['deletedAt'] != null
