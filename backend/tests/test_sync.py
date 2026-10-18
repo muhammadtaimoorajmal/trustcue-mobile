@@ -530,6 +530,25 @@ def test_sync_push_skips_stale_reports_preceding_purge(auth_client: TestClient) 
     # Accepted count should be 0 because stale report preceding purge was skipped!
     assert stale_push.json()["acceptedCount"] == 0
 
+    # 4b. Attempt to push report with stale syncGeneration (1 < 2) even with fresh timestamp
+    stale_gen_push = auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-stale-gen",
+                    "snapshotId": "snap-stale-gen",
+                    "syncGeneration": 1,
+                    "clientUpdatedAt": (now + timedelta(hours=1)).isoformat(),
+                    "reportPayload": make_summary_payload(),
+                }
+            ]
+        },
+    )
+    assert stale_gen_push.status_code == 200
+    assert stale_gen_push.json()["acceptedCount"] == 0
+
     # 5. Pull reports to confirm nothing was resurrected
     pull = auth_client.get("/api/v1/sync/reports", headers=headers)
     assert pull.status_code == 200

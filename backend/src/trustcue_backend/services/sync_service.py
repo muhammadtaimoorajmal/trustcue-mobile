@@ -60,7 +60,7 @@ class SyncService:
             try:
                 base_url = self.settings.SUPABASE_URL.rstrip("/")
                 resp = await client.get(
-                    f"{base_url}/rest/v1/profiles?id=eq.{user_id}&select=sync_enabled,sync_purged_at",
+                    f"{base_url}/rest/v1/profiles?id=eq.{user_id}&select=sync_enabled,sync_purged_at,sync_generation",
                     headers=self._get_auth_headers(),
                 )
                 if resp.status_code == 200:
@@ -72,6 +72,9 @@ class SyncService:
                         if raw_purged:
                             purged_at = datetime.fromisoformat(str(raw_purged).replace("Z", "+00:00"))
                             self.app_state.sync_purged_at[str(user_id).strip().lower()] = purged_at
+                        raw_gen = data[0].get("sync_generation")
+                        if raw_gen is not None:
+                            self.app_state.sync_generations[str(user_id).strip().lower()] = int(raw_gen)
             except Exception as exc:
                 logger.warning("Error verifying sync profile state for user %s: %s", user_id, str(exc))
             finally:
@@ -100,7 +103,9 @@ class SyncService:
             if not all(item.is_deleted for item in request.reports):
                 raise SyncOptInRequiredError()
 
-        # Filter out stale reports dated before the user's purge timestamp
+        user_gen = self.app_state.get_sync_generation(user_id)
+
+        # Filter out stale reports dated before the user's purge timestamp or preceding generation
         valid_items: list[Any] = []
         for item in request.reports:
             item_time = (
@@ -115,6 +120,15 @@ class SyncService:
                     user_id,
                     item_time,
                     purged_at,
+                )
+                continue
+            if item.sync_generation < user_gen:
+                logger.info(
+                    "Skipping stale report %s for user %s: generation %s precedes profile generation %s",
+                    item.client_report_id,
+                    user_id,
+                    item.sync_generation,
+                    user_gen,
                 )
                 continue
             valid_items.append(item)
@@ -142,6 +156,7 @@ class SyncService:
                         "client_report_id": item.client_report_id,
                         "snapshot_id": item.snapshot_id,
                         "schema_version": item.schema_version,
+                        "sync_generation": item.sync_generation,
                         "report_payload": item.report_payload,
                         "is_deleted": item.is_deleted,
                         "deleted_at": item.deleted_at.isoformat() if item.deleted_at else None,
@@ -226,6 +241,7 @@ class SyncService:
                                     snapshotId=row["snapshot_id"],
                                     schemaVersion=row.get("schema_version", 1),
                                     revision=row.get("revision", 1),
+                                    syncGeneration=row.get("sync_generation", 1),
                                     reportPayload=row["report_payload"],
                                     isDeleted=row.get("is_deleted", False),
                                     deletedAt=row.get("deleted_at"),
@@ -263,6 +279,7 @@ class SyncService:
                     snapshotId=r["snapshotId"],
                     schemaVersion=r.get("schemaVersion", 1),
                     revision=r.get("revision", 1),
+                    syncGeneration=r.get("syncGeneration", 1),
                     reportPayload=r["reportPayload"],
                     isDeleted=r.get("isDeleted", False),
                     deletedAt=r.get("deletedAt"),

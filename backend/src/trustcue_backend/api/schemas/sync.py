@@ -181,6 +181,11 @@ class SyncedReportRecord(BaseModel):
     client_report_id: str = Field(alias="clientReportId")
     snapshot_id: str = Field(alias="snapshotId")
     schema_version: int = Field(alias="schemaVersion")
+    sync_generation: int = Field(
+        default=1,
+        alias="syncGeneration",
+        description="Client synchronization generation counter.",
+    )
     revision: int = Field(description="Monotonic revision counter.")
     report_payload: dict[str, Any] = Field(alias="reportPayload")
     is_deleted: bool = Field(alias="isDeleted")

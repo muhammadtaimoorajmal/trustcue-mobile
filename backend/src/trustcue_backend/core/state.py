@@ -87,6 +87,11 @@ class AppState:
             if purged_at is not None and client_time <= purged_at:
                 continue
 
+            user_gen = self.get_sync_generation(user_id)
+            item_gen = item.get("syncGeneration", 1)
+            if item_gen < user_gen:
+                continue
+
             key = f"{uid}:{client_id}"
             existing = self.synced_reports.get(key)
             revision = (existing["revision"] + 1) if existing else 1
@@ -97,6 +102,7 @@ class AppState:
                 "clientReportId": client_id,
                 "snapshotId": item["snapshotId"],
                 "schemaVersion": item.get("schemaVersion", 1),
+                "syncGeneration": item_gen,
                 "revision": revision,
                 "reportPayload": item["reportPayload"],
                 "isDeleted": item.get("isDeleted", False),
