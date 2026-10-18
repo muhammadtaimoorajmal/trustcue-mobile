@@ -46,14 +46,14 @@ class UrgencyRule implements LocalRule {
       r'\b(?:action|response|verification|attention)\b[^\r\n.!?]{0,25}\b(?:required|needed)\b[^\r\n.!?]{0,30}\b(?:immediately|urgently|right now|at once|without delay)\b',
       caseSensitive: false,
     ),
-    // Explicit action + short deadline (e.g. "verify your account within 24 hours")
+    // Explicit action + short deadline (e.g. "verify your account within 24 hours", "pay within 48h")
     RegExp(
-      r'\b(?:respond|reply|verify|confirm|update|pay|act|resolve)\b[^\r\n.!?]{0,35}\b(?:within|in the next)\s+(?:\d+|one|two|three|twenty[- ]four|forty[- ]eight)\s+(?:minutes?|mins?|hours?|hrs?)\b',
+      r'\b(?:respond|reply|verify|confirm|update|pay|act|resolve)\b[^\r\n.!?]{0,35}\b(?:within|in the next)\s+(?:\d+|one|two|three|twenty[- ]four|forty[- ]eight)\s*(?:minutes?|mins?|hours?|hrs?|h)\b',
       caseSensitive: false,
     ),
-    // Short deadline + consequence/ultimatum (e.g. "within 24 hours to avoid suspension")
+    // Short deadline + consequence/ultimatum (e.g. "within 24 hours to avoid suspension", "within 24h to avoid")
     RegExp(
-      r'\b(?:within|in the next)\s+(?:\d+|one|two|three|twenty[- ]four|forty[- ]eight)\s+(?:minutes?|mins?|hours?|hrs?)\b[^\r\n.!?]{0,45}\b(?:or|to avoid|before|otherwise|failure to)\b',
+      r'\b(?:within|in the next)\s+(?:\d+|one|two|three|twenty[- ]four|forty[- ]eight)\s*(?:minutes?|mins?|hours?|hrs?|h)\b[^\r\n.!?]{0,45}\b(?:or|to avoid|before|otherwise|failure to)\b',
       caseSensitive: false,
     ),
     // Ultimatum / expiring notice (e.g. "final notice before closure", "time is running out")
@@ -63,6 +63,19 @@ class UrgencyRule implements LocalRule {
     ),
     RegExp(
       r'\b(?:time is running out|clock is ticking|limited time remaining)\b',
+      caseSensitive: false,
+    ),
+    // Standalone or clause-level urgency assertion (e.g. "It's urgent.", "Urgent: please reply", "codes. Urgent.")
+    RegExp(
+      r'\b(?:it\x27s|this is)\s+urgent\b',
+      caseSensitive: false,
+    ),
+    RegExp(
+      r'\b(?:urgent|urgently)\b\s*[.!]',
+      caseSensitive: false,
+    ),
+    RegExp(
+      r'\burgent\s*:\s*[^\r\n]{1,35}\b',
       caseSensitive: false,
     ),
   ];

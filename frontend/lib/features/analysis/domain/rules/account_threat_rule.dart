@@ -32,14 +32,14 @@ class AccountThreatRule implements LocalRule {
       'Message asserts that an account has been or will be suspended, restricted, or subject to punitive action unless steps are taken.';
 
   static final List<RegExp> _patterns = [
-    // Account status assertion (e.g. "your account has been suspended", "account will be restricted")
+    // Account or service status assertion (e.g. "your account has been suspended", "service will be disconnected", "benefits are suspended")
     RegExp(
-      r'\b(?:your\s+)?account\b[^\r\n.!?]{0,30}\b(?:has been|will be|is|is being)\s+(?:suspended|restricted|blocked|locked|terminated|disabled|frozen|closed)\b',
+      r'\b(?:your\s+)?(?:account|service|services|benefits|access|card|subscription)\b[^\r\n.!?]{0,30}\b(?:has been|have been|will be|is|are|is being|are being)\s+(?:suspended|restricted|blocked|locked|terminated|disabled|frozen|closed|disconnected)\b',
       caseSensitive: false,
     ),
-    // Demands to act to avoid suspension (e.g. "to avoid account suspension", "before account termination")
+    // Demands to act to avoid suspension or disconnection (e.g. "to avoid account suspension", "avoid service interruption")
     RegExp(
-      r'\b(?:to avoid|before)\s+(?:account\s+)?(?:suspension|termination|restriction|closure|locking)\b',
+      r'\b(?:to avoid|before)\s+(?:account\s+|service\s+)?(?:suspension|termination|restriction|closure|locking|interruption|disconnection)\b',
       caseSensitive: false,
     ),
     // Threats to take action against account (e.g. "will suspend your account", "terminate your account")

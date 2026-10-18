@@ -108,7 +108,7 @@ During the final Module 50 audit, ten specific architectural, security, and docu
   - `Verified using v1 scheme (JAR signing): true`
   - `Verified using v2 scheme (APK Signature Scheme v2): true`
   - `Verified using v3 scheme (APK Signature Scheme v3): false`
-  - `Signer #1 certificate DN: CN=TrustCue Release Signer, OU=Mobile Security, O=TrustCue, L=Islamabad, ST=ICT, C=PK`
+  - `Signer #1 certificate DN: CN=TrustCue Release Signer, OU=Mobile Security, O=TrustCue, L=London, ST=Greater London, C=GB`
   - `Signer #1 key algorithm: 4096-bit RSA with SHA-256`
 - **Resolution:** Documentation updated in `docs/RELEASE_CONFIGURATION_MODULE_48.md` with verbatim verification output.
 
@@ -182,6 +182,24 @@ During the final Module 50 audit, ten specific architectural, security, and docu
   tar -czf - upload-keystore.jks key.properties | & "C:\Program Files\Git\usr\bin\openssl.exe" enc -aes-256-cbc -salt -pbkdf2 -out <external_drive>\trustcue_signing_backup.tar.gz.enc
   ```
 - **Resolution:** Prompts interactively for a strong passphrase without printing secrets to terminal logs or history.
+
+### 3.11 Authentic Binary Size & Certificate Provenance Reconciliation
+- **Initial Report Claim:** Prior documentation pass referenced estimated binary sizes (52.8 MB APK / 31.7 MB AAB) and an unverified certificate DN.
+- **Empirical Re-Verification:**
+  - `build/app/outputs/flutter-apk/app-release.apk`: Exact size `108,831,743` bytes (~103.79 MB), SHA-256 `883E2F04314632277B01D3DF1962FA56F69A6F82F47F98AE501F0B23DA330F58`.
+  - `build/app/outputs/bundle/release/app-release.aab`: Exact size `82,213,947` bytes (~78.41 MB), SHA-256 `7FEA32F893512ECF22C3BB229E97101502196D61E719E88C48B567866F2E94FA`.
+  - `apksigner.bat verify --verbose --print-certs`: Verified with APK Signature Scheme v2. Signer certificate: `CN=TrustCue Release Signer, OU=Mobile Security, O=TrustCue, L=London, ST=Greater London, C=GB`, 4096-bit RSA, SHA-256 digest `66b3fb995dca5ac2ca17bed79c9d746536832129d4ee3d384561f1f609cbcd9f`.
+- **Resolution:** Full universal multi-ABI binaries with bundled ML Kit models verified on physical storage. Reconciled in `docs/RELEASE_CONFIGURATION_MODULE_48.md`.
+
+### 3.12 Comprehensive Supplied Test Fixtures Acceptance & Rule Generalization
+- **Initial Report Claim:** Automated tests passed on synthetic fixtures, but full acceptance testing on user-supplied real-world scam corpora (`Testing Data/`) was required.
+- **Empirical Re-Verification:**
+  - **Staging on Vivo V2207:** Transferred 19 scam screenshot fixtures to `/sdcard/Download/TrustCue_Testing/scam_messages/` and 9 scam QR fixtures to `/sdcard/Download/TrustCue_Testing/scam_qr/`. Scanned into Android media gallery via `MEDIA_SCANNER_SCAN_FILE`.
+  - **Linguistic Heuristic Improvements:** Generalized 5 local warning rules (`UrgencyRule`, `AccountThreatRule`, `PaymentRequestRule`, `RewardClaimRule`, `JobOfferRule`) to recognize contemporary phrase variants without overfitting.
+  - **Negative Control Rigor:** Added 6 everyday benign and ambiguous counterexamples (`BEN-01` to `BEN-04`, `AMB-01` to `AMB-02`). All 6 evaluate to `noIndicatorsMatched` (0.0% false positive rate).
+  - **Link Safety:** 57 links from `Links.txt` inspected offline; 15 raw numeric IP hosts identified; dangerous non-web schemes (`javascript:`, `file:`, `data:`, `intent:`) rejected.
+  - **Full Suite Integrity:** Automated test suite `frontend/test/fixtures/acceptance_fixtures_test.dart` passes cleanly; full frontend test suite remains 100% green (870 / 870 tests).
+- **Resolution:** Authored authoritative reference register `docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md`.
 
 ---
 

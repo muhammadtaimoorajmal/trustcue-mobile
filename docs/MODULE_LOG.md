@@ -1773,22 +1773,24 @@ This log tracks the progress of TrustCue's implementation across approximately 1
      - Consolidated monorepo containing `frontend/`, `backend/`, `database/`, and shared `docs/`.
      - Reconciled root `README.md` detailing architecture, technology stack, local test guides, and live cloud endpoints.
      - Monorepo `.gitignore` isolating private keys, Python caches, and temporary build outputs.
-  3. Scoped Documentation Repairs (`frontend` commit `d49cfd7`):
-     - Updated `PLAY_STORE_LISTING_MODULE_49.md` with verified character counts.
-     - Updated `DATA_SAFETY_AND_DISCLOSURES_MODULE_49.md` with live TLS 1.3 socket evidence and storage security nuance.
-     - Updated `PRIVACY_POLICY.md` and `account_deletion.html` with interactive deletion request form and 7-day fulfillment SLA.
-     - Updated `APP_ACCESS_AND_TESTING_PLAN_MODULE_49.md` with auto-confirm reviewer account instructions.
-     - Updated `RELEASE_CONFIGURATION_MODULE_48.md` with verified OpenSSL PBKDF2 keystore backup command.
+  3. Scoped Documentation & Fixture Remediations:
+     - Updated PLAY_STORE_LISTING_MODULE_49.md with verified character counts.
+     - Updated DATA_SAFETY_AND_DISCLOSURES_MODULE_49.md with live TLS 1.3 socket evidence and storage security nuance.
+     - Updated PRIVACY_POLICY.md and ccount_deletion.html with interactive deletion request form and 7-day fulfillment SLA.
+     - Updated APP_ACCESS_AND_TESTING_PLAN_MODULE_49.md with auto-confirm reviewer account instructions.
+     - Updated RELEASE_CONFIGURATION_MODULE_48.md with verified OpenSSL PBKDF2 keystore backup command.
+     - Authored docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md detailing comprehensive fixture acceptance across 26 text scenarios, 6 benign counterexamples, 57 links, 19 screenshots, and 9 QR codes.
+     - Enhanced 5 local warning rules (UrgencyRule, AccountThreatRule, PaymentRequestRule, RewardClaimRule, JobOfferRule) with generalized patterns, verified by rontend/test/fixtures/acceptance_fixtures_test.dart.
 - **Verification & Test Results:**
-  - Integrated Codebase Test Total: **1,015 automated tests passing with 100% pass rate**.
-    - Frontend Unit & Widget Tests: 860 / 860 passed (`flutter test --no-pub`).
-    - Frontend Static Analysis: 0 issues found across all files (`flutter analyze --no-pub`).
-    - Backend Unit, Integration & Security Tests: 142 / 142 passed (`pytest backend/tests`).
-    - Database Static Schema Tests: 13 / 13 passed (`python -m unittest discover database/tests`).
-  - Connected Hardware Execution (Vivo V2207, `10AC9R1ABF0013A`, Android 14 API 34):
+  - Integrated Codebase Test Total: **1,025 automated tests passing with 100% pass rate**.
+    - Frontend Unit & Widget Tests: 870 / 870 passed (lutter test --no-pub).
+    - Frontend Static Analysis: 0 issues found across all files (lutter analyze --no-pub).
+    - Backend Unit, Integration & Security Tests: 142 / 142 passed (pytest backend/tests).
+    - Database Static Schema Tests: 13 / 13 passed (python -m unittest discover database/tests).
+  - Connected Hardware Execution (Vivo V2207, 10AC9R1ABF0013A, Android 14 API 34):
     - In-place streamed APK upgrade: Success (firstInstallTime preserved, lastUpdateTime updated).
+    - Fixture staging: 19 scam screenshot fixtures in /sdcard/Download/TrustCue_Testing/scam_messages/ and 9 scam QR fixtures in /sdcard/Download/TrustCue_Testing/scam_qr/.
     - App backgrounding and resumption: PID 21147 brought to foreground cleanly without ANR.
-    - Incoming share intent: `ACTION_SEND` delivered and parsed cleanly without crash.
     - ContentProvider: `io.github.muhammadtaimoorajmal.trustcue.flutter.share_provider` verified registered.
   - Live Hosted Infrastructure:
     - Render web service `srv-dbad39qjnfac73f8ma80` live at `https://trustcue-backend.onrender.com` on commit `b51c638` (`ENABLE_CLOUD_SYNC=true`).

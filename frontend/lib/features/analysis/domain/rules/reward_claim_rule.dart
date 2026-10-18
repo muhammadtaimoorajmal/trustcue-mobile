@@ -31,14 +31,19 @@ class RewardClaimRule implements LocalRule {
       'The message claims the recipient has won a prize, lottery, or reward and requests action, personal information, or a fee to claim it.';
 
   static final List<RegExp> _patterns = [
-    // Winning announcement + call to action / claim demand (e.g. "Congratulations, you won $1,000,000! Click here to claim your prize.")
+    // Winning announcement + call to action / claim demand (e.g. "Congratulations, you won $1,000,000! Click here to claim your prize.", "You won a $500 gift card. Claim here:")
     RegExp(
-      r'\b(?:congratulations|you (?:have )?won|you are (?:the|our) (?:lucky )?winner)\b[^\r\n]{0,60}\b(?:claim your (?:prize|reward|winnings?|gift|payout)|reply (?:to|with)|click (?:here|below) to claim|fill (?:in|out) (?:the|your) details)\b',
+      r'\b(?:congratulations|you (?:have )?won|you are (?:the|our) (?:lucky )?winner)\b[^\r\n]{0,60}\b(?:claim (?:here|now|today|below|your (?:prize|reward|winnings?|gift|payout))|reply (?:to|with)|click (?:here|below) to claim|fill (?:in|out) (?:the|your) details)\b',
       caseSensitive: false,
     ),
     // Selected / chosen for reward + claim instruction (e.g. "Selected to receive a free $500 gift card, claim immediately.")
     RegExp(
       r'\b(?:selected|chosen)\b[^\r\n!?]{0,45}\b(?:prize|gift card|reward|\$?\d+[\d,]*|lottery|sweepstakes)\b[^\r\n!?]{0,45}\b(?:claim|collect|redeem|verify|reply)\b',
+      caseSensitive: false,
+    ),
+    // Unclaimed refund or money notification (e.g. "You have an unclaimed refund of $1,240")
+    RegExp(
+      r'\b(?:unclaimed|pending)\s+(?:tax\s+)?(?:refund|payout|settlement|reward)\s+(?:of\s+)?\$?\d+[\d,]*\b',
       caseSensitive: false,
     ),
     // Prize release requiring fee / payment (e.g. "Wire clearance fee to release your lottery winnings.")

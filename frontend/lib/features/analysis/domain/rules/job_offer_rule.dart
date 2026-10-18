@@ -46,9 +46,14 @@ class JobOfferRule implements LocalRule {
       r'\b(?:work|earn|make)\b[^\r\n!?]{0,25}\b(?:\$|usd|eur|gbp)?\s*\d+\s*(?:daily|per day|hourly|a day|weekly|per week)\b[^\r\n!?]{0,40}\b(?:for|with|in)?\s*(?:\d+[- ](?:minutes?|mins?)|minimal (?:work|effort)|no experience|just (?:by )?(?:watching|liking|clicking|rating))\b',
       caseSensitive: false,
     ),
-    // Part-time / work from home + high pay for short minutes
+    // Part-time / work from home + high pay for short minutes or no interview
     RegExp(
       r'\b(?:part[- ]time|work from home|online job)\b[^\r\n!?]{0,35}\b(?:earn|make)\s+(?:\$|usd|eur|gbp)?\s*\d+\s*(?:daily|per day|per week|a day)\b[^\r\n!?]{0,30}\b(?:in|just)?\s*\d+[- ](?:minutes?|mins?)\b',
+      caseSensitive: false,
+    ),
+    // Part-time / work from home + high pay for short hours or no interview (e.g. "Work from home, $35/hr, 2 hrs/day. No interview needed.")
+    RegExp(
+      r'\b(?:part[- ]time|work from home|online job)\b[^\r\n!?]{0,45}\b(?:no interview (?:needed|required)|\$\d+(?:\.\d+)?\s*/\s*hr|\d+\s*(?:hrs?|hours?)\s*/\s*day)\b',
       caseSensitive: false,
     ),
     // Task balance / commission release requiring deposit or fee

@@ -41,9 +41,9 @@ class PaymentRequestRule implements LocalRule {
       r'\b(?:wire|send|transfer)\s+(?:\$|usd|eur|gbp)?\s*\d+(?:\.\d+)?[^\r\n!?]{0,35}\b(?:via|through|using)?\s*(?:western union|moneygram|wire transfer|cryptocurrency|crypto|bitcoin|btc|usdt|cash app|venmo|zelle)\b',
       caseSensitive: false,
     ),
-    // Fee / fine / penalty payment request (e.g. "pay the clearance fee", "send the advance fee")
+    // Fee / fine / penalty payment request (e.g. "pay the clearance fee", "pay $1.99 redelivery fee")
     RegExp(
-      r'\b(?:send|pay|transfer)\b[^\r\n!?]{0,25}\b(?:the|a)?\s*(?:processing fee|clearance fee|advance fee|delivery fee|release fee|activation fee|fine|penalty)\b',
+      r'\b(?:send|pay|transfer)\b[^\r\n!?]{0,35}\b(?:the|a|\$?\d+(?:\.\d+)?\s*)?\s*(?:processing fee|clearance fee|advance fee|delivery fee|redelivery fee|rebooking fee|release fee|activation fee|late fee|fee|fine|penalty)\b',
       caseSensitive: false,
     ),
     // Gift card purchase / payment request (e.g. "purchase a $100 Google Play gift card", "pay with Apple gift card")
@@ -54,6 +54,26 @@ class PaymentRequestRule implements LocalRule {
     // Payment required to claim / release (e.g. "pay $10.50 to release your package")
     RegExp(
       r'\b(?:pay|send)\s+(?:\$|usd|eur|gbp)?\s*\d+(?:\.\d+)?[^\r\n!?]{0,35}\b(?:to claim|to release|to receive|to unlock)\b',
+      caseSensitive: false,
+    ),
+    // Casual or direct request to use payment rail (e.g. "can you Zelle me", "pay via Bitcoin")
+    RegExp(
+      r'\b(?:can you|please|you can)?\s*(?:zelle|venmo|cash app)\s+(?:me|us|\$?\d+)\b',
+      caseSensitive: false,
+    ),
+    // Demands to pay immediately / today (e.g. "call 1-555-0100 to pay immediately", "please pay today")
+    RegExp(
+      r'\b(?:to pay|please pay)\s+(?:immediately|today|now|at once|in advance)\b',
+      caseSensitive: false,
+    ),
+    // Avoid fee / penalty (e.g. "avoid a $50 late fee", "avoid late penalty")
+    RegExp(
+      r'\b(?:avoid|to avoid)\s+(?:a\s+)?(?:\$?\d+(?:\.\d+)?\s*)?(?:late fee|penalty|fine)\b',
+      caseSensitive: false,
+    ),
+    // Deposit demand (e.g. "send deposit today", "pay deposit to secure")
+    RegExp(
+      r'\b(?:send|pay)\s+(?:a\s+)?deposit\b[^\r\n!?]{0,25}\b(?:today|now|immediately|in advance)\b',
       caseSensitive: false,
     ),
   ];
