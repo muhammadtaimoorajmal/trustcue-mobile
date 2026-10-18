@@ -73,7 +73,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **47** | CI, deployment, migrations and recovery procedures | Completed | `frontend` / `backend` / `database` |
 | **48** | Android release configuration, branding, signing and AAB | Completed | `frontend` |
 | **49** | Play Console listing, disclosures, internal/required testing and release candidates | Completed | `frontend` |
-| **50** | Final audit, approved main integration, release and maintenance handover | Planned | `frontend` / `backend` / `database` / `main` |
+| **50** | Final audit, approved main integration, release and maintenance handover | Audit Completed & Candidate Prepared (`6efd00f`) | `frontend` / `backend` / `database` / `integration` |
 
 ---
 
@@ -241,11 +241,11 @@ To prevent divergent or conflicting project roadmaps across branches:
 - **Necessary Human Actions:** Complete Play Console account registration ($25 fee) and upload assets/AAB (Tasks OWN-01 to OWN-09).
 
 ### Module 50: Final Audit, Approved Main Integration, Release, and Handover
-- **Primary Branch:** `frontend` / `backend` / `database` / `main`
-- **Deliverable:** Comprehensive final academic audit report, viva demonstration materials, full codebase merge into `main`, tagged release `v1.0.0`, maintenance handover runbook.
+- **Primary Branch:** `frontend` / `backend` / `database` / `integration` -> `main` (gated)
+- **Deliverable:** Comprehensive final academic audit report (`docs/FINAL_AUDIT_AND_ACCEPTANCE_REGISTER_MODULE_50.md`), 12-question viva defense preparation dossier, unified reviewable candidate monorepo (`integration/candidate-v0.1.0` in `trustcue-integration`), multi-environment test verification (1,015 passing tests), physical device and live hosted probe verifications, release artifact manifest, and Owner-Only Action Register (OWN-00 to OWN-10).
 - **Dependencies:** Modules 1–49.
-- **Acceptance Criteria:** All 50 modules verified; `main` branch tests pass cleanly; academic requirements for CS3643 fulfilled 100%.
-- **Necessary Human Actions:** Final academic project submission and presentation.
+- **Acceptance Criteria:** All 50 modules audited and reconciled against code and empirical evidence; multi-worktree test suites pass 100% (860 Flutter, 142 backend, 13 database); review candidate monorepo cleanly staged without regressions; academic requirements for CS3643 fulfilled; `main` branch merge and Play Store submission held pending human evaluation.
+- **Necessary Human Actions:** Final academic project presentation and Play Store submission (OWN-00 to OWN-10).
 
 ---
 
