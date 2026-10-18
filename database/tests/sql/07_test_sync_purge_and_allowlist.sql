@@ -31,7 +31,7 @@ INSERT INTO public.synced_reports (
     'd0000000-0000-0000-0000-000000000001',
     'rep-allow-001',
     'snap-001',
-    '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 1, "categories": ["urgency"], "source": "messageText"}'::jsonb,
+    '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 1, "categories": ["urgency_or_pressure"], "source": "messageText"}'::jsonb,
     now()
 );
 
@@ -43,7 +43,7 @@ INSERT INTO public.synced_reports (
     'd0000000-0000-0000-0000-000000000002',
     'rep-allow-002',
     'snap-002',
-    '{"formatVersion": 1, "outcomeState": "indicatorsDetected", "hasAiAnalysis": true, "indicatorCount": 2, "categories": ["urgency", "credentialRequest"], "source": "screenshot"}'::jsonb,
+    '{"formatVersion": 1, "outcomeState": "indicatorsDetected", "hasAiAnalysis": true, "indicatorCount": 2, "categories": ["urgency_or_pressure", "requests_for_credentials"], "source": "screenshot"}'::jsonb,
     now()
 );
 
@@ -219,6 +219,27 @@ BEGIN
             now() + interval '1 minute'
         );
         RAISE EXCEPTION 'Security Failure: Report with invalid category type was accepted!';
+    EXCEPTION
+        WHEN check_violation THEN
+            NULL; -- Expected check violation
+    END;
+END $$;
+
+-- 9b. Verify that payload with non-canonical category identifier is REJECTED
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO public.synced_reports (
+            user_id, client_report_id, snapshot_id, sync_generation, report_payload, client_updated_at
+        ) VALUES (
+            'd0000000-0000-0000-0000-000000000001',
+            'rep-invalid-category-005b',
+            'snap-005b',
+            2,
+            '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 1, "categories": ["unrecognized_fraud_type"], "source": "messageText"}'::jsonb,
+            now() + interval '1 minute'
+        );
+        RAISE EXCEPTION 'Security Failure: Report with non-canonical category identifier was accepted!';
     EXCEPTION
         WHEN check_violation THEN
             NULL; -- Expected check violation

@@ -167,6 +167,9 @@ class TestDatabaseMigrations(unittest.TestCase):
         self.assertIn("(report_payload ? 'source')", content)
         self.assertIn("jsonb_typeof(report_payload->'formatVersion') = 'number'", content)
         self.assertIn("jsonb_typeof(report_payload->'categories') = 'array'", content)
+        self.assertIn("<@", content)
+        self.assertIn("urgency_or_pressure", content)
+        self.assertIn("link_structural_indicators", content)
         self.assertIn("public.synced_reports.client_updated_at > public.profiles.sync_purged_at", content)
 
         self.assertIn("public.synced_reports.is_deleted = TRUE", content)

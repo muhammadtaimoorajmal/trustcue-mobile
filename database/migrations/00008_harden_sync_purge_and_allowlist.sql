@@ -111,7 +111,7 @@ ALTER TABLE public.synced_reports
             ((NOT (report_payload ? 'outcomeState')) OR (jsonb_typeof(report_payload->'outcomeState') = 'string' AND ((report_payload->>'outcomeState') IN ('indicatorsDetected', 'noIndicatorsMatched', 'limitedCoverage', 'cautious')))) AND
             ((NOT (report_payload ? 'hasAiAnalysis')) OR (jsonb_typeof(report_payload->'hasAiAnalysis') = 'boolean')) AND
             ((NOT (report_payload ? 'indicatorCount')) OR (jsonb_typeof(report_payload->'indicatorCount') = 'number' AND ((report_payload->>'indicatorCount')::int BETWEEN 0 AND 1000))) AND
-            ((NOT (report_payload ? 'categories')) OR (jsonb_typeof(report_payload->'categories') = 'array' AND jsonb_array_length(report_payload->'categories') <= 50)) AND
+            ((NOT (report_payload ? 'categories')) OR (jsonb_typeof(report_payload->'categories') = 'array' AND jsonb_array_length(report_payload->'categories') <= 50 AND (report_payload->'categories') <@ '["urgency_or_pressure", "requests_for_credentials", "requests_for_verification_codes", "requests_for_payment", "account_suspension_or_threats", "claimed_identity_or_impersonation", "rewards_or_prizes", "job_or_recruitment_offers", "investment_or_return_promises", "link_structural_indicators"]'::jsonb)) AND
             ((NOT (report_payload ? 'source')) OR (jsonb_typeof(report_payload->'source') = 'string' AND ((report_payload->>'source') IN ('messageText', 'screenshot', 'link', 'qrCode')))) AND
             (
                 (is_deleted = TRUE) OR (
