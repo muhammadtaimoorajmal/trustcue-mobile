@@ -78,9 +78,8 @@ All three repository worktrees feature dedicated, hardened GitHub Actions CI wor
 
 | Worktree | Workflow File | Trigger Branches | Key Steps Executed | Timeout | CI Verification Status |
 |---|---|---|---|---|---|
-| **Mobile (`frontend`)** | `.github/workflows/frontend-ci.yml` | `frontend`, `main` | Java 21 Temurin LTS, Flutter 3.47.4, `flutter pub get --enforce-lockfile`, Dart format check, `flutter analyze --no-pub`, `flutter test --no-pub` (860 tests), Android SDK licenses & NDK config, `flutter build apk --debug` | 15 min | **100% PASS**<br>*(Run `39128971163` on `2b68cea`: all 11 steps passed including 860 tests and debug APK build)* |
-
-| **Backend (`backend`)** | `.github/workflows/backend-ci.yml` | `backend`, `main` | Python 3.13, Ruff linting, OpenAPI 3.1.0 schema validator, Pytest suite (142 tests) | 10 min | **100% PASS**<br>*(Run `39127284354` on `3ff39fd`: Ruff clean, schema valid, 142/142 tests passing)* |
+| **Mobile (`frontend`)** | `.github/workflows/frontend-ci.yml` | `frontend`, `main` | Java 21 Temurin LTS, Flutter 3.47.4, `flutter pub get --enforce-lockfile`, Dart format check, `flutter analyze --no-pub`, `flutter test --no-pub` (860 tests), Android SDK licenses & NDK config, `flutter build apk --debug` | 15 min | **100% PASS**<br>*(Run `39130841070` on `1de3f07`: all 11 steps passed including 860 tests, verified NDK 30, and debug APK build)* |
+| **Backend (`backend`)** | `.github/workflows/backend-ci.yml` | `backend`, `main` | Python 3.13, Ruff linting, OpenAPI 3.1.0 schema validator, Pytest suite (142 tests) | 10 min | **100% PASS**<br>*(Run `39130950265` on `745c9e7`: Ruff clean, schema valid, 142/142 tests passing)* |
 | **Database (`database`)** | `.github/workflows/database-ci.yml` | `database` | Python 3.11 static schema suite (13 tests), PostgreSQL 16 container, sequential migration apply (`00001`–`00008`), seed loading, 7 SQL regression suites | 10 min | **100% PASS**<br>*(Run `39127268819` on `dfd78db`: 13 static tests, 8 migrations, 7 SQL regression suites passing)* |
 
 ### Workflow Security Hardening
@@ -125,27 +124,35 @@ services:
       - key: LOG_LEVEL
         value: INFO
       - key: ENABLE_CLOUD_AI
-        sync: false
-      - key: GROQ_API_KEY
-        sync: false
+        value: "true"
       - key: ENABLE_CLOUD_AUTH
-        sync: false
+        value: "true"
+      - key: ENABLE_CLOUD_SYNC
+        value: "true"
       - key: SUPABASE_URL
-        sync: false
+        value: https://yzqkmoqqvnhfmmrayfko.supabase.co
+      - key: SUPABASE_JWKS_URL
+        value: https://yzqkmoqqvnhfmmrayfko.supabase.co/auth/v1/.well-known/jwks.json
+      - key: SUPABASE_JWT_ALGORITHMS
+        value: '["ES256"]'
+      - key: SUPABASE_JWT_AUDIENCE
+        value: authenticated
+      - key: SUPABASE_JWT_ISSUER
+        value: https://yzqkmoqqvnhfmmrayfko.supabase.co/auth/v1
+      - key: CORS_ALLOWED_ORIGINS
+        value: ""
       - key: SUPABASE_ANON_KEY
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: SUPABASE_JWT_SECRET
-        sync: false
-      - key: CORS_ALLOWED_ORIGINS
+      - key: GROQ_API_KEY
         sync: false
 ```
 
 #### 2. Render Dashboard Setup Steps
 1. Log in to [dashboard.render.com](https://dashboard.render.com/).
 2. Click **New +** -> **Web Service**.
-3. Connect your GitHub repository (`TrustCue`) and select branch **`backend`**.
+3. Connect your GitHub repository (`trustcue-mobile` / `TrustCue`) and select branch **`backend`**.
 4. Set **Root Directory** to `backend`.
 5. Set **Runtime** to `Python 3`.
 6. Set **Build Command** to: `pip install -r requirements.txt && pip install -e .`
@@ -158,13 +165,18 @@ services:
    - `DEBUG`: `false`
    - `DOCS_ENABLED`: `false`
    - `ENABLE_CLOUD_AI`: `true`
-   - `GROQ_API_KEY`: *(Your private Groq API key from console.groq.com)*
    - `ENABLE_CLOUD_AUTH`: `true`
    - `ENABLE_CLOUD_SYNC`: `true`
-   - `SUPABASE_URL`: `https://<your-project>.supabase.co`
-   - `SUPABASE_ANON_KEY`: *(Your Supabase publishable anon key)*
-   - `SUPABASE_SERVICE_ROLE_KEY`: *(Your Supabase private service_role key)*
-   - `SUPABASE_JWT_SECRET`: *(Your Supabase JWT Secret from Settings -> API)*
+   - `SUPABASE_URL`: `https://yzqkmoqqvnhfmmrayfko.supabase.co`
+   - `SUPABASE_JWKS_URL`: `https://yzqkmoqqvnhfmmrayfko.supabase.co/auth/v1/.well-known/jwks.json`
+   - `SUPABASE_JWT_ALGORITHMS`: `["ES256"]`
+   - `SUPABASE_JWT_AUDIENCE`: `authenticated`
+   - `SUPABASE_JWT_ISSUER`: `https://yzqkmoqqvnhfmmrayfko.supabase.co/auth/v1`
+   - `CORS_ALLOWED_ORIGINS`: *(leave empty for native mobile clients)*
+   - `SUPABASE_ANON_KEY`: *(Your Supabase publishable anon key from Project Settings -> API)*
+   - `SUPABASE_SERVICE_ROLE_KEY`: *(Your Supabase private service_role key from Project Settings -> API)*
+   - `GROQ_API_KEY`: *(Your private Groq API key from console.groq.com/keys)*
+   *(Note: SUPABASE_JWT_SECRET is NOT needed; the backend validates tokens asymmetrically via the Supabase JWKS endpoint using ES256 Elliptic Curve public keys).*
 10. Click **Create Web Service**. Verify build logs and ensure `/health` returns HTTP 200.
 
 ---
@@ -362,9 +374,8 @@ If an unexpected vulnerability, upstream provider anomaly, or database abuse occ
 | **W10: Privacy & Retention** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W11: Education & Localization** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W12: Report Export & Sharing** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
-| **Mobile CI (`frontend-ci.yml`)** | PASS (860 tests) | Debug APK verified | N/A | GitHub Actions | **VERIFIED (CI 39128971163)** |
-
-| **Backend CI (`backend-ci.yml`)** | PASS (142 tests) | N/A | N/A | GitHub Actions | **VERIFIED (CI 39127284354)** |
+| **Mobile CI (`frontend-ci.yml`)** | PASS (860 tests) | Debug APK verified | N/A | GitHub Actions | **VERIFIED (CI 39130841070)** |
+| **Backend CI (`backend-ci.yml`)** | PASS (142 tests) | N/A | N/A | GitHub Actions | **VERIFIED (CI 39130950265)** |
 | **Database CI (`database-ci.yml`)**| PASS (13 tests) | N/A | PASS (PostgreSQL 16) | GitHub Actions | **VERIFIED (CI 39127268819)** |
 | **Backend Deployment Config** | PASS (Docker/Render) | N/A | N/A | Blueprint Ready | **VERIFIED (Config Ready)** |
 | **Database Migrations (00007-8)** | PASS (Static 13/13) | N/A | PASS (CI 39127268819) | Ready for Supabase | **VERIFIED (CI Validated)** |
