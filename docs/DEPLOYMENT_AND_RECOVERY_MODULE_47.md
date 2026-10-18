@@ -367,27 +367,30 @@ If an unexpected vulnerability, upstream provider anomaly, or database abuse occ
 | **W03: Link & QR Inspection** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W04: Review & Redaction** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W05: 10-Rule Analysis Engine** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
-| **W06: Consent-Gated AI** | PASS (40 mobile, 142 backend) | MOCKED | N/A | **PENDING USER DEPLOY** | **VERIFIED (CI / Config Ready)** |
+| **W06: Consent-Gated AI** | PASS (40 mobile, 142 backend) | MOCKED | N/A | **LIVE BACKEND DEPLOYED** (`https://trustcue-backend.onrender.com`) | **VERIFIED (Live Deploy / 401 Gated)** |
 | **W07: Local SQLite Storage** | PASS (31 tests) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W08: History, Search & Deletion**| PASS (Widget) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
-| **W09: Optional Cloud Sync** | PASS (Codecs) | SQLite Schema V2 | PASS (CI 39127268819) | **PENDING HOSTED SQL ROLLOUT** | **VERIFIED (PostgreSQL 16 CI)** |
+| **W09: Optional Cloud Sync** | PASS (Codecs) | SQLite Schema V2 | PASS (CI 39140127598) | **PENDING HOSTED SQL ROLLOUT** (`ENABLE_CLOUD_SYNC=false`) | **VERIFIED (PostgreSQL 16 CI & RPCs)** |
 | **W10: Privacy & Retention** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W11: Education & Localization** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
 | **W12: Report Export & Sharing** | PASS (Unit) | PASS (Vivo V2207) | N/A | N/A | **VERIFIED (Device)** |
-| **Mobile CI (`frontend-ci.yml`)** | PASS (860 tests) | Debug APK verified | N/A | GitHub Actions | **VERIFIED (CI 39130841070)** |
-| **Backend CI (`backend-ci.yml`)** | PASS (142 tests) | N/A | N/A | GitHub Actions | **VERIFIED (CI 39130950265)** |
-| **Database CI (`database-ci.yml`)**| PASS (13 tests) | N/A | PASS (PostgreSQL 16) | GitHub Actions | **VERIFIED (CI 39127268819)** |
-| **Backend Deployment Config** | PASS (Docker/Render) | N/A | N/A | Blueprint Ready | **VERIFIED (Config Ready)** |
-| **Database Migrations (00007-8)** | PASS (Static 13/13) | N/A | PASS (CI 39127268819) | Ready for Supabase | **VERIFIED (CI Validated)** |
+| **Mobile CI (`frontend-ci.yml`)** | PASS (860 tests) | Debug APK verified | N/A | GitHub Actions | **VERIFIED (CI 39136531523)** |
+| **Backend CI (`backend-ci.yml`)** | PASS (142 tests) | N/A | N/A | GitHub Actions | **VERIFIED (CI 39140238266)** |
+| **Database CI (`database-ci.yml`)**| PASS (13 tests) | N/A | PASS (PostgreSQL 16 + Concurrency) | GitHub Actions | **VERIFIED (CI 39140127598)** |
+| **Backend Live Deployment** | PASS (Docker/Render) | N/A | N/A | Live on Render (`srv-dbad39qjnfac73f8ma80`) | **VERIFIED (HTTP 200 Live)** |
+| **Database Migrations (00007-8)** | PASS (Static 13/13) | N/A | PASS (CI 39140127598) | Staged with Pre/Postflight | **VERIFIED (CI Validated)** |
 
 ---
 
 ## 8. Conclusion & Gate to Module 48
 
 Module 47 acceptance criteria are fully met:
-1. Hardened GitHub Actions CI configurations are in place across `frontend`, `backend`, and `database` with Node 20 actions, bounded timeouts, and read-only permissions.
-2. Complete Docker and Render deployment configurations are authored and verified (`Dockerfile`, `render.yaml`, `Procfile`, `.python-version`).
-3. Database migration manifest with SHA-256 checksums, preflight/postflight SQL queries, and rollback procedures is documented.
+1. Hardened GitHub Actions CI configurations are in place across `frontend`, `backend`, and `database` with Node 20 actions, bounded timeouts, and read-only permissions:
+   - `frontend-ci.yml`: Verified green in Run `39136531523` on commit `1b0fc87` (all 11 steps including Debug APK build).
+   - `backend-ci.yml`: Verified green in Run `39140238266` on commit `b51c638` (all 10 steps, 142 Pytest tests, Ruff, OpenAPI 3.1).
+   - `database-ci.yml`: Verified green in Run `39140127598` on commit `534f66a` (all 17 steps, static schema suite, migrations 01-08, and real concurrent upload/purge race test).
+2. Live public backend deployment is operational on Render at `https://trustcue-backend.onrender.com` (service ID `srv-dbad39qjnfac73f8ma80`, commit `b51c638`). Healthcheck (`/health`), readiness (`/ready`), and authentication gateways (`/api/v1/account/profile` and `/api/v1/analysis/ai`) respond correctly.
+3. Database migration manifest with SHA-256 checksums, preflight/postflight SQL queries, canonical categories allowlist (`<@`), atomic profile `FOR SHARE` locks (`tr_validate_synced_report_write`), and rollback procedures is documented.
 4. Comprehensive disaster recovery runbooks cover free-tier spin-down, migration failure, AI provider degradation, and emergency secret rotation.
 5. All 860 Flutter tests pass, 142 backend Pytest tests pass, and 13 database schema tests pass.
 

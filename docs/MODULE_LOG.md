@@ -1639,11 +1639,13 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Mobile Static Analysis: PASS (`flutter analyze --no-pub`), 0 issues found across all 311 files.
   - Mobile Code Formatting: PASS (`dart format`), clean (0 files changed).
   - Mobile Debug APK Build: PASS (`flutter build apk --debug --no-pub`), APK generated successfully.
-  - Mobile CI Run `39130841070` (commit `1de3f07`): 100% PASS (all 11 steps including Dart format, flutter analyze, 860/860 tests, hardened Android SDK licenses & NDK config with narrow directory permissions and explicit verification, and flutter build apk --debug).
-  - Backend CI Run `39130950265` (commit `745c9e7`): 100% PASS (Ruff, OpenAPI 3.1, 142 Pytest tests, reconciled Render Blueprint for asymmetric ES256 JWKS authentication and cloud sync).
-  - Database CI Run `39127268819` (commit `dfd78db`): 100% PASS (13 static tests, 8 migrations, 7 SQL regression test suites in PostgreSQL 16).
+  - Mobile CI Run `39136531523` (commit `1b0fc87`): 100% PASS (all 11 steps including Dart format, flutter analyze, 860/860 tests, hardened Android SDK licenses & NDK config, and flutter build apk --debug, wiring `https://trustcue-backend.onrender.com`).
+  - Backend CI Run `39140238266` (commit `b51c638`): 100% PASS (all 10 steps, Ruff, OpenAPI 3.1, 142 Pytest tests, atomic `sync_push_reports` RPC integration with table fallback).
+  - Database CI Run `39140127598` (commit `534f66a`): 100% PASS (all 17 steps, 13 static tests, 8 migrations, 8 SQL regression test suites in PostgreSQL 16, and real concurrent upload/purge race test in bash).
   - Physical Device Settings: Restored stay-awake (`svc power stayon false`) and display timeout (`screen_off_timeout 60000`).
-  - Deployment and Hosted Status: Backend Blueprint and Dockerfile configuration ready; hosted Render deployment and Supabase migrations 00007–00008 pending manual execution in respective web dashboards.
+  - Live Public Backend Deployment: Live Render Web Service (`https://trustcue-backend.onrender.com`, commit `b51c638`, service ID `srv-dbad39qjnfac73f8ma80`). Verified `/health` (HTTP 200 ok), `/ready` (HTTP 200 ready), and verified HTTP 401 Unauthorized gateway protection on `/api/v1/account/profile` and `/api/v1/analysis/ai`. Documented `database: unconfigured` readiness indicator (stateless PostgREST HTTP vs direct `DATABASE_URL`).
+  - Concurrency & Allowlist Proof: Implemented `tr_validate_synced_report_write` trigger with profile `FOR SHARE` lock, canonical categories `<@` containment, `sync_push_reports` RPC, and concurrent PostgreSQL test demonstrating that stale uploads cannot survive or bypass purge locks.
+  - Hosted Migration Handoff: Migrations 00007 and 00008 verified and structured with preflight and postflight SQL checks for Supabase SQL Editor rollout.
 - **Status:** Complete across `frontend`, `backend`, and `database`. Stopped before Module 48. Exactly 50 numbered roadmap modules preserved.
 
 
