@@ -9,10 +9,14 @@ on:
       - database
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   static-checks:
     name: Static Schema & Policy Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -28,6 +32,7 @@ jobs:
   postgres-rls-tests:
     name: PostgreSQL 16 Migration & RLS Enforcement
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: static-checks
 
     services:
