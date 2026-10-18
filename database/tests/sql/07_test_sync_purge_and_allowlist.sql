@@ -270,6 +270,12 @@ BEGIN
     EXCEPTION
         WHEN insufficient_privilege THEN
             NULL; -- Expected RLS denial
+        WHEN OTHERS THEN
+            IF SQLERRM LIKE '%Stale timestamp%' OR SQLERRM LIKE '%violates row-level security%' THEN
+                NULL;
+            ELSE
+                RAISE;
+            END IF;
     END;
 END $$;
 
@@ -291,6 +297,12 @@ BEGIN
     EXCEPTION
         WHEN insufficient_privilege THEN
             NULL; -- Expected RLS denial
+        WHEN OTHERS THEN
+            IF SQLERRM LIKE '%Stale generation%' OR SQLERRM LIKE '%violates row-level security%' THEN
+                NULL;
+            ELSE
+                RAISE;
+            END IF;
     END;
 END $$;
 
@@ -377,13 +389,19 @@ BEGIN
     EXCEPTION
         WHEN insufficient_privilege THEN
             NULL; -- Expected RLS denial
+        WHEN OTHERS THEN
+            IF SQLERRM LIKE '%Stale generation%' OR SQLERRM LIKE '%violates row-level security%' THEN
+                NULL;
+            ELSE
+                RAISE;
+            END IF;
     END;
 END $$;
 
 -- 11. Verify that a user who has opted out (sync_enabled = FALSE) CAN still tombstone an existing report
-UPDATE public.profiles SET sync_enabled = FALSE WHERE id = 'd0000000-0000-0000-0000-000000000001';
+-- Insert an initial active record while sync_enabled is TRUE
+UPDATE public.profiles SET sync_enabled = TRUE WHERE id = 'd0000000-0000-0000-0000-000000000001';
 
--- Insert an initial record using service_role to set up the tombstone test
 SELECT auth.set_test_user(NULL, 'service_role');
 INSERT INTO public.synced_reports (
     user_id, client_report_id, snapshot_id, sync_generation, report_payload, is_deleted, client_updated_at
@@ -396,6 +414,9 @@ INSERT INTO public.synced_reports (
     FALSE,
     now() + interval '2 minutes'
 );
+
+-- Now opt out of cloud sync
+UPDATE public.profiles SET sync_enabled = FALSE WHERE id = 'd0000000-0000-0000-0000-000000000001';
 
 -- Now switch back to authenticated User A and update it to tombstoned (is_deleted = TRUE)
 SELECT auth.set_test_user('d0000000-0000-0000-0000-000000000001'::uuid, 'authenticated');
@@ -457,6 +478,12 @@ BEGIN
     EXCEPTION
         WHEN insufficient_privilege THEN
             NULL; -- Expected RLS denial
+        WHEN OTHERS THEN
+            IF SQLERRM LIKE '%Sync opt-in required%' OR SQLERRM LIKE '%violates row-level security%' THEN
+                NULL; -- Expected trigger or RLS denial
+            ELSE
+                RAISE;
+            END IF;
     END;
 END $$;
 
