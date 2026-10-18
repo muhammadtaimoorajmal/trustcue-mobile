@@ -74,14 +74,20 @@ jobs:
       - name: Configure Android SDK Licenses & NDK
         run: |
           export ANDROID_SDK_DIR="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          if [ -d "$ANDROID_SDK_DIR" ]; then
-            sudo chown -R $USER:$USER "$ANDROID_SDK_DIR"
+          sudo install -d -m 0777 "$ANDROID_SDK_DIR/licenses" "$ANDROID_SDK_DIR/ndk"
+          # Handle pipe/SIGPIPE explicitly without failing or emitting broken pipe warnings
+          set +o pipefail
+          yes 2>/dev/null | "$ANDROID_SDK_DIR/cmdline-tools/latest/bin/sdkmanager" --licenses
+          echo "Installing pinned Android NDK 30.0.16138531..."
+          yes 2>/dev/null | "$ANDROID_SDK_DIR/cmdline-tools/latest/bin/sdkmanager" "ndk;30.0.16138531"
+          set -o pipefail
+          # Verify that required NDK revision exists and fail explicitly if missing
+          if [ ! -d "$ANDROID_SDK_DIR/ndk/30.0.16138531" ]; then
+            echo "ERROR: Required NDK 30.0.16138531 was not installed at $ANDROID_SDK_DIR/ndk/30.0.16138531" >&2
+            exit 1
           fi
-          yes | flutter doctor --android-licenses || true
-          if [ -x "$ANDROID_SDK_DIR/cmdline-tools/latest/bin/sdkmanager" ]; then
-            echo "Pre-installing NDK 30.0.16138531 via sdkmanager..."
-            yes | "$ANDROID_SDK_DIR/cmdline-tools/latest/bin/sdkmanager" "ndk;30.0.16138531" || true
-          fi
+          echo "Successfully verified Android NDK 30.0.16138531 installation."
+
 
       - name: Verify Debug APK Build
         run: |
