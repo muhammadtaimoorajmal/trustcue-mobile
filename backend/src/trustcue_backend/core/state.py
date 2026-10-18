@@ -89,7 +89,7 @@ class AppState:
 
             user_gen = self.get_sync_generation(user_id)
             item_gen = item.get("syncGeneration", 1)
-            if item_gen < user_gen:
+            if item_gen != user_gen:
                 continue
 
             key = f"{uid}:{client_id}"

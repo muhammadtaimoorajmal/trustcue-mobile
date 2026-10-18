@@ -549,8 +549,47 @@ def test_sync_push_skips_stale_reports_preceding_purge(auth_client: TestClient) 
     assert stale_gen_push.status_code == 200
     assert stale_gen_push.json()["acceptedCount"] == 0
 
-    # 5. Pull reports to confirm nothing was resurrected
+    # 4c. Attempt to push report with future syncGeneration (999 > 2)
+    future_gen_push = auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-future-gen",
+                    "snapshotId": "snap-future-gen",
+                    "syncGeneration": 999,
+                    "clientUpdatedAt": (now + timedelta(hours=1)).isoformat(),
+                    "reportPayload": make_summary_payload(),
+                }
+            ]
+        },
+    )
+    assert future_gen_push.status_code == 200
+    assert future_gen_push.json()["acceptedCount"] == 0
+
+    # 4d. Pushing with exact matching generation (2) succeeds
+    valid_gen_push = auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-valid-gen",
+                    "snapshotId": "snap-valid-gen",
+                    "syncGeneration": 2,
+                    "clientUpdatedAt": (now + timedelta(hours=1)).isoformat(),
+                    "reportPayload": make_summary_payload(),
+                }
+            ]
+        },
+    )
+    assert valid_gen_push.status_code == 200
+    assert valid_gen_push.json()["acceptedCount"] == 1
+
+    # 5. Pull reports to confirm only valid generation was saved
     pull = auth_client.get("/api/v1/sync/reports", headers=headers)
     assert pull.status_code == 200
-    assert len(pull.json()["reports"]) == 0
+    assert len(pull.json()["reports"]) == 1
+    assert pull.json()["reports"][0]["clientReportId"] == "rep-valid-gen"
 

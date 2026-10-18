@@ -122,9 +122,9 @@ class SyncService:
                     purged_at,
                 )
                 continue
-            if item.sync_generation < user_gen:
+            if item.sync_generation != user_gen:
                 logger.info(
-                    "Skipping stale report %s for user %s: generation %s precedes profile generation %s",
+                    "Skipping report %s for user %s: generation %s does not match profile generation %s",
                     item.client_report_id,
                     user_id,
                     item.sync_generation,
