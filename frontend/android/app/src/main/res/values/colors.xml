@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand_deep_navy">#0A2540</color>
+    <color name="brand_dark_teal">#00695C</color>
+    <color name="brand_light_teal">#4DB6AC</color>
+    <color name="brand_caution_amber">#FFB300</color>
+    <color name="splash_background">#0A2540</color>
+</resources>
+

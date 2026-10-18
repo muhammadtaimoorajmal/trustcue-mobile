@@ -6,11 +6,15 @@
 .DS_Store
 Thumbs.db
 
-# Private environment variables
+# Private environment variables and signing keys
 .env
 *.env
 .env.*
+key.properties
+*.keystore
+*.jks
 
 # Note: The flutter application in frontend/ has its own .gitignore.
 
 !/.vscode/launch.json
+

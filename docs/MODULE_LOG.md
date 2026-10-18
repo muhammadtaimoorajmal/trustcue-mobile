@@ -1657,6 +1657,55 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Mobile Client Focused Verification: 27/27 focused API client tests passed (`analysis_api_client_test.dart`, `account_api_client_test.dart`, `sync_api_client_test.dart`). Physical Vivo V2207 device verified in Module 46 (benchmarks/APK); remained detached during current session.
 - **Status:** Complete across `frontend`, `backend`, and `database`. Fully verified hosted cloud deployment. Stopped before Module 48. Exactly 50 numbered roadmap modules preserved.
 
+## Module 48: Android Release Configuration, Branding, Signing, and AAB
+- **Scope & Objectives:**
+  - Audit and configure Android package identity (`io.github.muhammadtaimoorajmal.trustcue`), SDK settings (compileSdk 36, targetSdk 36, minSdk 24, pinned NDK `30.0.16138531`, Java 17 compatibility), and security policies (`android:allowBackup="false"`, `<uses-permission android:name="android.permission.INTERNET"/>`).
+  - Implement full production branding assets matching approved visual specification (`docs/design/brand_board.svg`): Deep Navy (`#0A2540`), Dark Teal (`#00695C`), Light Teal (`#4DB6AC`), Caution Amber (`#FFB300`/`#FFCA28`).
+  - Author adaptive launcher icon XMLs (`res/mipmap-anydpi-v26/ic_launcher.xml` and `ic_launcher_round.xml`), vector background/foreground drawables (`ic_launcher_background.xml`, `ic_launcher_foreground.xml`), branded splash screen (`launch_background.xml`, `ic_splash_logo.xml`), and generate pixel-perfect legacy raster mipmaps (mdpi to xxxhdpi) using 4x supersampling and Lanczos downsampling.
+  - Implement hardened ProGuard/R8 code/resource shrinking rules (`proguard-rules.pro`) covering Flutter embedding, Google ML Kit Vision & Barcode Scanning, AndroidX Security (`flutter_secure_storage`), SQLite (`sqflite`), Protobuf, and suppressing Play Core deferred component warnings.
+  - Establish production signing architecture: 4096-bit RSA keystore (`upload-keystore.jks`), automated loading via gitignored `key.properties`, and fail-safe Gradle signing verification (release builds explicitly halt with descriptive `GradleException` if credentials are missing; debug builds and CI pass cleanly).
+  - Build, inspect, and verify signed release APK (`app-release.apk`) and Android App Bundle (`app-release.aab`): verify non-debuggable flag, v2 signatures, certificate fingerprints, binary checksums, and zero packaged server/signing secrets.
+  - Execute live physical-device verification on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34): certificate preflight, streamed installation, clean foreground activity launch, and zero native/ANR crashes.
+- **Deliverables & Remediations:**
+  1. Main Android Manifest Audit (`AndroidManifest.xml`): Added `<uses-permission android:name="android.permission.INTERNET"/>` for live Render backend / Supabase auth connectivity in production release binaries; added `android:roundIcon="@mipmap/ic_launcher_round"`; verified `android:allowBackup="false"` and `android:label="TrustCue"`.
+  2. Brand Color Values (`res/values/colors.xml`, `res/values-night/colors.xml`): Implemented color resources mapped from brand specification (`brand_deep_navy`, `brand_dark_teal`, `brand_light_teal`, `brand_caution_amber`, `brand_caution_amber_dark`, `brand_dark_navy`).
+  3. Adaptive Vector Drawables: Implemented `ic_launcher_background.xml` (Deep Navy) and `ic_launcher_foreground.xml` (Dark Teal/Light Teal shield with pure white verification cue and caution amber indicator dot within 72dp safe zone).
+  4. Splash Screen Architecture: Configured `launch_background.xml` and `drawable-v21/launch_background.xml` with Deep Navy canvas and centered 120dp vector emblem (`ic_splash_logo.xml`).
+  5. Legacy Mipmap Generation: Generated `ic_launcher.png` and `ic_launcher_round.png` across 5 standard densities (mdpi: 48x48, hdpi: 72x72, xhdpi: 96x96, xxhdpi: 144x144, xxxhdpi: 192x192) using Pillow with 4x supersampling and Lanczos downsampling.
+  6. R8 Optimization & Rule Hardening: Enabled `isMinifyEnabled = true` and `isShrinkResources = true` in `app/build.gradle.kts`. Authored `proguard-rules.pro` with keep rules for Flutter, ML Kit, AndroidX Security, SQLite, Protobuf, and deferred component `-dontwarn com.google.android.play.core.**`.
+  7. 4096-bit RSA Keystore & Signing Config: Generated `upload-keystore.jks` with 10,000-day validity and SHA-256 fingerprint `66:B3:FB:99:5D:CA:5A:C2:CA:17:BE:D7:9C:9D:74:65:36:83:21:29:D4:EE:3D:38:45:61:F1:F6:09:CB:CD:9F`. Configured `key.properties` loading in `app/build.gradle.kts` with fail-safe release build enforcement.
+  8. Git Hygiene & Secret Exclusion: Excluded all `*.jks`, `*.keystore`, and `key.properties` in root `.gitignore`, `frontend/.gitignore`, and `frontend/android/.gitignore`. Verified zero secrets tracked or staged in Git.
+  9. Production Artifact Build & Verification:
+     - Release APK (`build/app/outputs/flutter-apk/app-release.apk`): 108,831,743 bytes (103.79 MB), SHA-256 `883e2f04314632277b01d3df1962fa56f69a6f82f47f98ae501f0b23da330f58`. `apksigner` confirmed Signature Scheme v2/v3 and certificate fingerprint. `aapt dump badging` confirmed non-debuggable flag (`android:debuggable` absent).
+     - Release AAB (`build/app/outputs/bundle/release/app-release.aab`): 82,213,947 bytes (78.41 MB), SHA-256 `7fea32f893512ecf22c3bb229e97101502196d61e719e88c48b567866f2e94fa`.
+     - Binary Secret Scan: 0 private configuration files or signing keys packaged.
+  10. Physical Device Live Verification (Vivo V2207, `10AC9R1ABF0013A`, Android 14 API 34): Certificate preflight confirmed no conflicting signature; installed `app-release.apk` (`Success`); launched `io.github.muhammadtaimoorajmal.trustcue/.MainActivity` (PID 21147); verified Impeller OpenGLES engine initialized cleanly; 0 native crashes, 0 ANRs.
+- **Components Created / Updated:**
+  - `frontend/android/app/build.gradle.kts`: Release signing configuration, fail-safe validation, R8 minification and resource shrinking flags, imports for Properties and FileInputStream.
+  - `frontend/android/app/src/main/AndroidManifest.xml`: `INTERNET` permission and `roundIcon` attribute.
+  - `frontend/android/app/proguard-rules.pro`: Hardened R8 keep rules.
+  - `frontend/android/app/src/main/res/values/colors.xml` & `res/values-night/colors.xml`: Official brand palette color definitions.
+  - `frontend/android/app/src/main/res/drawable/ic_launcher_background.xml`: Deep Navy vector background.
+  - `frontend/android/app/src/main/res/drawable/ic_launcher_foreground.xml`: Branded shield, cue mark, and amber dot vector foreground.
+  - `frontend/android/app/src/main/res/drawable/ic_splash_logo.xml`: 120dp vector splash emblem.
+  - `frontend/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml` & `ic_launcher_round.xml`: Adaptive icon definitions.
+  - `frontend/android/app/src/main/res/drawable/launch_background.xml` & `res/drawable-v21/launch_background.xml`: Branded splash screen drawables.
+  - `frontend/android/app/src/main/res/mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher.png` & `ic_launcher_round.png`: Raster legacy mipmaps.
+  - `.gitignore`, `frontend/.gitignore`: Keystore and key.properties exclusion rules.
+  - `docs/RELEASE_CONFIGURATION_MODULE_48.md`: Comprehensive release engineering and verification report.
+  - `docs/ROADMAP.md`, `docs/PROJECT_STATE.md`, `docs/MODULE_LOG.md`.
+- **Checks Performed:**
+  - Mobile Automated Tests: 860/860 PASS (`flutter test --no-pub`), 0 failures, 0 regressions across entire app.
+  - Mobile Static Analysis: PASS (`flutter analyze --no-pub`), 0 issues found across all 311 files.
+  - Debug Build Resilience: PASS (`.\gradlew.bat :app:assembleDebug`, 482 tasks up-to-date/executed without release credentials).
+  - Missing Secret Build Halt: PASS (release build halts with descriptive `GradleException` when `key.properties` is removed).
+  - Cryptographic Verification: PASS (`apksigner verify --verbose --print-certs` on `app-release.apk`).
+  - Badging & Debug Flag: PASS (`aapt dump badging` on `app-release.apk`, non-debuggable confirmed).
+  - Secret Leakage Check: PASS (0 secrets packaged in APK or AAB).
+  - Physical Device Live Installation & Launch: PASS on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34), PID 21147 resumed in foreground, Impeller OpenGLES initialized cleanly, 0 crashes, 0 ANRs.
+- **Status:** Complete on `frontend`. Stopped before Module 49. Exactly 50 numbered roadmap modules preserved.
+
+
 
 
 

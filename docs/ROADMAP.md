@@ -71,7 +71,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 | **45** | Accessibility and usability verification | Completed | `frontend` |
 | **46** | End-to-end, real-device, performance and storage verification | Completed (`5c817ef`) | `frontend` / `backend` |
 | **47** | CI, deployment, migrations and recovery procedures | Completed | `frontend` / `backend` / `database` |
-| **48** | Android release configuration, branding, signing and AAB | Planned | `frontend` |
+| **48** | Android release configuration, branding, signing and AAB | Completed | `frontend` |
 | **49** | Play Console listing, disclosures, internal/required testing and release candidates | Planned | `frontend` |
 | **50** | Final audit, approved main integration, release and maintenance handover | Planned | `frontend` / `backend` / `database` / `main` |
 
