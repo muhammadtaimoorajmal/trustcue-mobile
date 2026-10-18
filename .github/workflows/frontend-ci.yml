@@ -71,8 +71,21 @@ jobs:
           cd frontend
           flutter test --no-pub --reporter expanded
 
+      - name: Configure Android SDK Licenses & NDK
+        run: |
+          export ANDROID_SDK_DIR="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -d "$ANDROID_SDK_DIR" ]; then
+            sudo chown -R $USER:$USER "$ANDROID_SDK_DIR"
+          fi
+          yes | flutter doctor --android-licenses || true
+          if [ -x "$ANDROID_SDK_DIR/cmdline-tools/latest/bin/sdkmanager" ]; then
+            echo "Pre-installing NDK 30.0.16138531 via sdkmanager..."
+            yes | "$ANDROID_SDK_DIR/cmdline-tools/latest/bin/sdkmanager" "ndk;30.0.16138531" || true
+          fi
+
       - name: Verify Debug APK Build
         run: |
           cd frontend
           flutter build apk --debug --no-pub -t lib/main.dart
+
 
