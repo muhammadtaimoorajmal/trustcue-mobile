@@ -188,11 +188,12 @@ DO $$
 BEGIN
     BEGIN
         INSERT INTO public.synced_reports (
-            user_id, client_report_id, snapshot_id, report_payload, client_updated_at
+            user_id, client_report_id, snapshot_id, sync_generation, report_payload, client_updated_at
         ) VALUES (
             'd0000000-0000-0000-0000-000000000001',
             'rep-extra-keys-004',
             'snap-004',
+            2,
             '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText", "body": "unauthorized message content"}'::jsonb,
             now() + interval '1 minute'
         );
@@ -208,11 +209,12 @@ DO $$
 BEGIN
     BEGIN
         INSERT INTO public.synced_reports (
-            user_id, client_report_id, snapshot_id, report_payload, client_updated_at
+            user_id, client_report_id, snapshot_id, sync_generation, report_payload, client_updated_at
         ) VALUES (
             'd0000000-0000-0000-0000-000000000001',
             'rep-invalid-type-005',
             'snap-005',
+            2,
             '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": "not-an-array", "source": "messageText"}'::jsonb,
             now() + interval '1 minute'
         );
@@ -234,11 +236,12 @@ BEGIN
 
     BEGIN
         INSERT INTO public.synced_reports (
-            user_id, client_report_id, snapshot_id, report_payload, client_updated_at
+            user_id, client_report_id, snapshot_id, sync_generation, report_payload, client_updated_at
         ) VALUES (
             'd0000000-0000-0000-0000-000000000001',
             'rep-stale-006',
             'snap-006',
+            2,
             '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText"}'::jsonb,
             v_purged_at - interval '1 hour' -- Stale timestamp preceding purge
         );
@@ -249,20 +252,107 @@ BEGIN
     END;
 END $$;
 
+-- 10b. Verify that stale sync_generation (< profiles.sync_generation) is REJECTED by RLS even with fresh timestamp
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO public.synced_reports (
+            user_id, client_report_id, snapshot_id, sync_generation, report_payload, client_updated_at
+        ) VALUES (
+            'd0000000-0000-0000-0000-000000000001',
+            'rep-stale-gen-006b',
+            'snap-006b',
+            1, -- Stale generation 1 while profile is generation 2
+            '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText"}'::jsonb,
+            now() + interval '5 minutes'
+        );
+        RAISE EXCEPTION 'Security Failure: Report with stale sync_generation was accepted!';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            NULL; -- Expected RLS denial
+    END;
+END $$;
+
+-- 10c. Verify that invalid outcomeState enum value is REJECTED by check constraint
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO public.synced_reports (
+            user_id, client_report_id, snapshot_id, sync_generation, report_payload, client_updated_at
+        ) VALUES (
+            'd0000000-0000-0000-0000-000000000001',
+            'rep-invalid-enum-outcome',
+            'snap-enum-01',
+            2,
+            '{"formatVersion": 1, "outcomeState": "fraudulent", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText"}'::jsonb,
+            now() + interval '1 minute'
+        );
+        RAISE EXCEPTION 'Security Failure: Invalid outcomeState enum was accepted!';
+    EXCEPTION
+        WHEN check_violation THEN
+            NULL; -- Expected check violation
+    END;
+END $$;
+
+-- 10d. Verify that invalid source enum value is REJECTED by check constraint
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO public.synced_reports (
+            user_id, client_report_id, snapshot_id, sync_generation, report_payload, client_updated_at
+        ) VALUES (
+            'd0000000-0000-0000-0000-000000000001',
+            'rep-invalid-enum-source',
+            'snap-enum-02',
+            2,
+            '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "telepathy"}'::jsonb,
+            now() + interval '1 minute'
+        );
+        RAISE EXCEPTION 'Security Failure: Invalid source enum was accepted!';
+    EXCEPTION
+        WHEN check_violation THEN
+            NULL; -- Expected check violation
+    END;
+END $$;
+
+-- 10e. Verify that tombstone (is_deleted = TRUE) with forbidden sensitive key is REJECTED
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO public.synced_reports (
+            user_id, client_report_id, snapshot_id, sync_generation, report_payload, is_deleted, deleted_at, client_updated_at
+        ) VALUES (
+            'd0000000-0000-0000-0000-000000000001',
+            'rep-tombstone-leak',
+            'snap-leak-01',
+            2,
+            '{"formatVersion": 1, "outcomeState": "cautious", "rawText": "secret sensitive text"}'::jsonb,
+            TRUE,
+            now(),
+            now() + interval '1 minute'
+        );
+        RAISE EXCEPTION 'Security Failure: Tombstone with sensitive key was accepted!';
+    EXCEPTION
+        WHEN check_violation THEN
+            NULL; -- Expected check violation
+    END;
+END $$;
+
 -- 11. Verify that a user who has opted out (sync_enabled = FALSE) CAN still tombstone an existing report
 UPDATE public.profiles SET sync_enabled = FALSE WHERE id = 'd0000000-0000-0000-0000-000000000001';
 
 -- Insert an initial record using service_role to set up the tombstone test
 SELECT auth.set_test_user(NULL, 'service_role');
 INSERT INTO public.synced_reports (
-    user_id, client_report_id, snapshot_id, report_payload, is_deleted, client_updated_at
+    user_id, client_report_id, snapshot_id, sync_generation, report_payload, is_deleted, client_updated_at
 ) VALUES (
     'd0000000-0000-0000-0000-000000000001',
     'rep-tombstone-007',
     'snap-007',
+    2,
     '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText"}'::jsonb,
     FALSE,
-    now()
+    now() + interval '2 minutes'
 );
 
 -- Now switch back to authenticated User A and update it to tombstoned (is_deleted = TRUE)
@@ -289,6 +379,46 @@ BEGIN
     END IF;
 END $$;
 
+-- 12. Verify that a user who has opted out (sync_enabled = FALSE) CAN insert a fresh tombstone
+DO $$
+BEGIN
+    INSERT INTO public.synced_reports (
+        user_id, client_report_id, snapshot_id, sync_generation, report_payload, is_deleted, deleted_at, client_updated_at
+    ) VALUES (
+        'd0000000-0000-0000-0000-000000000001',
+        'rep-optout-insert-tombstone',
+        'snap-optout-01',
+        2,
+        '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText"}'::jsonb,
+        TRUE,
+        now(),
+        now() + interval '3 minutes'
+    );
+END $$;
+
+-- 13. Verify that a user who has opted out (sync_enabled = FALSE) CANNOT insert an active report
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO public.synced_reports (
+            user_id, client_report_id, snapshot_id, sync_generation, report_payload, is_deleted, client_updated_at
+        ) VALUES (
+            'd0000000-0000-0000-0000-000000000001',
+            'rep-optout-insert-active',
+            'snap-optout-02',
+            2,
+            '{"formatVersion": 1, "outcomeState": "cautious", "hasAiAnalysis": false, "indicatorCount": 0, "categories": [], "source": "messageText"}'::jsonb,
+            FALSE,
+            now() + interval '4 minutes'
+        );
+        RAISE EXCEPTION 'Security Failure: Active report insert allowed while opted out!';
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            NULL; -- Expected RLS denial
+    END;
+END $$;
+
 SELECT auth.reset_test_user();
 
 ROLLBACK;
+

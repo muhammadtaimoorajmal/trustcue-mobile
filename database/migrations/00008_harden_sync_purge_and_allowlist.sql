@@ -21,8 +21,15 @@ ALTER TABLE public.profiles
 COMMENT ON COLUMN public.profiles.sync_generation IS 'Monotonically increasing generation counter incremented on cloud backup purge to prevent stale resurrecting uploads.';
 COMMENT ON COLUMN public.profiles.sync_purged_at IS 'UTC timestamp when cloud backup was last purged.';
 
+-- 1b. Add sync_generation to public.synced_reports
+ALTER TABLE public.synced_reports
+    ADD COLUMN IF NOT EXISTS sync_generation INT NOT NULL DEFAULT 1 CHECK (sync_generation >= 1);
+
+COMMENT ON COLUMN public.synced_reports.sync_generation IS 'Client synchronization generation counter to ensure consistency with user profile generation.';
+
 -- 2. Enhanced purge_synced_reports supporting service-role and user token execution paths
 DROP FUNCTION IF EXISTS public.purge_synced_reports();
+DROP FUNCTION IF EXISTS public.purge_synced_reports(UUID);
 
 CREATE OR REPLACE FUNCTION public.purge_synced_reports(target_user_id UUID DEFAULT NULL)
 RETURNS integer
@@ -75,28 +82,15 @@ REVOKE ALL ON FUNCTION public.purge_synced_reports(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.purge_synced_reports(UUID) TO authenticated, service_role, postgres;
 
 -- 3. Strict allowlist and type validation check on public.synced_reports payload
--- Ensures ONLY approved summary keys exist with valid types and strictly forbids arbitrary/sensitive fields
+-- Ensures ONLY approved summary keys exist with valid types and strictly forbids arbitrary/sensitive fields, even on tombstones
 ALTER TABLE public.synced_reports
     DROP CONSTRAINT IF EXISTS chk_report_payload_privacy;
 
 ALTER TABLE public.synced_reports
     ADD CONSTRAINT chk_report_payload_privacy CHECK (
-        (is_deleted = TRUE) OR (
+        (
             jsonb_typeof(report_payload) = 'object' AND
-            (report_payload ? 'formatVersion') AND
-            (report_payload ? 'outcomeState') AND
-            (report_payload ? 'hasAiAnalysis') AND
-            (report_payload ? 'indicatorCount') AND
-            (report_payload ? 'categories') AND
-            (report_payload ? 'source') AND
             ((report_payload - ARRAY['formatVersion', 'outcomeState', 'hasAiAnalysis', 'indicatorCount', 'categories', 'source']) = '{}'::jsonb) AND
-            (jsonb_typeof(report_payload->'formatVersion') = 'number') AND
-            (jsonb_typeof(report_payload->'outcomeState') = 'string') AND
-            (jsonb_typeof(report_payload->'hasAiAnalysis') = 'boolean') AND
-            (jsonb_typeof(report_payload->'indicatorCount') = 'number') AND
-            ((report_payload->>'indicatorCount')::int >= 0) AND
-            (jsonb_typeof(report_payload->'categories') = 'array') AND
-            (jsonb_typeof(report_payload->'source') = 'string') AND
             NOT (report_payload ? 'text') AND
             NOT (report_payload ? 'rawText') AND
             NOT (report_payload ? 'raw_text') AND
@@ -109,22 +103,51 @@ ALTER TABLE public.synced_reports
             NOT (report_payload ? 'inputText') AND
             NOT (report_payload ? 'input_text') AND
             NOT (report_payload ? 'findings') AND
-            NOT (report_payload ? 'snapshot')
-        )
+            NOT (report_payload ? 'snapshot') AND
+            ((NOT (report_payload ? 'formatVersion')) OR (jsonb_typeof(report_payload->'formatVersion') = 'number' AND ((report_payload->>'formatVersion')::int BETWEEN 1 AND 10))) AND
+            ((NOT (report_payload ? 'outcomeState')) OR (jsonb_typeof(report_payload->'outcomeState') = 'string' AND ((report_payload->>'outcomeState') IN ('indicatorsDetected', 'noIndicatorsMatched', 'limitedCoverage', 'cautious')))) AND
+            ((NOT (report_payload ? 'hasAiAnalysis')) OR (jsonb_typeof(report_payload->'hasAiAnalysis') = 'boolean')) AND
+            ((NOT (report_payload ? 'indicatorCount')) OR (jsonb_typeof(report_payload->'indicatorCount') = 'number' AND ((report_payload->>'indicatorCount')::int BETWEEN 0 AND 1000))) AND
+            ((NOT (report_payload ? 'categories')) OR (jsonb_typeof(report_payload->'categories') = 'array' AND jsonb_array_length(report_payload->'categories') <= 50)) AND
+            ((NOT (report_payload ? 'source')) OR (jsonb_typeof(report_payload->'source') = 'string' AND ((report_payload->>'source') IN ('messageText', 'screenshot', 'link', 'qrCode')))) AND
+            (
+                (is_deleted = TRUE) OR (
+                    (report_payload ? 'formatVersion') AND
+                    (report_payload ? 'outcomeState') AND
+                    (report_payload ? 'hasAiAnalysis') AND
+                    (report_payload ? 'indicatorCount') AND
+                    (report_payload ? 'categories') AND
+                    (report_payload ? 'source')
+                )
+            )
+        ) IS TRUE
     );
 
 -- 4. Harden RLS policies against stale generation resurrection and allow deletion when opted out
+DROP POLICY IF EXISTS "reports_select_own" ON public.synced_reports;
+CREATE POLICY "reports_select_own"
+    ON public.synced_reports FOR SELECT
+    TO authenticated
+    USING (auth.uid() = public.synced_reports.user_id);
+
 DROP POLICY IF EXISTS "reports_insert_own" ON public.synced_reports;
 CREATE POLICY "reports_insert_own"
     ON public.synced_reports FOR INSERT
     TO authenticated
     WITH CHECK (
-        auth.uid() = user_id AND
+        auth.uid() = public.synced_reports.user_id AND
         EXISTS (
             SELECT 1 FROM public.profiles
             WHERE public.profiles.id = auth.uid()
-            AND public.profiles.sync_enabled = TRUE
-            AND (public.profiles.sync_purged_at IS NULL OR NEW.client_updated_at > public.profiles.sync_purged_at)
+            AND (
+                -- Opt-out tombstoning: allow inserting a tombstone even if sync_enabled is false
+                public.synced_reports.is_deleted = TRUE
+                OR
+                -- Active report insert requires sync_enabled = true
+                public.profiles.sync_enabled = TRUE
+            )
+            AND public.synced_reports.sync_generation >= public.profiles.sync_generation
+            AND (public.profiles.sync_purged_at IS NULL OR public.synced_reports.client_updated_at > public.profiles.sync_purged_at)
         )
     );
 
@@ -132,22 +155,28 @@ DROP POLICY IF EXISTS "reports_update_own" ON public.synced_reports;
 CREATE POLICY "reports_update_own"
     ON public.synced_reports FOR UPDATE
     TO authenticated
-    USING (auth.uid() = user_id)
+    USING (auth.uid() = public.synced_reports.user_id)
     WITH CHECK (
-        auth.uid() = user_id AND
-        (
-            -- Deleting/tombstoning is permitted even when opted out of cloud sync
-            (NEW.is_deleted = TRUE) OR
-            -- Active report updates require sync_enabled = TRUE and non-stale client timestamp
-            (
-                EXISTS (
-                    SELECT 1 FROM public.profiles
-                    WHERE public.profiles.id = auth.uid()
-                    AND public.profiles.sync_enabled = TRUE
-                    AND (public.profiles.sync_purged_at IS NULL OR NEW.client_updated_at > public.profiles.sync_purged_at)
-                )
+        auth.uid() = public.synced_reports.user_id AND
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE public.profiles.id = auth.uid()
+            AND (
+                -- Deleting/tombstoning is permitted even when opted out of cloud sync
+                public.synced_reports.is_deleted = TRUE
+                OR
+                -- Active report updates require sync_enabled = TRUE
+                public.profiles.sync_enabled = TRUE
             )
+            AND public.synced_reports.sync_generation >= public.profiles.sync_generation
+            AND (public.profiles.sync_purged_at IS NULL OR public.synced_reports.client_updated_at > public.profiles.sync_purged_at)
         )
     );
+
+DROP POLICY IF EXISTS "reports_delete_own" ON public.synced_reports;
+CREATE POLICY "reports_delete_own"
+    ON public.synced_reports FOR DELETE
+    TO authenticated
+    USING (auth.uid() = public.synced_reports.user_id);
 
 COMMIT;
