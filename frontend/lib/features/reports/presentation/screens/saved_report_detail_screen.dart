@@ -30,10 +30,7 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
           IconButton(
             icon: const Icon(Icons.help_outline),
             tooltip: 'how_to_read_results_title'.tr,
-            constraints: const BoxConstraints(
-              minWidth: 48,
-              minHeight: 48,
-            ),
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
             onPressed: () => HowToReadResultsSheet.show(context),
           ),
           Obx(() {
@@ -367,11 +364,7 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.shield_outlined,
-                    size: 18,
-                    color: theme.hintColor,
-                  ),
+                  Icon(Icons.shield_outlined, size: 18, color: theme.hintColor),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(

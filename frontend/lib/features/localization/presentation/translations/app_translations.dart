@@ -162,7 +162,8 @@ class AppTranslations extends Translations {
     'checked_url_offline': 'Offline URL inspection: Analyzed web address structure offline; the destination website was not visited or verified.',
     'checked_language_limits': 'Language & text boundaries: Rules evaluate English message patterns; text extraction covers Latin script.',
     'checked_cloud_ai_completed': 'Cloud AI assistance: Evaluated secondary linguistic patterns via Groq Cloud.',
-    'checked_cloud_ai_idle': 'Cloud AI assistance: Not requested. Local on-device checks only.',
+    'checked_cloud_ai_idle':
+        'Cloud AI assistance: Not requested. Local on-device checks only.',
     'checked_cloud_ai_failed': 'Cloud AI assistance: Could not be completed. Your local results remain valid and unaffected.',
 
     'technical_details_title': 'Technical details & rule offsets',
@@ -320,8 +321,10 @@ class AppTranslations extends Translations {
     'checked_url_offline': 'آف لائن لنک معائنہ: ویب ایڈریس کی ساخت کا آف لائن معائنہ کیا گیا؛ ویب سائٹ کو کھولا یا جانچا نہیں گیا۔',
     'checked_language_limits': 'زبان اور متن کی حدود: قواعد انگریزی پیغامات کا جائزہ لیتے ہیں؛ او سی آر لاطینی حروف پہچانتا ہے۔',
     'checked_cloud_ai_completed': 'کلاؤڈ AI مدد: Groq کلاؤڈ کے ذریعے ثانوی لسانی پیٹرنز کا جائزہ لیا گیا۔',
-    'checked_cloud_ai_idle': 'کلاؤڈ AI مدد: درخواست نہیں کی گئی۔ صرف ڈیوائس کی مقامی جانچ کی گئی۔',
-    'checked_cloud_ai_failed': 'کلاؤڈ AI مدد: مکمل نہیں ہو سکی۔ آپ کے مقامی نتائج مکمل اور محفوظ ہیں۔',
+    'checked_cloud_ai_idle':
+        'کلاؤڈ AI مدد: درخواست نہیں کی گئی۔ صرف ڈیوائس کی مقامی جانچ کی گئی۔',
+    'checked_cloud_ai_failed':
+        'کلاؤڈ AI مدد: مکمل نہیں ہو سکی۔ آپ کے مقامی نتائج مکمل اور محفوظ ہیں۔',
 
     'technical_details_title': 'تکنیکی تفصیلات اور قواعد کے آفسیٹس',
     'show_technical_details': 'تکنیکی تفصیلات دیکھیں',

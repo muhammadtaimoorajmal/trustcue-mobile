@@ -222,4 +222,3 @@ class HowToReadResultsSheet extends StatelessWidget {
     );
   }
 }
-

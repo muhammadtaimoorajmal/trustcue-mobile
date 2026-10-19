@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('navigation', 'all', 'device', 'focused')]
+    [ValidateSet('navigation', 'all', 'device', 'focused', 'check', 'pre-push', 'ci')]
     [string]$Suite = 'navigation',
     [string]$TestPath,
     [ValidatePattern('^[a-zA-Z0-9:._-]+$')]
@@ -17,19 +17,25 @@ $runId = [Guid]::NewGuid().ToString('N')
 $stdout = Join-Path $logDirectory "$runId.out.log"
 $stderr = Join-Path $logDirectory "$runId.err.log"
 $flutterPath = (Get-Command flutter -ErrorAction Stop).Source
-$testArguments = 'test --no-pub --reporter expanded'
-if ($Suite -eq 'navigation') {
-    $testArguments += ' test/app/navigation_test.dart'
-} elseif ($Suite -eq 'focused') {
-    if (!$TestPath) { throw 'TestPath is required for focused suite.' }
-    $testArguments += " $TestPath"
-} elseif ($Suite -eq 'device') {
-    if (!$DeviceId) { throw 'DeviceId is required for device tests.' }
-    $targetTest = if ($TestPath) { $TestPath } else { 'integration_test/app_smoke_test.dart' }
-    $testArguments += " $targetTest -d $DeviceId"
-}
+$dartPath = (Get-Command dart -ErrorAction Stop).Source
 
-$command = '/d /s /c ""' + $flutterPath + '" ' + $testArguments + '"'
+if ($Suite -in @('check', 'pre-push', 'ci')) {
+    if ($TimeoutSeconds -eq 180) { $TimeoutSeconds = 600 }
+    $command = '/d /s /c ""' + $dartPath + '" format --output=none --set-exit-if-changed lib test integration_test && "' + $flutterPath + '" analyze --no-pub && "' + $flutterPath + '" test --no-pub --reporter expanded"'
+} else {
+    $testArguments = 'test --no-pub --reporter expanded'
+    if ($Suite -eq 'navigation') {
+        $testArguments += ' test/app/navigation_test.dart'
+    } elseif ($Suite -eq 'focused') {
+        if (!$TestPath) { throw 'TestPath is required for focused suite.' }
+        $testArguments += " $TestPath"
+    } elseif ($Suite -eq 'device') {
+        if (!$DeviceId) { throw 'DeviceId is required for device tests.' }
+        $targetTest = if ($TestPath) { $TestPath } else { 'integration_test/app_smoke_test.dart' }
+        $testArguments += " $targetTest -d $DeviceId"
+    }
+    $command = '/d /s /c ""' + $flutterPath + '" ' + $testArguments + '"'
+}
 $runner = Start-Process -FilePath $env:ComSpec -ArgumentList $command `
     -WorkingDirectory $appRoot -WindowStyle Hidden -PassThru `
     -RedirectStandardOutput $stdout -RedirectStandardError $stderr

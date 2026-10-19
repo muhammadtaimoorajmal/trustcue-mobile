@@ -682,19 +682,21 @@ Module 50B resolves all usability, transparency, and evidence hierarchy requirem
 * **Accessibility:** WCAG AA 48x48 dp touch targets, font scaling up to 200%, dynamic BiDi text support.
 
 ### 12.7 Carry-Forward & Next Roadmap Steps
-* **Upcoming Steps:**
-  * Module 50C: Comprehensive Input Ingestion (Message, Screenshot OCR, Link, QR).
-  * Module 50D: Redaction, Privacy Controls, and Session Isolation.
-  * Module 50E: Offline-First Operation and Cloud Opt-In.
-  * Module 50F: Comprehensive Heuristic and AI Evaluation.
-  * Module 50G: Report Persistence, Export, and Cross-Platform Portability.
-  * Module 50H: Final Hardening, Verification, and Handover Candidate.
-* **Owner Rules Preserved:** Main branch untouched (`a785db8`). Strictly 4 repository branches maintained. Exactly 50 numbered roadmap modules preserved.
+* **Agreed Roadmap Completion Steps (within Module 50):**
+  * **50A** — Approved logo and release account verification. *(Completed and verified on hardware)*
+  * **50B** — Clear analysis results and contextual guidance. *(Implemented; CI repair pending)*
+  * **50C** — Visual polish: splash, onboarding, Home, sign-in, and sign-up, with relevant bundled illustrations.
+  * **50D** — Complete in-app user guide and guided practice.
+  * **50E** — Message/screenshot/link/QR/incoming-share and offline verification.
+  * **50F** — Fresh registration, email confirmation/recovery, AI, sync, and account lifecycle verification.
+  * **50G** — History, export, privacy, accessibility, and remaining layout checks.
+  * **50H** — Independent-device release testing, final handover, and approved main integration.
+* **Owner Rules Preserved:** Main branch untouched (`a785db8`). Strictly 4 repository branches maintained (`main`, `frontend`, `backend`, `database`). Exactly 50 numbered roadmap modules preserved.
 
 ---
 
 **Audited By:** Antigravity Pairing Assistant  
 **Reviewed For:** Muhammad Taimoor Ajmal (Lead Developer / Student)  
 **Date:** October 19, 2026  
-**Module 50 Status:** IN PROGRESS (Module 50B Complete; Gated on final owner approval before main merge)
+**Module 50 Status:** IN PROGRESS (Module 50B implemented; CI repair pending; Gated on final owner approval before main merge)
 

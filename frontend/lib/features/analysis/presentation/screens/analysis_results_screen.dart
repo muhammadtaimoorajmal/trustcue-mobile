@@ -413,7 +413,8 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
             final IconData aiIcon;
             if (aiState == AiAnalysisState.completed) {
               aiTitle = 'Cloud AI assistance: Completed';
-              aiSubtitle = 'Evaluated secondary linguistic patterns via ${controller.aiReport.value?.provider ?? 'Groq Cloud'}.';
+              aiSubtitle =
+                  'Evaluated secondary linguistic patterns via ${controller.aiReport.value?.provider ?? 'Groq Cloud'}.';
               aiIcon = Icons.auto_awesome;
             } else if (aiState == AiAnalysisState.failed) {
               aiTitle = 'Cloud AI assistance: Unavailable';

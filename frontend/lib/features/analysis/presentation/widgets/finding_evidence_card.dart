@@ -83,7 +83,9 @@ class _FindingEvidenceCardState extends State<FindingEvidenceCard> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  isAi ? 'Cloud AI pattern evaluation' : 'Evaluated on this device',
+                  isAi
+                      ? 'Cloud AI pattern evaluation'
+                      : 'Evaluated on this device',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.hintColor,
                   ),
@@ -183,7 +185,9 @@ class _FindingEvidenceCardState extends State<FindingEvidenceCard> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.6,
+                ),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: theme.dividerColor),
               ),

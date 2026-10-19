@@ -152,10 +152,7 @@ void main() {
 
         expect(find.text('Saved Report Details'), findsOneWidget);
         expect(find.text('[On-device heuristic]'), findsWidgets);
-        expect(
-          find.text('1 potential warning sign found'),
-          findsOneWidget,
-        );
+        expect(find.text('1 potential warning sign found'), findsOneWidget);
         expect(find.text('Analyzed text snapshot'), findsOneWidget);
         expect(find.text('Urgent: Wire money right away.'), findsOneWidget);
         expect(find.text('Local on-device findings'), findsOneWidget);
@@ -260,70 +257,65 @@ void main() {
       },
     );
 
-    testWidgets(
-      'tapping help icon in AppBar opens HowToReadResultsSheet',
-      (tester) async {
-        final report = createReport(
-          id: 'rep-help-detail',
-          text: 'Urgent: Wire money right away.',
-        );
-        await fakeRepo.saveReport(report);
+    testWidgets('tapping help icon in AppBar opens HowToReadResultsSheet', (
+      tester,
+    ) async {
+      final report = createReport(
+        id: 'rep-help-detail',
+        text: 'Urgent: Wire money right away.',
+      );
+      await fakeRepo.saveReport(report);
 
-        final controller = SavedReportDetailController(
-          reportId: 'rep-help-detail',
-          repository: fakeRepo,
-          authRepository: fakeAuth,
-        );
+      final controller = SavedReportDetailController(
+        reportId: 'rep-help-detail',
+        repository: fakeRepo,
+        authRepository: fakeAuth,
+      );
 
-        await tester.pumpWidget(createTestApp(controller));
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(createTestApp(controller));
+      await tester.pumpAndSettle();
 
-        final helpBtn = find.byTooltip('How to read this result');
-        expect(helpBtn, findsOneWidget);
-        await tester.tap(helpBtn);
-        await tester.pumpAndSettle();
+      final helpBtn = find.byTooltip('How to read this result');
+      expect(helpBtn, findsOneWidget);
+      await tester.tap(helpBtn);
+      await tester.pumpAndSettle();
 
-        expect(find.text('How to read this result'), findsOneWidget);
-        expect(
-          find.text('Warning signs are clues, not a final verdict'),
-          findsOneWidget,
-        );
+      expect(find.text('How to read this result'), findsOneWidget);
+      expect(
+        find.text('Warning signs are clues, not a final verdict'),
+        findsOneWidget,
+      );
 
-        await tester.tap(find.byIcon(Icons.close));
-        await tester.pumpAndSettle();
-        expect(
-          find.text('Warning signs are clues, not a final verdict'),
-          findsNothing,
-        );
-      },
-    );
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Warning signs are clues, not a final verdict'),
+        findsNothing,
+      );
+    });
 
-    testWidgets(
-      'renders cloud summary notice when snapshot text is empty',
-      (tester) async {
-        final report = createReport(
-          id: 'rep-cloud-empty-text',
-          text: '',
-        );
-        await fakeRepo.saveReport(report);
+    testWidgets('renders cloud summary notice when snapshot text is empty', (
+      tester,
+    ) async {
+      final report = createReport(id: 'rep-cloud-empty-text', text: '');
+      await fakeRepo.saveReport(report);
 
-        final controller = SavedReportDetailController(
-          reportId: 'rep-cloud-empty-text',
-          repository: fakeRepo,
-          authRepository: fakeAuth,
-        );
+      final controller = SavedReportDetailController(
+        reportId: 'rep-cloud-empty-text',
+        repository: fakeRepo,
+        authRepository: fakeAuth,
+      );
 
-        await tester.pumpWidget(createTestApp(controller));
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(createTestApp(controller));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Cloud backup summary'), findsOneWidget);
-        expect(
-          find.text(
-            'Original message text and evidence quotes are omitted from cloud backups to protect your privacy. Only report metadata (timestamp, source, category count) is synchronized.',
-          ),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Cloud backup summary'), findsOneWidget);
+      expect(
+        find.text(
+          'Original message text and evidence quotes are omitted from cloud backups to protect your privacy. Only report metadata (timestamp, source, category count) is synchronized.',
+        ),
+        findsOneWidget,
+      );
+    });
   });
 }

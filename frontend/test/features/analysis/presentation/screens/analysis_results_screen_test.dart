@@ -181,10 +181,7 @@ void main() {
       );
 
       // B. Outcome Summary
-      expect(
-        find.text('1 potential warning sign found'),
-        findsOneWidget,
-      );
+      expect(find.text('1 potential warning sign found'), findsOneWidget);
       expect(
         find.text(
           'Local checks identified 1 potential warning indicator: Requests for credentials.',
@@ -380,15 +377,15 @@ void main() {
         find.text('Warning signs are clues, not a final verdict'),
         findsOneWidget,
       );
-      expect(
-        find.text('No matches does not guarantee safety'),
-        findsOneWidget,
-      );
+      expect(find.text('No matches does not guarantee safety'), findsOneWidget);
       expect(find.text('Got it'), findsOneWidget);
 
       await tester.tap(find.byIcon(Icons.close));
       await tester.pumpAndSettle();
-      expect(find.text('Warning signs are clues, not a final verdict'), findsNothing);
+      expect(
+        find.text('Warning signs are clues, not a final verdict'),
+        findsNothing,
+      );
     });
 
     testWidgets('renders failure state on invalid route arguments', (
