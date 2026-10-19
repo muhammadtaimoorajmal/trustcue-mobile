@@ -27,10 +27,13 @@ class OnboardingScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
-              Icons.shield_outlined,
-              size: 48,
-              color: theme.colorScheme.primary,
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Image.asset(
+                'assets/branding/logo.png',
+                width: 56,
+                height: 56,
+              ),
             ),
             const SizedBox(height: AppSpacing.pagePaddingSmall),
             Text(

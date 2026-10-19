@@ -25,6 +25,12 @@ class AboutScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Image.asset(
+                    'assets/branding/logo.png',
+                    width: 56,
+                    height: 56,
+                  ),
+                  const SizedBox(height: 16),
                   Text(
                     'Understand the signals. Verify before you act.',
                     style: theme.textTheme.titleLarge,

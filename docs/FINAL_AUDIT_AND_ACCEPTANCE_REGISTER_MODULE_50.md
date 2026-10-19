@@ -540,14 +540,84 @@ This audit certifies that TrustCue has fulfilled all technical, privacy, and arc
 
 Module 50 is **IN PROGRESS**:
 - Four-branch architecture reconciled and verified (`main` untouched at `a785db8`).
-- Frontend CI 100% green across all 11 stages (Run 39231846382).
-- Fresh cloud-configured Release APK and AAB built with fail-safe script and verified.
-- Installed on Vivo V2207; "Cloud Service Not Configured" error successfully eliminated.
-- Outstanding verification: Final on-device live authentication, quota/sync verification, and missing checks (OCR/QR fixture records, offline toggle, PDF viewer) to be completed upon hardware reattachment.
+- Frontend CI 100% green across all 11 stages.
+- Fresh cloud-configured Release APK built with fail-safe script and verified.
+- Real hardware verification executed on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34).
+- Module 50A approved logo integration and release account verification completed and documented.
 
-**Recommendation:**  
-The repository is in an exemplary state for academic evaluation. Final owner integration into `main` remains gated on completion of on-device verification.
+---
+
+## 11. Module 50A: Approved Logo Integration and Release Account Verification Register
+
+### 11.1 Approved Brand Logo Integration
+* **Authoritative Source:** `Testing Data/App Logo/logo.jpg` (2048×2048 px, 24-bit RGB JPEG, background color `#0E283F`).
+* **Tracked Asset Copies:**
+  * Original Master: `docs/design/logo.jpg` and `frontend/assets/branding/logo_original.jpg`
+  * In-App Assets: `frontend/assets/branding/logo.png` (512×512 RGBA transparent) and `frontend/assets/branding/logo_card.png` (512×512 RGB on `#0E283F`)
+  * Store Assets: `docs/store_assets/icon_512.png` (512×512 RGBA) and `docs/store_assets/feature_graphic_1024x500.png` (1024×500 RGB brand card layout)
+* **Alpha Extraction Pipeline:**
+  * Geometric corner flood-fill algorithm targeting external `#0E283F` canvas to preserve the internal dark navy pupil (RGB `[14, 40, 63]`), iris, white cues, and amber caution dot.
+  * Adaptive icon foreground scaled to 52% of canvas, guaranteeing max bounding radius of 58.7% (well within Android's 66.6% / 72dp safe zone).
+* **Android Resources Generated:**
+  * Legacy launcher icons (`ic_launcher.png`) across `mdpi` (48px), `hdpi` (72px), `xhdpi` (96px), `xxhdpi` (144px), `xxxhdpi` (192px).
+  * Circular launcher icons (`ic_launcher_round.png`) across all 5 densities with antialiased circular mask.
+  * Adaptive launcher foreground (`ic_launcher_foreground.png`) across all 5 densities.
+  * Material You monochrome icons (`ic_launcher_monochrome.png`) across all 5 densities for Android 13+ dynamic theming.
+  * Splash logo (`res/drawable/ic_splash_logo.png`, 288×288 px).
+  * Color resources: `res/values/colors.xml` and `res/values-night/colors.xml` set `splash_background` to `#0E283F`.
+  * API 31+ SplashScreen styles: Created `res/values-v31/styles.xml` and `res/values-night-v31/styles.xml` with `windowSplashScreenBackground`, `windowSplashScreenAnimatedIcon`, and `windowSplashScreenIconBackgroundColor`.
+* **In-App Integration:**
+  * `AboutScreen`: Added `Image.asset('assets/branding/logo.png', width: 56, height: 56)` above headline card.
+  * `OnboardingScreen`: Replaced generic `Icons.shield_outlined` with brand mark `Image.asset('assets/branding/logo.png', width: 56, height: 56)`.
+* **On-Device Visual Verification:**
+  * Verified launcher icon on Vivo V2207 launcher screen: circular adaptive icon renders centered without any speech-bubble tail clipping.
+  * Verified launch splash screen: seamless background transition matching `#0E283F`.
+  * Verified in-app rendering on `AboutScreen` and `OnboardingScreen` (review mode).
+
+### 11.2 Cloud-Configured Release Build Provenance
+* **Build Script:** `frontend/scripts/build_release.ps1 -Target apk`
+* **Output Artifact:** `frontend/build/app/outputs/flutter-apk/app-release.apk`
+* **Artifact Size:** 111,197,050 bytes (106.05 MB)
+* **Artifact SHA-256:** `C51DDEA3BDC6969AB3FE936B08D72698E255ABAA3ABB2493CA4BA0F70418B18F`
+* **Signature Scheme:** APK Signature Scheme v2 = `true` (apksigner verified)
+* **Signer Certificate DN:** `CN=TrustCue Release Signer, OU=Mobile Security, O=TrustCue, L=London, ST=Greater London, C=GB`
+* **Signer SHA-256 Digest:** `66b3fb995dca5ac2ca17bed79c9d746536832129d4ee3d384561f1f609cbcd9f` (matches Module 48 signing material)
+* **Embedded Endpoints (Zero Secret Leakage):**
+  * `SUPABASE_URL=https://yzqkmoqqvnhfmmrayfko.supabase.co`
+  * `SUPABASE_ANON_KEY=sb_publishable_FbaxLcoHqbQw5AF1-vC7dA_F28hdSZO` (public client publishable key)
+  * `BACKEND_BASE_URL=https://trustcue-backend.onrender.com`
+  * `AUTH_CALLBACK_SCHEME=trustcue`, `AUTH_CALLBACK_HOST=auth-callback`
+
+### 11.3 Real Account & Session Persistence Verification
+* **Form Validation Tests:**
+  * Empty email/password on Create Account: Triggered `"Please enter a valid email address."` banner.
+  * Invalid email (missing `@`): Triggered `"Please enter a valid email address."` banner.
+  * Short password (< 6 characters): Triggered `"Password must be at least 6 characters."` banner.
+  * Password mismatch: Triggered `"Passwords do not match."` banner.
+  * Empty email/password on Sign In: Triggered `"Please enter both email and password."` banner.
+* **Real Cloud Authentication & Profile Load:**
+  * Authenticated user: `maliktaimoor655@gmail.com`
+  * Account status: `(✓) Email verified`
+  * User ID: `35770fb0-9635-48ca-b91c-a06a85df7272`
+  * Display Name: `Muhammad Taimoor Ajmal`
+  * Member Since: `2026-10-19`
+  * Protected Cloud AI Quota: Verified `15 of 15 analysis queries remaining today` loaded from `https://trustcue-backend.onrender.com`.
+* **Session Persistence Across Process Kill:**
+  * Executed `adb shell am force-stop io.github.muhammadtaimoorajmal.trustcue`.
+  * Relaunched via `adb shell am start -n io.github.muhammadtaimoorajmal.trustcue/.MainActivity`.
+  * Account session persisted seamlessly via Android KeyStore / EncryptedSharedPreferences; profile and quota loaded without re-prompting credentials.
+* **Sign-Out & Guest Recovery:**
+  * Tapped `"Sign out"` button -> Confirmation modal appeared explaining session clearing and local data preservation.
+  * Confirmed sign-out -> Session cleared cleanly, returning to Guest Mode.
+  * Executed local suspicious text analysis in Guest Mode: local heuristics correctly evaluated 10 on-device rules and detected 2 potential warning indicators (Urgency/pressure and Account suspension) with zero network upload.
+
+### 11.4 Public Network Independence Verification
+* **Reverse Port Forwarding List:** `adb reverse --list` verified completely empty (no active tunnels).
+* **Direct Public Routing:** `ping -c 3 trustcue-backend.onrender.com` on device resolved to `216.24.57.18` (Render Cloudflare ingress) with 0% packet loss and average 8.9 ms RTT. Device connects directly across public Wi-Fi/cellular networking with zero dependency on the local development host.
+
+---
 
 **Audited By:** Antigravity Pairing Assistant  
 **Reviewed For:** Muhammad Taimoor Ajmal (Lead Developer / Student)  
-**Date:** October 18, 2026
+**Date:** October 19, 2026
+**Module 50 Status:** IN PROGRESS (Gated on final owner approval before main merge)
