@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trustcue_mobile/features/analysis/domain/rules/core_warning_rule_catalog.dart';
 import 'package:trustcue_mobile/features/analysis/domain/rules/local_rule_catalog.dart';
@@ -79,64 +80,104 @@ void main() {
     ];
 
     for (final b in benignCases) {
-      test('Evaluates ${b['id']} (${b['title']}) without false-positive scam alarms', () async {
-        final snapshot = createSnapshot(b['text']!, id: b['id']!);
-        final result = await pipeline.process(snapshot);
-        expect(result.isSuccess, isTrue);
-        final assessment = result.valueOrNull!;
-        expect(assessment.outcomeState, equals(AssessmentOutcomeState.noIndicatorsMatched));
-        expect(assessment.groupedIndicators, isEmpty);
-        expect(assessment.uncertaintyNotes, isNotEmpty);
-      });
+      test(
+        'Evaluates ${b['id']} (${b['title']}) without false-positive scam alarms',
+        () async {
+          final snapshot = createSnapshot(b['text']!, id: b['id']!);
+          final result = await pipeline.process(snapshot);
+          expect(result.isSuccess, isTrue);
+          final assessment = result.valueOrNull!;
+          expect(
+            assessment.outcomeState,
+            equals(AssessmentOutcomeState.noIndicatorsMatched),
+          );
+          expect(assessment.groupedIndicators, isEmpty);
+          expect(assessment.uncertaintyNotes, isNotEmpty);
+        },
+      );
     }
 
-    test('Loads and evaluates Scam Text Messages from fixture folder', () async {
-      final file = File(r'd:\ALL DATA\PROJECTS\TrustCue\Testing Data\Scam Text Messages.txt');
-      expect(file.existsSync(), isTrue);
-      final content = file.readAsStringSync();
-      final blocks = content.split(RegExp(r'\n\s*\n'));
+    test(
+      'Loads and evaluates Scam Text Messages from fixture folder',
+      () async {
+        final file = File(
+          r'd:\ALL DATA\PROJECTS\TrustCue\Testing Data\Scam Text Messages.txt',
+        );
+        expect(file.existsSync(), isTrue);
+        final content = file.readAsStringSync();
+        final blocks = content.split(RegExp(r'\n\s*\n'));
 
-      var evaluatedCount = 0;
-      var indicatorsFoundCount = 0;
-      for (var i = 0; i < blocks.length && i < 26; i++) {
-        final lines = blocks[i].split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
-        if (lines.length >= 2) {
-          final title = lines[0];
-          final rawMsg = lines[1];
-          // Test with normalized realistic URL if defanged
-          final msgText = rawMsg.replaceAll('hxxps://', 'https://').replaceAll('[.]', '.');
-          final snapshot = createSnapshot(msgText, id: 'fixture-scam-$i');
-          final result = await pipeline.process(snapshot);
-          expect(result.isSuccess, isTrue, reason: 'Failed evaluating block $i: $title');
-          final assessment = result.valueOrNull!;
-          
-          final isMatched = assessment.outcomeState == AssessmentOutcomeState.indicatorsDetected;
-          if (isMatched) {
-            indicatorsFoundCount++;
-            for (final group in assessment.groupedIndicators) {
-              for (final f in group.findings) {
-                for (final span in f.evidence) {
-                  expect(span.startOffset, greaterThanOrEqualTo(0));
-                  expect(span.endOffset, lessThanOrEqualTo(snapshot.text.length));
-                  final excerpt = snapshot.text.substring(span.startOffset, span.endOffset);
-                  expect(excerpt, equals(span.exactExcerpt), reason: 'Excerpt mismatch in $title: ${span.exactExcerpt}');
+        var evaluatedCount = 0;
+        var indicatorsFoundCount = 0;
+        for (var i = 0; i < blocks.length && i < 26; i++) {
+          final lines = blocks[i]
+              .split('\n')
+              .map((l) => l.trim())
+              .where((l) => l.isNotEmpty)
+              .toList();
+          if (lines.length >= 2) {
+            final title = lines[0];
+            final rawMsg = lines[1];
+            // Test with normalized realistic URL if defanged
+            final msgText = rawMsg
+                .replaceAll('hxxps://', 'https://')
+                .replaceAll('[.]', '.');
+            final snapshot = createSnapshot(msgText, id: 'fixture-scam-$i');
+            final result = await pipeline.process(snapshot);
+            expect(
+              result.isSuccess,
+              isTrue,
+              reason: 'Failed evaluating block $i: $title',
+            );
+            final assessment = result.valueOrNull!;
+
+            final isMatched =
+                assessment.outcomeState ==
+                AssessmentOutcomeState.indicatorsDetected;
+            if (isMatched) {
+              indicatorsFoundCount++;
+              for (final group in assessment.groupedIndicators) {
+                for (final f in group.findings) {
+                  for (final span in f.evidence) {
+                    expect(span.startOffset, greaterThanOrEqualTo(0));
+                    expect(
+                      span.endOffset,
+                      lessThanOrEqualTo(snapshot.text.length),
+                    );
+                    final excerpt = snapshot.text.substring(
+                      span.startOffset,
+                      span.endOffset,
+                    );
+                    expect(
+                      excerpt,
+                      equals(span.exactExcerpt),
+                      reason:
+                          'Excerpt mismatch in $title: ${span.exactExcerpt}',
+                    );
+                  }
                 }
               }
             }
+            evaluatedCount++;
           }
-          evaluatedCount++;
         }
-      }
-      expect(evaluatedCount, greaterThanOrEqualTo(20));
-      expect(indicatorsFoundCount, greaterThanOrEqualTo(15));
-    });
+        expect(evaluatedCount, greaterThanOrEqualTo(20));
+        expect(indicatorsFoundCount, greaterThanOrEqualTo(15));
+      },
+    );
   });
 
   group('Fixtures Acceptance: URLs and Links', () {
     test('Inspects all links from Links.txt without crashing or making network calls', () {
-      final file = File(r'd:\ALL DATA\PROJECTS\TrustCue\Testing Data\Links.txt');
+      final file = File(
+        r'd:\ALL DATA\PROJECTS\TrustCue\Testing Data\Links.txt',
+      );
       expect(file.existsSync(), isTrue);
-      final lines = file.readAsLinesSync().map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+      final lines = file
+          .readAsLinesSync()
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .toList();
 
       var inspectedCount = 0;
       var ipCount = 0;
@@ -164,15 +205,24 @@ void main() {
       ];
       for (final d in dangerous) {
         final res = urlService.inspect(d);
-        expect(res.isValid, isFalse, reason: 'Dangerous scheme should not be valid: $d');
-        expect(res.isLaunchable, isFalse, reason: 'Dangerous scheme should not be launchable: $d');
+        expect(
+          res.isValid,
+          isFalse,
+          reason: 'Dangerous scheme should not be valid: $d',
+        );
+        expect(
+          res.isLaunchable,
+          isFalse,
+          reason: 'Dangerous scheme should not be launchable: $d',
+        );
       }
     });
   });
 
   group('Fixtures Acceptance: PII Redaction on Test Fixtures', () {
     test('Detects phone numbers, emails, and payment cards accurately', () {
-      final testInput = 'Please call 1-555-0100 or email support@example.com. Card 4532-0150-1234-5671.';
+      final testInput =
+          'Please call 1-555-0100 or email support@example.com. Card 4532-0150-1234-5671.';
       final detections = piiDetector.detect(text: testInput, revision: 'rev-1');
       expect(detections.isNotEmpty, isTrue);
       final types = detections.map((d) => d.type.name).toSet();

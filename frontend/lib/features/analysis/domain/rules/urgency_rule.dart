@@ -66,18 +66,9 @@ class UrgencyRule implements LocalRule {
       caseSensitive: false,
     ),
     // Standalone or clause-level urgency assertion (e.g. "It's urgent.", "Urgent: please reply", "codes. Urgent.")
-    RegExp(
-      r'\b(?:it\x27s|this is)\s+urgent\b',
-      caseSensitive: false,
-    ),
-    RegExp(
-      r'\b(?:urgent|urgently)\b\s*[.!]',
-      caseSensitive: false,
-    ),
-    RegExp(
-      r'\burgent\s*:\s*[^\r\n]{1,35}\b',
-      caseSensitive: false,
-    ),
+    RegExp(r'\b(?:it\x27s|this is)\s+urgent\b', caseSensitive: false),
+    RegExp(r'\b(?:urgent|urgently)\b\s*[.!]', caseSensitive: false),
+    RegExp(r'\burgent\s*:\s*[^\r\n]{1,35}\b', caseSensitive: false),
   ];
 
   @override
