@@ -183,12 +183,15 @@ if ($Target -eq 'apk') {
     }
 
     if ($Install) {
-        Write-Host "`nStreaming in-place install via adb install -r..." -ForegroundColor Cyan
-        & adb install -r $artifactPath
+        $adbExe = 'adb'
+        $adbPath = Join-Path $androidSdk 'platform-tools\adb.exe'
+        if (Test-Path $adbPath) { $adbExe = $adbPath }
+        Write-Host "`nStreaming in-place install via $adbExe install -r..." -ForegroundColor Cyan
+        & $adbExe install -r $artifactPath
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Device installation succeeded!" -ForegroundColor Green
         } else {
-            Write-Warning "adb install -r returned code $LASTEXITCODE."
+            Write-Warning "$adbExe install -r returned code $LASTEXITCODE."
         }
     }
 }

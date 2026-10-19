@@ -24,6 +24,7 @@ import 'package:trustcue_mobile/features/analysis/presentation/screens/analysis_
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/input/domain/models/reviewed_text_result.dart';
 import 'package:trustcue_mobile/features/input/domain/models/text_snapshot.dart';
+import 'package:trustcue_mobile/features/localization/presentation/translations/app_translations.dart';
 
 class _MockEngine implements AnalysisService {
   @override
@@ -81,6 +82,8 @@ void main() {
   }) {
     Get.put<AnalysisResultsController>(controller);
     return GetMaterialApp(
+      translations: AppTranslations(),
+      locale: const Locale('en', 'US'),
       themeMode: themeMode,
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
@@ -179,7 +182,7 @@ void main() {
 
       // B. Outcome Summary
       expect(
-        find.text('1 potential warning indicator detected'),
+        find.text('1 potential warning sign found'),
         findsOneWidget,
       );
       expect(
@@ -190,7 +193,7 @@ void main() {
       );
 
       // C. Coverage and Limitations (with partial skipped coverage visible!)
-      expect(find.text('Scope and rule coverage'), findsOneWidget);
+      expect(find.text('What was checked & scope'), findsOneWidget);
       expect(
         find.text(
           'Partial coverage: 1 rule(s) were skipped due to input constraints.',
@@ -225,15 +228,22 @@ void main() {
         find.text('A request for sensitive login credentials.'),
         findsOneWidget,
       );
+      expect(find.text('"password"'), findsOneWidget);
+      expect(find.text('View in analyzed text'), findsOneWidget);
+
+      // Technical details are collapsed by default in FindingEvidenceCard
+      expect(find.text('Show technical details'), findsOneWidget);
+      await tester.ensureVisible(find.text('Show technical details'));
+      await tester.tap(find.text('Show technical details'));
+      await tester.pumpAndSettle();
+
       expect(
         find.text(
           'Rule provenance: rule.credential_request (on-device local rule)',
         ),
         findsOneWidget,
       );
-      expect(find.text('"password"'), findsOneWidget);
-      expect(find.text('offset [10, 18)'), findsOneWidget);
-      expect(find.text('View in analyzed text'), findsOneWidget);
+      expect(find.textContaining('offset [10, 18)'), findsOneWidget);
 
       // E. Suggested Next Steps
       await tester.ensureVisible(find.text('Suggested next steps'));
@@ -304,9 +314,15 @@ void main() {
         await tester.pumpWidget(createTestWidget(controller: controller));
         await tester.pumpAndSettle();
 
-        // Check for outcome title and explicit "Not a proof of safety" notice
-        expect(find.text('No indicators matched'), findsOneWidget);
-        expect(find.textContaining('Not a proof of safety'), findsOneWidget);
+        // Check for outcome title and calm no-match explanation
+        expect(
+          find.text('No warning signs found by the on-device checks'),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('These checks found no matching warning signs.'),
+          findsOneWidget,
+        );
 
         // Verify no misleading claims
         expect(find.text('Safe'), findsNothing);
@@ -319,6 +335,61 @@ void main() {
         );
       },
     );
+
+    testWidgets('tapping help icon opens HowToReadResultsSheet', (
+      tester,
+    ) async {
+      final review = _makeReview('Account suspended. Verify now.');
+      final assessment = LocalAssessment(
+        reportId: 'rep-help-test',
+        snapshotId: review.snapshot.id,
+        snapshotSource: InputSource.messageText,
+        outcomeState: AssessmentOutcomeState.noIndicatorsMatched,
+        factualSummary: 'No indicators found.',
+        groupedIndicators: const [],
+        coverageInfo: AssessmentCoverageInfo(
+          executedRuleIds: const ['rule-1'],
+          evaluatedCategories: const [],
+        ),
+        uncertaintyNotes: const [],
+        actionableSteps: const [],
+        createdAt: DateTime.utc(2026, 1, 1),
+      );
+
+      final pipeline = LocalAnalysisPipeline(
+        engine: _MockEngine(),
+        synthesizer: _MockSynthesizer(assessment),
+        registry: LocalRuleCatalog.createRegistry(),
+      );
+
+      final controller = AnalysisResultsController(
+        pipeline: pipeline,
+        args: AnalysisResultsArgs(reviewResult: review),
+      );
+
+      await tester.pumpWidget(createTestWidget(controller: controller));
+      await tester.pumpAndSettle();
+
+      final helpBtn = find.byTooltip('How to read this result');
+      expect(helpBtn, findsOneWidget);
+      await tester.tap(helpBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.text('How to read this result'), findsOneWidget);
+      expect(
+        find.text('Warning signs are clues, not a final verdict'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('No matches does not guarantee safety'),
+        findsOneWidget,
+      );
+      expect(find.text('Got it'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+      expect(find.text('Warning signs are clues, not a final verdict'), findsNothing);
+    });
 
     testWidgets('renders failure state on invalid route arguments', (
       tester,
@@ -353,7 +424,7 @@ void main() {
       await tester.pumpWidget(createTestWidget(controller: controller));
       await tester.pumpAndSettle();
 
-      expect(find.text('Analysis unavailable'), findsOneWidget);
+      expect(find.text('We couldn’t complete this check'), findsOneWidget);
       expect(find.text('Return to review'), findsOneWidget);
     });
 
@@ -406,7 +477,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Local on-device analysis'), findsOneWidget);
-      expect(find.text('No indicators matched'), findsOneWidget);
+      expect(
+        find.text('No warning signs found by the on-device checks'),
+        findsOneWidget,
+      );
     });
 
     testWidgets(

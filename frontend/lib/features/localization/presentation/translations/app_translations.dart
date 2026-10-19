@@ -134,6 +134,41 @@ class AppTranslations extends Translations {
     'export_sharing': 'Opening share sheet...',
     'export_pdf_urdu_notice': 'PDF uses Latin typography. Plain Text (.txt) is recommended for full Urdu and non-Latin script fidelity.',
     'export_action_tooltip': 'Export or Share Report',
+
+    // Analysis Results & Guidance (Module 50B)
+    'how_to_read_results_title': 'How to read this result',
+    'how_to_read_results_subtitle': 'Quick guide to understanding TrustCue indicators and safety boundaries.',
+    'help_clues_title': 'Warning signs are clues, not a final verdict',
+    'help_clues_desc': 'TrustCue flags patterns commonly found in scams. Finding a warning sign does not prove fraud, and finding nothing does not prove a message is safe.',
+    'help_no_matches_title': 'No matches does not guarantee safety',
+    'help_no_matches_desc': 'On-device checks look for specific known patterns. New scams, polite phrasing, or unusual formats may not trigger an indicator.',
+    'help_evidence_title': 'Evidence shows what triggered a finding',
+    'help_evidence_desc': 'Each finding cites the exact text or link structure that raised a flag, so you can inspect the reasoning yourself.',
+    'help_local_ai_title': 'Local analysis and optional AI are different',
+    'help_local_ai_desc': 'On-device checks run completely offline without uploading data. Optional Cloud AI evaluates secondary patterns only when you give explicit consent.',
+    'help_actions_title': 'Saving, backup, and export are separate actions',
+    'help_actions_desc': 'Saving keeps a copy on this device only. Optional cloud backup syncs report metadata only (never message text). Export lets you share a file.',
+    'help_close_btn': 'Got it',
+
+    'outcome_indicators_found': 'Potential warning signs found',
+    'outcome_indicators_found_single': '1 potential warning sign found',
+    'outcome_no_matches': 'No warning signs found by the on-device checks',
+    'outcome_no_matches_calm': 'These checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.',
+    'outcome_limited_coverage': 'Only part of this content could be checked',
+    'outcome_check_failed': 'We couldn’t complete this check',
+
+    'what_was_checked_title': 'What was checked',
+    'checked_on_device': 'On-device checks: Evaluated against 10 local heuristic rules without sending data anywhere.',
+    'checked_url_offline': 'Offline URL inspection: Analyzed web address structure offline; the destination website was not visited or verified.',
+    'checked_language_limits': 'Language & text boundaries: Rules evaluate English message patterns; text extraction covers Latin script.',
+    'checked_cloud_ai_completed': 'Cloud AI assistance: Evaluated secondary linguistic patterns via Groq Cloud.',
+    'checked_cloud_ai_idle': 'Cloud AI assistance: Not requested. Local on-device checks only.',
+    'checked_cloud_ai_failed': 'Cloud AI assistance: Could not be completed. Your local results remain valid and unaffected.',
+
+    'technical_details_title': 'Technical details & rule offsets',
+    'show_technical_details': 'Show technical details',
+    'hide_technical_details': 'Hide technical details',
+    'cloud_summary_no_text_notice': 'Original message text and evidence quotes are omitted from cloud backups to protect your privacy. Only report metadata (timestamp, source, category count) is synchronized.',
   };
 
   static const Map<String, String> urPK = {
@@ -257,5 +292,40 @@ class AppTranslations extends Translations {
     'export_sharing': 'شیئر کا آپشن کھولا جا رہا ہے...',
     'export_pdf_urdu_notice': 'پی ڈی ایف صرف لاطینی رسم الخط کو سپورٹ کرتا ہے۔ مکمل اردو رسم الخط کے لیے سادہ متن (.txt) تجویز کیا جاتا ہے۔',
     'export_action_tooltip': 'رپورٹ ایکسپورٹ یا شیئر کریں',
+
+    // Analysis Results & Guidance (Module 50B)
+    'how_to_read_results_title': 'نتائج کو سمجھنے کا طریقہ',
+    'how_to_read_results_subtitle': 'ٹرسٹ کیو کے انتباہی اشاروں اور حفاظتی حدود کو سمجھنے کی مختصر رہنمائی۔',
+    'help_clues_title': 'انتباہی اشارے صرف سراغ ہیں، حتمی فیصلہ نہیں',
+    'help_clues_desc': 'ٹرسٹ کیو ان عمومی طریقوں کو نمایاں کرتا ہے جو دھوکہ دہی میں استعمال ہوتے ہیں۔ کسی انتباہی اشارے کا ملنا حتمی دھوکہ ثابت نہیں کرتا، اور کوئی اشارہ نہ ملنا پیغام کے محفوظ ہونے کی تصدیق نہیں کرتا۔',
+    'help_no_matches_title': 'کوئی اشارہ نہ ملنا تحفظ کی ضمانت نہیں',
+    'help_no_matches_desc': 'ڈیوائس پر کی جانے والی جانچ صرف مخصوص اور معلوم دھوکہ دہی کے پیٹرنز کو تلاش کرتی ہے۔ نئے طریقے، شائستہ گفتگو، یا غیر جانچے گئے فارمیٹس کسی اشارے کو متحرک نہیں کر سکتے۔',
+    'help_evidence_title': 'شواہد بتاتے ہیں کہ نتیجہ کس بنیاد پر نکلا',
+    'help_evidence_desc': 'ہر نتیجہ آپ کے پیغام میں موجود اصل متنی اقتباس یا لنک کی جانب اشارہ کرتا ہے تاکہ آپ مبہم اسکور پر بھروسہ کرنے کے بجائے خود وجہ دیکھ سکیں۔',
+    'help_local_ai_title': 'مقامی جانچ اور کلاؤڈ AI میں فرق',
+    'help_local_ai_desc': 'مقامی جانچ بغیر انٹرنیٹ کے مکمل طور پر آپ کے فون پر چلتی ہے۔ اختیاری کلاؤڈ AI صرف آپ کی واضح رضامندی کے بعد ثانوی لسانی جائزے کے لیے استعمال ہوتا ہے۔',
+    'help_actions_title': 'محفوظ کرنا، بیک اپ اور ایکسپورٹ الگ الگ ہیں',
+    'help_actions_desc': 'محفوظ کرنے سے رپورٹ صرف آپ کے فون کی نجی اسٹوریج میں رہتی ہے۔ اختیاری کلاؤڈ بیک اپ صرف میٹا ڈیٹا محفوظ کرتا ہے (کبھی اصل متن نہیں۔) ایکسپورٹ سے آپ فائل شیئر کر سکتے ہیں۔',
+    'help_close_btn': 'سمجھ گیا',
+
+    'outcome_indicators_found': 'ممکنہ انتباہی اشارے ملے',
+    'outcome_indicators_found_single': '1 ممکنہ انتباہی اشارہ ملا',
+    'outcome_no_matches': 'ڈیوائس کی جانچ میں کوئی انتباہی اشارہ نہیں ملا',
+    'outcome_no_matches_calm': 'ان جانچوں میں کوئی مماثل انتباہی اشارہ نہیں ملا۔ یہ بھیجنے والے کی تصدیق نہیں کرتا اور نہ ہی یہ گارنٹی دیتا ہے کہ پیغام یا لنک محفوظ ہے۔',
+    'outcome_limited_coverage': 'اس مواد کے صرف کچھ حصے کی جانچ ہو سکی',
+    'outcome_check_failed': 'ہم اس جانچ کو مکمل نہیں کر سکے',
+
+    'what_was_checked_title': 'کیا جانچا گیا',
+    'checked_on_device': 'آن ڈیوائس جانچ: بغیر کسی نیٹ ورک ٹرانسفر کے 10 مقامی قواعد کے تحت جائزہ لیا گیا۔',
+    'checked_url_offline': 'آف لائن لنک معائنہ: ویب ایڈریس کی ساخت کا آف لائن معائنہ کیا گیا؛ ویب سائٹ کو کھولا یا جانچا نہیں گیا۔',
+    'checked_language_limits': 'زبان اور متن کی حدود: قواعد انگریزی پیغامات کا جائزہ لیتے ہیں؛ او سی آر لاطینی حروف پہچانتا ہے۔',
+    'checked_cloud_ai_completed': 'کلاؤڈ AI مدد: Groq کلاؤڈ کے ذریعے ثانوی لسانی پیٹرنز کا جائزہ لیا گیا۔',
+    'checked_cloud_ai_idle': 'کلاؤڈ AI مدد: درخواست نہیں کی گئی۔ صرف ڈیوائس کی مقامی جانچ کی گئی۔',
+    'checked_cloud_ai_failed': 'کلاؤڈ AI مدد: مکمل نہیں ہو سکی۔ آپ کے مقامی نتائج مکمل اور محفوظ ہیں۔',
+
+    'technical_details_title': 'تکنیکی تفصیلات اور قواعد کے آفسیٹس',
+    'show_technical_details': 'تکنیکی تفصیلات دیکھیں',
+    'hide_technical_details': 'تکنیکی تفصیلات چھپائیں',
+    'cloud_summary_no_text_notice': 'آپ کی رازداری کے تحفظ کے لیے کلاؤڈ بیک اپ میں اصل پیغام کا متن اور شواہد شامل نہیں کیے جاتے۔ صرف میٹا ڈیٹا (تاریخ، ماخذ اور زمرہ جات) مطابقت پذیر کیا جاتا ہے۔',
   };
 }

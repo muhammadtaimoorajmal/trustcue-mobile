@@ -6,11 +6,12 @@ import 'package:trustcue_mobile/core/widgets/app_card.dart';
 import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_finding.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/local_assessment.dart';
+import 'package:trustcue_mobile/features/analysis/presentation/widgets/finding_evidence_card.dart';
+import 'package:trustcue_mobile/features/analysis/presentation/widgets/how_to_read_results_sheet.dart';
 import 'package:trustcue_mobile/features/export/domain/services/export_data_extractor.dart';
 import 'package:trustcue_mobile/features/export/presentation/controllers/export_controller.dart';
 import 'package:trustcue_mobile/features/export/presentation/widgets/export_report_sheet.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
-import 'package:trustcue_mobile/features/localization/domain/models/app_language.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report.dart';
 import 'package:trustcue_mobile/features/reports/presentation/controllers/saved_report_detail_controller.dart';
 
@@ -26,6 +27,15 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
       appBar: AppBar(
         title: const Text('Saved Report Details'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'how_to_read_results_title'.tr,
+            constraints: const BoxConstraints(
+              minWidth: 48,
+              minHeight: 48,
+            ),
+            onPressed: () => HowToReadResultsSheet.show(context),
+          ),
           Obx(() {
             final report = controller.report.value;
             if (report == null) {
@@ -298,51 +308,92 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
         icon = Icons.warning_amber_rounded;
         color = theme.colorScheme.error;
         title = report.totalFindingsCount == 1
-            ? '1 potential warning indicator detected'
-            : '${report.totalFindingsCount} potential warning indicators detected';
+            ? '1 potential warning sign found'
+            : '${report.totalFindingsCount} potential warning signs found';
         break;
       case AssessmentOutcomeState.noIndicatorsMatched:
         icon = Icons.info_outline;
         color = theme.colorScheme.primary;
-        title = 'No warning indicators matched';
+        title = 'No warning signs found by the on-device checks';
         break;
       case AssessmentOutcomeState.limitedCoverage:
         icon = Icons.help_outline;
         color = theme.colorScheme.secondary;
-        title = 'Limited rule coverage on input';
+        title = 'Only part of this content could be checked';
         break;
     }
 
     return AppCard(
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 28, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
+          Row(
+            children: [
+              Icon(icon, size: 28, color: color),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Results reflect the state of checks at the time of evaluation.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Results reflect the state of checks at the time of evaluation.',
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
+          if (report.outcomeState ==
+              AssessmentOutcomeState.noIndicatorsMatched) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
+                border: Border.all(color: theme.dividerColor),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.shield_outlined,
+                    size: 18,
+                    color: theme.hintColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'These checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.hintColor,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildSnapshotCard(ThemeData theme, SavedReport report) {
+    final isCloudSummaryWithoutText = report.snapshot.text.trim().isEmpty;
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -357,38 +408,73 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Analyzed text snapshot',
+                  isCloudSummaryWithoutText
+                      ? 'Cloud backup summary'
+                      : 'Analyzed text snapshot',
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              Text(
-                '${report.snapshot.text.length} chars',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.hintColor,
+              if (!isCloudSummaryWithoutText)
+                Text(
+                  '${report.snapshot.text.length} chars',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.hintColor,
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(
-                alpha: 0.5,
+          if (isCloudSummaryWithoutText)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: theme.dividerColor),
               ),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: theme.dividerColor),
-            ),
-            child: SelectableText(
-              report.snapshot.text,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontFamily: 'monospace',
-                fontSize: 13,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.cloud_done_outlined,
+                    size: 20,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'cloud_summary_no_text_notice'.tr,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.hintColor,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: theme.dividerColor),
+              ),
+              child: SelectableText(
+                report.snapshot.text,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontFamily: 'monospace',
+                  fontSize: 13,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -449,124 +535,14 @@ class SavedReportDetailScreen extends GetView<SavedReportDetailController> {
         ],
         const SizedBox(height: 8),
         ...findings.map(
-          (finding) => _buildFindingCard(theme, finding, context, isAi),
+          (finding) => FindingEvidenceCard(
+            finding: finding,
+            isAi: isAi,
+            onViewInAnalyzedText: () =>
+                controller.viewEvidenceInText(finding, context),
+          ),
         ),
       ],
-    );
-  }
-
-  Widget _buildFindingCard(
-    ThemeData theme,
-    AnalysisFinding finding,
-    BuildContext context,
-    bool isAi,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(8),
-        color: theme.colorScheme.surface,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isAi
-                      ? theme.colorScheme.tertiaryContainer
-                      : theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  isAi ? '[AI-Assisted]' : '[Heuristic Rule]',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: isAi
-                        ? theme.colorScheme.onTertiaryContainer
-                        : theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  finding.producerId,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.hintColor,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            finding.explanation,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Exact supporting excerpt(s):',
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          ...finding.evidence.map(
-            (ref) => Container(
-              margin: const EdgeInsets.only(bottom: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: theme.dividerColor),
-              ),
-              child: Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 2,
-                children: [
-                  Directionality(
-                    textDirection: determineExcerptDirection(ref.exactExcerpt),
-                    child: Text(
-                      '"${ref.exactExcerpt}"',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontFamily: 'monospace',
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Directionality(
-                    textDirection: TextDirection.ltr,
-                    child: Text(
-                      'offset [${ref.startOffset}, ${ref.endOffset})',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.hintColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: AppButton.secondary(
-              label: 'View in analyzed text',
-              onPressed: () => controller.viewEvidenceInText(finding, context),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

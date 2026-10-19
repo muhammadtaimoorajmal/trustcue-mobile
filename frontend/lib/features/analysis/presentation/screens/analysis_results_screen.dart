@@ -6,18 +6,17 @@ import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/core/widgets/app_card.dart';
 import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/ai_analysis_report.dart';
-import 'package:trustcue_mobile/features/analysis/domain/models/analysis_finding.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/assessment_action.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/assessment_indicator_group.dart';
-import 'package:trustcue_mobile/features/analysis/domain/models/finding_origin.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/local_assessment.dart';
 import 'package:trustcue_mobile/features/analysis/presentation/controllers/analysis_results_controller.dart';
+import 'package:trustcue_mobile/features/analysis/presentation/widgets/finding_evidence_card.dart';
+import 'package:trustcue_mobile/features/analysis/presentation/widgets/how_to_read_results_sheet.dart';
 import 'package:trustcue_mobile/features/export/domain/services/export_data_extractor.dart';
 import 'package:trustcue_mobile/features/export/presentation/controllers/export_controller.dart';
 import 'package:trustcue_mobile/features/export/presentation/widgets/export_report_sheet.dart';
 import 'package:trustcue_mobile/features/feedback/domain/models/app_feedback.dart';
 import 'package:trustcue_mobile/features/feedback/presentation/widgets/feedback_dialog.dart';
-import 'package:trustcue_mobile/features/localization/domain/models/app_language.dart';
 
 /// Screen displaying deterministic on-device analysis results, scope limitations,
 /// factual evidence trail, prioritized protective actions, and optional protected
@@ -48,6 +47,12 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
           onPressed: controller.returnToReview,
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'how_to_read_results_title'.tr,
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            onPressed: () => HowToReadResultsSheet.show(context),
+          ),
           Obx(() {
             final assessment = controller.assessment.value;
             if (assessment == null) return const SizedBox.shrink();
@@ -135,7 +140,7 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Analysis unavailable',
+                      'We couldn’t complete this check',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.error,
@@ -267,27 +272,27 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
         icon = Icons.warning_amber_rounded;
         iconColor = theme.colorScheme.error;
         heading = assessment.totalFindingsCount == 1
-            ? '1 potential warning indicator detected'
-            : '${assessment.totalFindingsCount} potential warning indicators detected';
-        bannerBg = theme.colorScheme.errorContainer.withValues(alpha: 0.2);
+            ? '1 potential warning sign found'
+            : '${assessment.totalFindingsCount} potential warning signs found';
+        bannerBg = theme.colorScheme.errorContainer.withValues(alpha: 0.18);
         break;
       case AssessmentOutcomeState.noIndicatorsMatched:
         icon = Icons.info_outline;
         iconColor = theme.colorScheme.primary;
-        heading = 'No indicators matched';
+        heading = 'No warning signs found by the on-device checks';
         bannerBg = theme.colorScheme.surfaceContainerHighest;
         break;
       case AssessmentOutcomeState.limitedCoverage:
         icon = Icons.rule_folder_outlined;
         iconColor = theme.colorScheme.tertiary;
-        heading = 'Limited rule coverage';
+        heading = 'Only part of this content could be checked';
         bannerBg = theme.colorScheme.surfaceContainerHighest;
         break;
     }
 
     return AppCard(
       child: Container(
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: bannerBg,
           borderRadius: BorderRadius.circular(8),
@@ -315,25 +320,27 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
                 AssessmentOutcomeState.noIndicatorsMatched) ...[
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
                   border: Border.all(color: theme.dividerColor),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
                       Icons.shield_outlined,
-                      size: 16,
+                      size: 18,
                       color: theme.hintColor,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Not a proof of safety: on-device rules check specific known patterns and do not evaluate sender identity or all scam methods.',
+                        'These checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          fontStyle: FontStyle.italic,
+                          color: theme.hintColor,
+                          height: 1.35,
                         ),
                       ),
                     ),
@@ -360,14 +367,14 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
           Row(
             children: [
               Icon(
-                Icons.rule_outlined,
+                Icons.fact_check_outlined,
                 size: 20,
                 color: theme.colorScheme.primary,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Scope and rule coverage',
+                  'What was checked & scope',
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -375,7 +382,57 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
               ),
             ],
           ),
+          const SizedBox(height: 10),
+
+          // Grounded items of what was checked vs. what was not
+          _buildCheckItem(
+            theme: theme,
+            icon: Icons.phonelink_lock_outlined,
+            title: 'On-device checks',
+            subtitle: 'Evaluated 10 local heuristic rules entirely on this device without sending data anywhere.',
+          ),
+          const SizedBox(height: 6),
+          _buildCheckItem(
+            theme: theme,
+            icon: Icons.link_outlined,
+            title: 'Offline URL inspection',
+            subtitle: 'Analyzed web address structure offline; the destination website was not visited or verified.',
+          ),
+          const SizedBox(height: 6),
+          _buildCheckItem(
+            theme: theme,
+            icon: Icons.translate_outlined,
+            title: 'Language & text boundaries',
+            subtitle: 'Rules evaluate English message patterns; text extraction covers Latin script.',
+          ),
+          const SizedBox(height: 6),
+          Obx(() {
+            final aiState = controller.aiState.value;
+            final String aiTitle;
+            final String aiSubtitle;
+            final IconData aiIcon;
+            if (aiState == AiAnalysisState.completed) {
+              aiTitle = 'Cloud AI assistance: Completed';
+              aiSubtitle = 'Evaluated secondary linguistic patterns via ${controller.aiReport.value?.provider ?? 'Groq Cloud'}.';
+              aiIcon = Icons.auto_awesome;
+            } else if (aiState == AiAnalysisState.failed) {
+              aiTitle = 'Cloud AI assistance: Unavailable';
+              aiSubtitle = 'Secondary cloud check could not be completed. Your local on-device results remain valid.';
+              aiIcon = Icons.info_outline;
+            } else {
+              aiTitle = 'Cloud AI assistance: Not requested';
+              aiSubtitle = 'Local on-device analysis only. No text was uploaded to cloud AI.';
+              aiIcon = Icons.cloud_off_outlined;
+            }
+            return _buildCheckItem(
+              theme: theme,
+              icon: aiIcon,
+              title: aiTitle,
+              subtitle: aiSubtitle,
+            );
+          }),
           const SizedBox(height: 8),
+
           Text(coverage.coverageDescription, style: theme.textTheme.bodyMedium),
           if (coverage.skippedRuleIds.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -439,6 +496,49 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCheckItem({
+    required ThemeData theme,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: theme.colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 11,
+                    color: theme.hintColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -632,126 +732,15 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
 
             // Individual Findings
             ...group.findings.map(
-              (finding) => _buildFindingTile(theme, finding, context),
+              (finding) => FindingEvidenceCard(
+                finding: finding,
+                isAi: false,
+                onViewInAnalyzedText: () =>
+                    controller.viewEvidenceInText(finding, context),
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildFindingTile(
-    ThemeData theme,
-    AnalysisFinding finding,
-    BuildContext context,
-  ) {
-    final isAi = finding.origin == FindingOrigin.remoteAi;
-
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isAi
-                      ? theme.colorScheme.tertiaryContainer
-                      : theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  isAi ? '[AI-Assisted: Groq]' : '[On-device heuristic]',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: isAi
-                        ? theme.colorScheme.onTertiaryContainer
-                        : theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
-              ),
-              Text(
-                isAi
-                    ? 'Groq Cloud • ${finding.producerId}'
-                    : 'Rule provenance: ${finding.producerId} (on-device local rule)',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.hintColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            finding.explanation,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Exact supporting excerpt(s):',
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          ...finding.evidence.map(
-            (ref) => Container(
-              margin: const EdgeInsets.only(bottom: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: theme.dividerColor),
-              ),
-              child: Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 2,
-                children: [
-                  Directionality(
-                    textDirection: determineExcerptDirection(ref.exactExcerpt),
-                    child: Text(
-                      '"${ref.exactExcerpt}"',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontFamily: 'monospace',
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Directionality(
-                    textDirection: TextDirection.ltr,
-                    child: Text(
-                      'offset [${ref.startOffset}, ${ref.endOffset})',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.hintColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: AppButton.secondary(
-              label: 'View in analyzed text',
-              onPressed: () => controller.viewEvidenceInText(finding, context),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1244,7 +1233,12 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
           ),
           const SizedBox(height: 8),
           ...report.findings.map(
-            (finding) => _buildFindingTile(theme, finding, context),
+            (finding) => FindingEvidenceCard(
+              finding: finding,
+              isAi: true,
+              onViewInAnalyzedText: () =>
+                  controller.viewEvidenceInText(finding, context),
+            ),
           ),
           const SizedBox(height: AppSpacing.pagePaddingSmall),
         ] else ...[

@@ -9,6 +9,7 @@ import 'package:trustcue_mobile/features/analysis/domain/models/finding_origin.d
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/input/domain/models/text_snapshot.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report.dart';
+import 'package:trustcue_mobile/features/localization/presentation/translations/app_translations.dart';
 import 'package:trustcue_mobile/features/reports/presentation/controllers/saved_report_detail_controller.dart';
 import 'package:trustcue_mobile/features/reports/presentation/screens/saved_report_detail_screen.dart';
 
@@ -33,42 +34,43 @@ void main() {
         createdAt: DateTime.utc(2026, 10, 15, 12, 0, 0),
       );
 
-      final excerpt = text.substring(0, text.length >= 6 ? 6 : text.length);
-      final finding = AnalysisFinding(
-        id: 'f-$id',
-        category: 'urgency',
-        explanation: 'Suspicious urgency detected in text',
-        origin: FindingOrigin.localRule,
-        producerId: 'rule.urgency',
-        evidence: [
-          EvidenceReference(
-            snapshotId: snapshot.id,
-            startOffset: 0,
-            endOffset: excerpt.length,
-            exactExcerpt: excerpt,
+      final List<AnalysisFinding> localFindings = [];
+      if (text.isNotEmpty) {
+        final excerpt = text.substring(0, text.length >= 6 ? 6 : text.length);
+        localFindings.add(
+          AnalysisFinding(
+            id: 'f-$id',
+            category: 'urgency',
+            explanation: 'Suspicious urgency detected in text',
+            origin: FindingOrigin.localRule,
+            producerId: 'rule.urgency',
+            evidence: [
+              EvidenceReference(
+                snapshotId: snapshot.id,
+                startOffset: 0,
+                endOffset: excerpt.length,
+                exactExcerpt: excerpt,
+              ),
+            ],
           ),
-        ],
-      );
+        );
+      }
 
       final localReport = AnalysisReport(
         id: id,
         snapshot: snapshot,
         analyzedAt: DateTime.utc(2026, 10, 15, 12, 0, 0),
-        findings: [finding],
+        findings: localFindings,
         limitations: const ['Evaluated standard heuristics.'],
         suggestedActions: const ['Contact sender on known verified channel.'],
       );
 
       AiAnalysisReport? aiReport;
       if (hasAi) {
-        aiReport = AiAnalysisReport(
-          reportId: 'ai-$id',
-          snapshotId: snapshot.id,
-          provider: 'groq-cloud',
-          model: 'qwen/qwen3.8-27b',
-          analyzedAt: DateTime.utc(2026, 10, 15, 12, 0, 5),
-          factualSummary: 'AI identified urgent call-to-action.',
-          findings: [
+        final List<AnalysisFinding> aiFindings = [];
+        if (text.isNotEmpty) {
+          final excerpt = text.substring(0, text.length >= 6 ? 6 : text.length);
+          aiFindings.add(
             AnalysisFinding(
               id: 'ai-f-$id',
               category: 'urgency',
@@ -84,7 +86,17 @@ void main() {
                 ),
               ],
             ),
-          ],
+          );
+        }
+
+        aiReport = AiAnalysisReport(
+          reportId: 'ai-$id',
+          snapshotId: snapshot.id,
+          provider: 'groq-cloud',
+          model: 'qwen/qwen3.8-27b',
+          analyzedAt: DateTime.utc(2026, 10, 15, 12, 0, 5),
+          factualSummary: 'AI identified urgent call-to-action.',
+          findings: aiFindings,
           uncertaintyNotes: const ['Domain registrar unverified.'],
           suggestedActions: const [],
         );
@@ -113,7 +125,11 @@ void main() {
 
     Widget createTestApp(SavedReportDetailController ctrl) {
       Get.put<SavedReportDetailController>(ctrl);
-      return const GetMaterialApp(home: SavedReportDetailScreen());
+      return GetMaterialApp(
+        translations: AppTranslations(),
+        locale: const Locale('en', 'US'),
+        home: const SavedReportDetailScreen(),
+      );
     }
 
     testWidgets(
@@ -135,9 +151,9 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Saved Report Details'), findsOneWidget);
-        expect(find.text('[On-device heuristic]'), findsOneWidget);
+        expect(find.text('[On-device heuristic]'), findsWidgets);
         expect(
-          find.text('1 potential warning indicator detected'),
+          find.text('1 potential warning sign found'),
           findsOneWidget,
         );
         expect(find.text('Analyzed text snapshot'), findsOneWidget);
@@ -147,6 +163,14 @@ void main() {
           find.text('Suspicious urgency detected in text'),
           findsOneWidget,
         );
+
+        // Technical details in FindingEvidenceCard
+        expect(find.text('Show technical details'), findsOneWidget);
+        await tester.ensureVisible(find.text('Show technical details'));
+        await tester.tap(find.text('Show technical details'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('rule.urgency'), findsOneWidget);
+
         expect(find.text('Evaluated standard heuristics.'), findsOneWidget);
         expect(
           find.text('Contact sender on known verified channel.'),
@@ -233,6 +257,72 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(fakeRepo.storage.containsKey('rep-del-ui'), isFalse);
+      },
+    );
+
+    testWidgets(
+      'tapping help icon in AppBar opens HowToReadResultsSheet',
+      (tester) async {
+        final report = createReport(
+          id: 'rep-help-detail',
+          text: 'Urgent: Wire money right away.',
+        );
+        await fakeRepo.saveReport(report);
+
+        final controller = SavedReportDetailController(
+          reportId: 'rep-help-detail',
+          repository: fakeRepo,
+          authRepository: fakeAuth,
+        );
+
+        await tester.pumpWidget(createTestApp(controller));
+        await tester.pumpAndSettle();
+
+        final helpBtn = find.byTooltip('How to read this result');
+        expect(helpBtn, findsOneWidget);
+        await tester.tap(helpBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.text('How to read this result'), findsOneWidget);
+        expect(
+          find.text('Warning signs are clues, not a final verdict'),
+          findsOneWidget,
+        );
+
+        await tester.tap(find.byIcon(Icons.close));
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Warning signs are clues, not a final verdict'),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
+      'renders cloud summary notice when snapshot text is empty',
+      (tester) async {
+        final report = createReport(
+          id: 'rep-cloud-empty-text',
+          text: '',
+        );
+        await fakeRepo.saveReport(report);
+
+        final controller = SavedReportDetailController(
+          reportId: 'rep-cloud-empty-text',
+          repository: fakeRepo,
+          authRepository: fakeAuth,
+        );
+
+        await tester.pumpWidget(createTestApp(controller));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Cloud backup summary'), findsOneWidget);
+        expect(
+          find.text(
+            'Original message text and evidence quotes are omitted from cloud backups to protect your privacy. Only report metadata (timestamp, source, category count) is synchronized.',
+          ),
+          findsOneWidget,
+        );
       },
     );
   });

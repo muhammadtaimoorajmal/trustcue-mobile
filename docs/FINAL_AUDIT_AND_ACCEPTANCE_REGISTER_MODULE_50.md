@@ -617,7 +617,84 @@ Module 50 is **IN PROGRESS**:
 
 ---
 
+## 12. Module 50B: Clear Analysis Results, Evidence, Next Actions, and Contextual Guidance Register
+
+### 12.1 Objective and Scope
+Module 50B resolves all usability, transparency, and evidence hierarchy requirements for analysis outcomes in TrustCue:
+* **Outcome Summary:** Plain-language headline and indicator counts based on domain-mapped categories, preventing double-counting between local heuristics and optional Cloud AI.
+* **What Was Checked & Scope Card:** Prominent card detailing local rule execution (10 rules), offline URL structural inspection, English language/Latin script boundaries, and explicit Cloud AI status (`Not requested` / `Completed` / `Failed`).
+* **Evidence Presentation Hierarchy:** Exact supporting quotation excerpts rendered prominently in monospace quote cards with dynamic BiDi directionality (`determineExcerptDirection`). Technical rule IDs (`rule.urgency.immediate_action`) and UTF-16 offset spans `[start, end)` are sequestered inside an expandable "Technical details" drawer.
+* **Calm No-Match Explanation:** When no heuristic triggers match, displays *"No warning signs found by the on-device checks"* alongside the calm explanatory notice: *"These checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."* Strictly prohibits green shields, "Safe" badges, or guaranteed safety claims.
+* **Contextual Guidance:** Accessible modal bottom sheet *"How to read this result"* available from the AppBar in both live analysis and saved reports, articulating 5 offline educational principles localized in English and Urdu.
+* **HCI Memorability:** Saved report detail screen mirrors live analysis card design, outcome headings, and help accessibility. Displays privacy explanation when cloud backup metadata omits raw text snapshots.
+* **Documentation Correction:** Updated `README.md` to state `"No indicators matched in the six tested benign fixtures."` instead of `"0% false positives"`.
+
+### 12.2 Implementation Traceability
+* `README.md`: Corrected evaluation metrics description on line 12.
+* `frontend/lib/features/localization/presentation/translations/app_translations.dart`: Added complete bilingual English (`enUS`) and Urdu (`urPK`) dictionaries for outcome states, what was checked, calm notices, technical toggles, and contextual help modal.
+* `frontend/lib/features/analysis/presentation/widgets/finding_evidence_card.dart`: Created reusable finding component with exact quotation excerpts, BiDi support, minimum 48x48 dp touch targets, and expandable technical drawer.
+* `frontend/lib/features/analysis/presentation/widgets/how_to_read_results_sheet.dart`: Created accessible modal bottom sheet with 5 educational principles, WCAG AA compliance, and 200% text scale support.
+* `frontend/lib/features/analysis/presentation/screens/analysis_results_screen.dart`: Refactored to integrate plain-language outcome summary, "What was checked & scope" card, AppBar help button, and `FindingEvidenceCard`.
+* `frontend/lib/features/reports/presentation/screens/saved_report_detail_screen.dart`: Updated to mirror live outcome states, calm notice, `FindingEvidenceCard`, AppBar help button, and privacy notice for empty cloud text snapshots.
+
+### 12.3 Automated Test & Static Analysis Evidence
+* `flutter analyze --no-pub`: **0 issues found** (100% clean).
+* `flutter test --no-pub test/features/analysis/presentation/screens/analysis_results_screen_test.dart`: **8/8 passed** (tested hierarchy, calm no-match, help sheet modal, dark theme, 200% text scale, and AI states).
+* `flutter test --no-pub test/features/reports/presentation/screens/saved_report_detail_screen_test.dart`: **5/5 passed** (tested local detail, AI enrichment, deletion, help sheet modal, and empty snapshot notice).
+* `flutter test --no-pub`: **873/873 tests passed** across entire test suite with 0 regressions.
+
+### 12.4 Cloud-Configured Release Build Provenance
+* **Build Script:** `frontend/scripts/build_release.ps1 -Target apk -Install`
+* **Output Artifact:** `frontend/build/app/outputs/flutter-apk/app-release.apk`
+* **Artifact Size:** 111,213,594 bytes (106.06 MB)
+* **Artifact SHA-256:** `E8BE416F8833618D2C375607B662FE123A9F86C857D10DCC5EC46C460383EB2D`
+* **Signature Verification:** APK Signature Scheme v2 = `true` via `apksigner verify`.
+* **Signer Digest:** `66b3fb995dca5ac2ca17bed79c9d746536832129d4ee3d384561f1f609cbcd9f` (matches Module 48).
+* **Device Installation:** Streamed in-place upgrade via `adb install -r` to Vivo V2207 (`10AC9R1ABF0013A`) -> `Success`.
+
+### 12.5 Physical Device Real-Device Verification (Vivo V2207)
+* **Live Analysis (Suspicious Input):**
+  * Input: `"URGENT: Your account will be suspended within 24 hours. Send your password immediately to verify identity."`
+  * Outcome: `"3 potential warning signs found"`.
+  * Scope Card: Visible and detailed ("Evaluated 10 local heuristic rules entirely on this device...").
+  * Evidence: Exact quote `"URGENT: Your account will be suspended "` displayed in primary view.
+  * Technical Drawer: Tapped `"Show technical details"` -> Expanded to reveal `Rule provenance: rule.urgency.immediate_action (on-device local rule)` and offset metadata.
+* **Contextual Help Modal:**
+  * Tapped `?` icon in AppBar -> Modal bottom sheet `"How to read this result"` opened modally.
+  * Verified all 5 educational bullet points and close button.
+* **Calm No-Match (Benign Input):**
+  * Input: `"Hi Mom, please bring groceries home tonight. Love you."`
+  * Outcome: `"No warning signs found by the on-device checks"`.
+  * Inset Notice: *"These checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."*
+  * Verified zero green shields and zero "Safe" verdicts.
+* **Saved Report Detail:**
+  * Saved benign report locally to SQLite on device.
+  * Navigated to Saved Reports -> Opened report detail -> Verified consistent outcome card and AppBar help modal.
+
+### 12.6 HCI Evaluation Principles
+* **Effectiveness:** Clear distinction between warning indicators and non-verdicts; exact quotes verify findings.
+* **Efficiency:** Technical noise tucked into expandable drawer; key findings and actions immediately readable.
+* **Safety:** Zero false safety claims; calm warning notice prevents complacency on benign messages.
+* **Utility:** Practical verification guidance (contacting sender on known channel) replaces generic tips.
+* **Learnability:** Contextual 5-point educational guide available anywhere with one tap.
+* **Memorability:** Consistent visual language across live and historical report screens.
+* **Satisfaction:** Clean layout, calming typography, no alarming flashing banners or confusing scores.
+* **Accessibility:** WCAG AA 48x48 dp touch targets, font scaling up to 200%, dynamic BiDi text support.
+
+### 12.7 Carry-Forward & Next Roadmap Steps
+* **Upcoming Steps:**
+  * Module 50C: Comprehensive Input Ingestion (Message, Screenshot OCR, Link, QR).
+  * Module 50D: Redaction, Privacy Controls, and Session Isolation.
+  * Module 50E: Offline-First Operation and Cloud Opt-In.
+  * Module 50F: Comprehensive Heuristic and AI Evaluation.
+  * Module 50G: Report Persistence, Export, and Cross-Platform Portability.
+  * Module 50H: Final Hardening, Verification, and Handover Candidate.
+* **Owner Rules Preserved:** Main branch untouched (`a785db8`). Strictly 4 repository branches maintained. Exactly 50 numbered roadmap modules preserved.
+
+---
+
 **Audited By:** Antigravity Pairing Assistant  
 **Reviewed For:** Muhammad Taimoor Ajmal (Lead Developer / Student)  
-**Date:** October 19, 2026
-**Module 50 Status:** IN PROGRESS (Gated on final owner approval before main merge)
+**Date:** October 19, 2026  
+**Module 50 Status:** IN PROGRESS (Module 50B Complete; Gated on final owner approval before main merge)
+
