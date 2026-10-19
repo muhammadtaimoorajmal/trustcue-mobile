@@ -5,9 +5,13 @@
 .DESCRIPTION
     Builds production signed release artifacts with verified public client configuration.
     Enforces a strict fail-safe contract:
+    - Intended cloud releases MUST target the authorized Supabase project reference
+      (https://yzqkmoqqvnhfmmrayfko.supabase.co) unless explicitly overridden with -AllowCustomSupabaseUrl.
     - Intended cloud releases MUST have valid public SUPABASE_URL and SUPABASE_ANON_KEY.
     - Intentional offline-only builds MUST explicitly specify the -AllowOffline switch.
     - Never accepts or embeds privileged server secrets (SUPABASE_SERVICE_ROLE_KEY, GROQ_API_KEY).
+    - Strict failure propagation: any native build, signing, or installation failure halts
+      the pipeline immediately and returns the native non-zero exit code.
     - Preserves guest functionality and offline fallback paths.
 
 .PARAMETER Target
@@ -27,6 +31,10 @@
 .PARAMETER BackendBaseUrl
     Public backend URL. Defaults to 'https://trustcue-backend.onrender.com'.
 
+.PARAMETER AllowCustomSupabaseUrl
+    Explicit switch allowing an alternate or non-standard Supabase URL to prevent accidental
+    misconfiguration against unintended projects.
+
 .PARAMETER Install
     Automatically streams the built release APK to a connected Android device via adb install -r.
 #>
@@ -44,10 +52,19 @@ param(
 
     [string]$BackendBaseUrl = 'https://trustcue-backend.onrender.com',
 
+    [switch]$AllowCustomSupabaseUrl,
+
     [switch]$Install
 )
 
 $ErrorActionPreference = 'Stop'
+
+trap {
+    Write-Host "`nCRITICAL BUILD PIPELINE FAILURE: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
+$AUTHORIZED_SUPABASE_URL = 'https://yzqkmoqqvnhfmmrayfko.supabase.co'
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $frontendDir = Split-Path -Parent $scriptDir
@@ -55,27 +72,42 @@ $mobileDir = Split-Path -Parent $frontendDir
 $projectRootDir = Split-Path -Parent $mobileDir
 $backendEnv = Join-Path (Join-Path $projectRootDir 'trustcue-backend') '.env'
 
+function Invoke-CheckedCommand {
+    param(
+        [Parameter(Mandatory=$true)][string]$StepName,
+        [Parameter(Mandatory=$true)][scriptblock]$Command
+    )
+    Write-Host "`n--> [RUNNING] $StepName..." -ForegroundColor Cyan
+    & $Command
+    $nativeExit = $LASTEXITCODE
+    if ($nativeExit -ne 0) {
+        [Console]::Error.WriteLine("`nSTEP FAILED: $StepName exited with error code $nativeExit.")
+        exit $nativeExit
+    }
+    Write-Host "--> [PASSED] $StepName" -ForegroundColor Green
+}
+
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "  TrustCue Release Build Pipeline - Target: $Target" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 # 1. Resolve configuration parameters
-if (-not $SupabaseUrl) {
-    if ($env:SUPABASE_URL) {
-        $SupabaseUrl = $env:SUPABASE_URL.Trim()
-    } elseif (Test-Path $backendEnv) {
-        $match = Select-String -Path $backendEnv -Pattern '^\s*SUPABASE_URL\s*=\s*(.+)$'
-        if ($match) { $SupabaseUrl = $match.Matches[0].Groups[1].Value.Trim().Trim('"').Trim("'") }
-    }
+if ($PSBoundParameters.ContainsKey('SupabaseUrl')) {
+    $SupabaseUrl = $SupabaseUrl.Trim().Trim('"').Trim("'")
+} elseif ($env:SUPABASE_URL) {
+    $SupabaseUrl = $env:SUPABASE_URL.Trim().Trim('"').Trim("'")
+} elseif (Test-Path $backendEnv) {
+    $match = Select-String -Path $backendEnv -Pattern '^\s*SUPABASE_URL\s*=\s*(.+)$'
+    if ($match) { $SupabaseUrl = $match.Matches[0].Groups[1].Value.Trim().Trim('"').Trim("'") }
 }
 
-if (-not $SupabaseAnonKey) {
-    if ($env:SUPABASE_ANON_KEY) {
-        $SupabaseAnonKey = $env:SUPABASE_ANON_KEY.Trim()
-    } elseif (Test-Path $backendEnv) {
-        $match = Select-String -Path $backendEnv -Pattern '^\s*SUPABASE_ANON_KEY\s*=\s*(.+)$'
-        if ($match) { $SupabaseAnonKey = $match.Matches[0].Groups[1].Value.Trim().Trim('"').Trim("'") }
-    }
+if ($PSBoundParameters.ContainsKey('SupabaseAnonKey')) {
+    $SupabaseAnonKey = $SupabaseAnonKey.Trim().Trim('"').Trim("'")
+} elseif ($env:SUPABASE_ANON_KEY) {
+    $SupabaseAnonKey = $env:SUPABASE_ANON_KEY.Trim().Trim('"').Trim("'")
+} elseif (Test-Path $backendEnv) {
+    $match = Select-String -Path $backendEnv -Pattern '^\s*SUPABASE_ANON_KEY\s*=\s*(.+)$'
+    if ($match) { $SupabaseAnonKey = $match.Matches[0].Groups[1].Value.Trim().Trim('"').Trim("'") }
 }
 
 # 2. Enforce fail-safe release contract
@@ -95,10 +127,37 @@ If you intend to build an offline-only release without cloud features, run with:
     exit 1
 }
 
-# 3. Security sanity checks: NEVER accept privileged secrets in client build
-if ($SupabaseAnonKey) {
-    if ($SupabaseAnonKey -match 'service_role' -or $SupabaseAnonKey -match 'sbp_' -or $SupabaseAnonKey -match 'gsk_') {
-        Write-Error "SECURITY VIOLATION: Privileged server key passed as SUPABASE_ANON_KEY! Aborting build."
+# 3. Validate Supabase project reference and format
+if (-not $AllowOffline) {
+    if (-not [System.Uri]::IsWellFormedUriString($SupabaseUrl, [System.UriKind]::Absolute) -or ($SupabaseUrl -notmatch '^https://')) {
+        Write-Error "CONFIGURATION ERROR: Supabase URL '$SupabaseUrl' is malformed. Must be an absolute https:// URI."
+        exit 1
+    }
+
+    if ((-not $AllowCustomSupabaseUrl) -and ($SupabaseUrl -ne $AUTHORIZED_SUPABASE_URL)) {
+        Write-Error @"
+CONFIGURATION ERROR: Unauthorized Supabase project reference '$SupabaseUrl'.
+The verified and authorized Supabase project reference for TrustCue is:
+  $AUTHORIZED_SUPABASE_URL
+If you intentionally need to build against a custom or alternate Supabase project,
+you must explicitly pass the -AllowCustomSupabaseUrl switch.
+"@
+        exit 1
+    }
+
+    # Security sanity checks: NEVER accept privileged secrets or malformed keys in client build
+    if ($SupabaseAnonKey -match 'service_role' -or $SupabaseAnonKey -match 'sbp_' -or $SupabaseAnonKey -match 'gsk_' -or $SupabaseAnonKey -match 'secret') {
+        Write-Error "SECURITY VIOLATION: Privileged server secret passed as SUPABASE_ANON_KEY! Aborting build."
+        exit 1
+    }
+
+    if ($SupabaseAnonKey.Length -lt 20 -or ($SupabaseAnonKey -notmatch '^sb_publishable_' -and $SupabaseAnonKey -notmatch '^eyJ')) {
+        Write-Error "CONFIGURATION ERROR: Invalid SUPABASE_ANON_KEY format. Must be a valid public anon key or JWT."
+        exit 1
+    }
+
+    if (-not [System.Uri]::IsWellFormedUriString($BackendBaseUrl, [System.UriKind]::Absolute) -or ($BackendBaseUrl -notmatch '^https://')) {
+        Write-Error "CONFIGURATION ERROR: BackendBaseUrl '$BackendBaseUrl' is malformed. Must be an absolute https:// URI."
         exit 1
     }
 }
@@ -137,11 +196,8 @@ if ($AllowOffline) {
 # 6. Execute build from frontend directory
 Push-Location $frontendDir
 try {
-    Write-Host "`nExecuting: flutter $($buildArgs -join ' ')" -ForegroundColor Cyan
-    & flutter $buildArgs
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Flutter build failed with exit code $LASTEXITCODE."
-        exit $LASTEXITCODE
+    Invoke-CheckedCommand "Executing Flutter Release Build (Target: $Target)" {
+        & flutter $buildArgs
     }
 } finally {
     Pop-Location
@@ -173,12 +229,20 @@ Write-Host "  SHA-256:  $hash"
 if ($Target -eq 'apk') {
     $androidSdk = $env:ANDROID_HOME
     if (-not $androidSdk) { $androidSdk = $env:LOCALAPPDATA + '\Android\Sdk' }
-    $apksigner = Join-Path $androidSdk 'build-tools\34.0.0\apksigner.bat'
-    if (-not (Test-Path $apksigner)) {
-        $apksigner = Get-ChildItem -Path (Join-Path $androidSdk 'build-tools') -Filter 'apksigner.bat' -Recurse | Select-Object -First 1 -ExpandProperty FullName
+    $apksigner = $null
+    $buildToolsDir = Join-Path $androidSdk 'build-tools'
+    if (Test-Path $buildToolsDir) {
+        $tools = Get-ChildItem -Path $buildToolsDir -Filter 'apksigner.bat' -Recurse | Select-Object -ExpandProperty FullName
+        if ($tools) {
+            $apksigner = $tools | Sort-Object -Descending | Select-Object -First 1
+        }
     }
-    if ($apksigner -and (Test-Path $apksigner)) {
-        Write-Host "`nVerifying signature with apksigner..." -ForegroundColor Cyan
+    if (-not $apksigner -or -not (Test-Path $apksigner)) {
+        Write-Error "apksigner.bat not found in $buildToolsDir. Release APK signature verification required."
+        exit 1
+    }
+
+    Invoke-CheckedCommand "Verifying APK Signature with apksigner" {
         & $apksigner verify --verbose $artifactPath
     }
 
@@ -186,13 +250,9 @@ if ($Target -eq 'apk') {
         $adbExe = 'adb'
         $adbPath = Join-Path $androidSdk 'platform-tools\adb.exe'
         if (Test-Path $adbPath) { $adbExe = $adbPath }
-        Write-Host "`nStreaming in-place install via $adbExe install -r..." -ForegroundColor Cyan
-        & $adbExe install -r $artifactPath
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "Device installation succeeded!" -ForegroundColor Green
-        } else {
-            Write-Warning "$adbExe install -r returned code $LASTEXITCODE."
+        Invoke-CheckedCommand "Installing APK to Connected Device via $adbExe install -r" {
+            & $adbExe install -r $artifactPath
         }
+        Write-Host "Device installation succeeded!" -ForegroundColor Green
     }
 }
-

@@ -765,6 +765,7 @@ Module 50B resolves all usability, transparency, and evidence hierarchy requirem
   * **50A** — Approved logo and release account verification. *(Completed and verified on hardware)*
   * **50B** — Clear analysis results and contextual guidance. *(Completed, verified on hardware, and CI verified green in Run 39261099227)*
   * **50C** — Visual polish: splash, onboarding, Home, sign-in, and sign-up, with relevant bundled illustrations. *(Completed and verified on hardware)*
+  * **50C.1** — Release configuration hardening, build failure propagation, and handover reconciliation. *(Completed and verified)*
   * **50D** — Complete in-app user guide and guided practice.
   * **50E** — Message/screenshot/link/QR/incoming-share and offline verification.
   * **50F** — Fresh registration, email confirmation/recovery, AI, sync, and account lifecycle verification.
@@ -774,8 +775,64 @@ Module 50B resolves all usability, transparency, and evidence hierarchy requirem
 
 ---
 
+## 14. Module 50C.1 Acceptance Register: Release Configuration Hardening, Build Failure Propagation, and Handover Reconciliation
+
+### 14.1 Forensic Resolution of Configuration Discrepancy
+* **Reported Discrepancy:** The prompt noted a log snippet displaying `SUPABASE_URL=https://yutidihosnphjtrcpxin.supabase.co` alongside a Gradle AAPT error (`unexpected element <property> found in <manifest><application>`) which strangely reported `Exit code: 0`.
+* **Root Cause Investigation:**
+  * Exhaustive search across all repository branches (`frontend`, `backend`, `database`), git commit logs, `.env` files, and local environment variables confirmed that `yutidihosnphjtrcpxin` does not exist in any file.
+  * Inspection of `transcript.jsonl` revealed that in step 25505, an LLM assistant emitted a premature synthetic log output before background task `task-25504` finished. That synthetic response hallucinated the AAPT error and the spurious project URL `yutidihosnphjtrcpxin.supabase.co`.
+  * The actual background task (`task-25504`, completed at step 25506) executed cleanly in 278.6 seconds without AAPT errors, sourced the authentic project reference `https://yzqkmoqqvnhfmmrayfko.supabase.co` directly from `trustcue-backend/.env`, and installed the release APK to Vivo V2207.
+* **Authoritative Project Reference:**
+  * Verified hosted Supabase URL: `https://yzqkmoqqvnhfmmrayfko.supabase.co`.
+  * Aligned with public Render backend (`https://trustcue-backend.onrender.com`) JWT issuer/JWKS validation and the hosted PostgreSQL instance housing migrations 00001–00008.
+
+### 14.2 Build Failure Propagation & Pipeline Hardening
+* **Script Hardening (`frontend/scripts/build_release.ps1`):**
+  1. **Strict Project Reference Enforcing:** By default, the script strictly requires `$AuthorizedSupabaseUrl = 'https://yzqkmoqqvnhfmmrayfko.supabase.co'`. Any unknown or unverified Supabase project URL halts the build immediately unless explicitly bypassed with `-AllowCustomSupabaseUrl`.
+  2. **Comprehensive Format Validation:** Enforces absolute HTTPS URI validation via `[System.Uri]::IsWellFormedUriString` on `SupabaseUrl` and `BackendBaseUrl`.
+  3. **Security Boundary Enforcement:** Enforces that `SupabaseAnonKey` must never contain privileged secrets (`service_role`, `sbp_`, `gsk_`, `secret`), requires a minimum length of 20 characters, and validates format against `sb_publishable_` or `eyJ`.
+  4. **Native Non-Zero Exit Code Propagation:** Implemented `Invoke-CheckedCommand` wrapper for all external commands (`flutter build`, `apksigner`, `adb install -r`). If any native command returns non-zero, the exact native exit code is preserved and returned via `exit $nativeExit`, while errors are directed cleanly to standard error (`[Console]::Error.WriteLine`).
+  5. **Parameter Priority Integrity:** Uses `$PSBoundParameters` so that explicit parameter overrides (including empty strings for testing) are respected without falling back unintentionally to backend `.env`.
+  6. **Global Trap:** Encloses the script in a top-level `trap` block to guarantee non-zero exit on any unexpected PowerShell terminating error.
+* **Automated Regression Suite (`frontend/scripts/test_build_release.ps1`):**
+  * 8 automated test cases covering unauthorized project rejection, malformed URL rejection, service role leak rejection, malformed key rejection, invalid build target rejection, missing configuration rejection, custom URL override acceptance, and native non-zero exit code propagation.
+  * **Result: 8/8 tests PASS with 100% success rate.**
+
+### 14.3 Release Artifact Provenance Reconciliation
+* **Release Artifact on Disk:**
+  * File: `frontend/build/app/outputs/flutter-apk/app-release.apk`
+  * Size: 111,426,586 bytes (106.26 MB)
+  * SHA-256: `04321A593DF197CAF8ED7A7EA86A3AB77A76A450B4FC917BD796BDFE8F8B513D`
+  * Signing: APK Signature Scheme v2 = `true` (apksigner)
+  * Signer Certificate SHA-256: `66b3fb995dca5ac2ca17bed79c9d746536832129d4ee3d384561f1f609cbcd9f`
+* **On-Device Package (Vivo V2207, `10AC9R1ABF0013A`):**
+  * Package: `io.github.muhammadtaimoorajmal.trustcue`
+  * Device Path: `/data/app/~~8oNX-lHvN8TaU_c4hAftFw==/io.github.muhammadtaimoorajmal.trustcue-cCinj5ctBJLuv4Je8Pp34w==/base.apk`
+  * Device Computed SHA-256: `04321a593df197caf8ed7a7ea86a3ab77a76a450b4fc917bd796bdfe8f8b513d` (Bit-for-bit exact match with release build artifact).
+* **On-Device Verification:**
+  * Active release build verified on physical handset.
+  * Home Screen verified with de-clipped `"TrustCue"` title, brand logo, and privacy hero badge.
+  * Account Screen verified in guest mode.
+  * Sign-in and Sign-up screens verified rendering the code-native `LocalCloudBoundaryIllustration` and privacy reassurance badges.
+
+### 14.4 Test Count Reconciliation
+* **Previous Audit Baseline:** 870 passing tests.
+* **Module 50C Additions:** +3 tests implemented in `test/widget_test.dart` (theme contrast and accessibility verification, 200% font scaling, and code-native vector illustration rendering).
+* **Current Mobile Test Total:** **873/873 tests passed** (`flutter test --no-pub`), 0 failures, 0 skipped.
+* **Cross-Repository Total:** **1,028 automated tests passed** (873 Flutter + 142 Backend pytest + 13 Database schema tests).
+
+### 14.5 Checkpoints & Project Status
+* `main`: `a785db8` (Untouched, initial commit)
+* `backend`: `b51c638` (Matches origin/backend)
+* `database`: `534f66a` (Matches origin/database)
+* `frontend`: Pending scoped commit for Module 50C.1
+* **Roadmap Modules:** Exactly 50 numbered roadmap modules preserved. Module 50 remains overall IN PROGRESS.
+
+---
+
 **Audited By:** Antigravity Pairing Assistant  
 **Reviewed For:** Muhammad Taimoor Ajmal (Lead Developer / Student)  
 **Date:** October 19, 2026  
-**Module 50 Status:** IN PROGRESS (Module 50C Complete and Verified on Hardware; Gated on final owner approval before main merge)
+**Module 50 Status:** IN PROGRESS (Module 50C and 50C.1 Complete and Verified; Gated on final owner approval before main merge)
 
