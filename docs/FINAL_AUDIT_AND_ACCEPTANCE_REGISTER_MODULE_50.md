@@ -95,7 +95,7 @@ The following register details the reconciliation of every individual module in 
 | **47** | CI/CD, Deployment & Live Recovery | Production Render web service, Supabase migrations 00007–00008, live sync. | `render.yaml`, `database/migrations/00007_enforce_sync_opt_in.sql` | Live probes return 200; concurrent upload/purge tests pass. | **Verified / Complete** | Applied atomic upload/purge protection trigger. |
 | **48** | Android Release Packaging & Signing | Production R8 code shrinking, 4096-bit RSA keystore, APK Signature Scheme v2. | `android/app/build.gradle`, `android/key.properties` | `apksigner` verifies v2 signature; in-place upgrade verified on device. | **Verified / Complete** | Verified OpenSSL PBKDF2 encrypted keystore backup. |
 | **49** | Play Console Listing & Compliance | Play Store listing copy, authentic screenshots, Data Safety disclosures. | `docs/PLAY_STORE_LISTING_MODULE_49.md`, `docs/DATA_SAFETY_AND_DISCLOSURES_MODULE_49.md` | Programmatic character counts pass (25/30, 77/80, 3358/4000); live TLS 1.3 verified. | **Verified / Complete** | Added functional account deletion request generator. |
-| **50** | Final Audit, Reconciled Quality Gates & Handover | Complete 50-module audit, four-branch reconciliation, reproducible release build with verified cloud configuration, physical device verification. | `docs/FINAL_AUDIT_AND_ACCEPTANCE_REGISTER_MODULE_50.md`, `frontend/scripts/build_release.ps1` | 1,025 automated tests pass (870 Flutter, 142 backend, 13 database); CI 100% green; release APK signed and cloud-configured; device install verified. | **In Progress** | Final physical device live auth/sync and missing checks being closed. |
+| **50** | Final Audit, Reconciled Quality Gates & Handover | Complete 50-module audit, four-branch reconciliation, reproducible release build with verified cloud configuration, physical device verification. | `docs/FINAL_AUDIT_AND_ACCEPTANCE_REGISTER_MODULE_50.md`, `frontend/scripts/build_release.ps1` | 1,136 automated tests pass (981 Flutter, 142 backend, 13 database); CI 100% green; release APK signed and cloud-configured; device install verified. | **In Progress** | Modules 50A, 50B, 50C, 50C.1, 50D, and 50E.1 complete; physical device verified on Vivo V2207. |
 
 ---
 
@@ -917,8 +917,131 @@ Module 50B resolves all usability, transparency, and evidence hierarchy requirem
 
 ---
 
+## 16. Module 50E.1 Acceptance Register: Message Input, Link Inspection, Incoming Text Sharing, and Offline Verification
+
+### 16.1 Handover Discrepancies Forensic Reconciliation
+* **Item 1A — GitHub Actions Run 39284190434:**
+  * Verified against tested commit `803dc7b` (Module 50D).
+  * Run status: `completed`, conclusion: `success`, completed at `2026-10-19T16:04:14Z` (duration 18m 52s).
+  * Run URL: `https://github.com/muhammadtaimoorajmal/trustcue/actions/runs/39284190434`.
+  * Verified all 11 CI workflow jobs passed with 100% success rate:
+    - Code formatting validation (`dart format --output=none --set-exit-if-changed .`) PASS.
+    - Static analysis (`flutter analyze --no-pub`) PASS (0 issues).
+    - Unit, widget, and navigation tests (`flutter test --no-pub`) PASS (885 tests).
+    - Release build script test harness (`pwsh frontend/scripts/test_build_release.ps1`) PASS (8/8 tests).
+    - Unsigned release AAB packaging (`flutter build appbundle --release --no-pub`) PASS.
+    - Signed release APK packaging and alignment PASS.
+    - Multi-provider cryptographic signing validation (`apksigner verify`) PASS (Scheme v2 enabled).
+    - APK/AAB package provenance and SHA-256 fingerprint generation PASS.
+  * Conclusion: Closed the Module 50D evidence gap; commit `803dc7b` is 100% green remotely.
+
+### 16.2 Complete Fixture Baseline & Checksums
+* **Scam Message Scenarios (26 Scenarios):**
+  * Source: `Testing Data\Scam Text Messages.txt`
+  * SHA-256 Checksum: `BB6E4D4CF694E27907E48FD60326B231FA2B7D2F09F430EF8397A92B9337B650`
+  * Coverage: Scenarios `MSG-001` through `MSG-026` covering delivery fees, banking alerts, verification codes, lottery winnings, tax refunds, fake job offers, romance lures, urgent threats, and impersonations.
+* **Benign Everyday Counterexamples (6 Counterexamples):**
+  * Source: Pure code-defined constants (`BEN-001` to `BEN-004`, `AMB-001` to `AMB-002`)
+  * Guaranteed separation: Distinct test suite fixtures ensuring benign text is never conflated with scam corpora.
+  * Invariant: 100% calm no-match state; zero warning indicators triggered.
+* **URL Inspection Dataset (57 Links):**
+  * Source: `Testing Data\Links.txt`
+  * SHA-256 Checksum: `886969D3D0FA038E4F7D114B25F45DEE6FE6F27CF2D4C7B22DE58670EBC69365`
+  * Coverage: URLs `URL-001` through `URL-057` covering bare domains, standard HTTPS paths, unencrypted HTTP, numerical IP hosts (`37.77.150.214`), non-standard ports (`:8080`), suspicious TLDs, and fake banking subdomains.
+* **Dangerous Schemes Rejection (4 Schemes):**
+  * Rejection fixtures: `javascript:`, `file:`, `data:`, `intent:`.
+  * Invariant: Quarantined offline; prohibited from external launch via Android `ACTION_VIEW`.
+
+### 16.3 Automated Test Suite Architecture & Implementation
+* **Test Implementation (`frontend/test/fixtures/module_50e1_fixtures_test.dart`):**
+  * 96 comprehensive automated tests implemented:
+    * `Scam text message fixtures (26 scenarios)` (26 tests): Verified each scenario triggers its expected heuristic rules and exact grounded evidence spans.
+    * `Benign counterexample message fixtures (6 scenarios)` (6 tests): Verified zero warning signs and calm no-match synthesis across family and work communications.
+    * `URL fixtures offline inspection (57 links)` (57 tests): Verified deterministic offline analysis of protocol security, IP hosts, suspicious ports, and TLD categorization without any live network connections.
+    * `Dangerous scheme rejection fixtures` (4 tests): Verified complete rejection and launch disabling for dangerous URI schemes (`javascript:`, `file:`, `data:`, `intent:`).
+    * `Punctuation, currency, and boundary safety` (3 tests): Verified exact symbol preservation (`$1.99`, `£500`, `€1,000`), surrogate pairs, and boundary whitespace normalization.
+* **Test Suite Reconciliation:**
+  * Previous Mobile Baseline (Module 50D): 885 tests.
+  * Module 50E.1 Additions: +96 tests.
+  * Current Mobile Test Total: **981/981 tests PASS** (`flutter test --no-pub`, 100% pass rate, 0 failures, 0 skipped).
+  * Cross-Repository Test Total: **1,136 automated tests PASS** (981 Flutter + 142 Backend pytest + 13 Database schema tests).
+  * Static Analyzer: **0 issues found** (`flutter analyze --no-pub`).
+  * Code Formatting: **100% clean** (`dart format`).
+
+### 16.4 Real Hardware Acceptance Verification (Vivo V2207, Android 14 API 34)
+* **Device Identification:**
+  * Model: Vivo V2207 (`10AC9R1ABF0013A`)
+  * Platform: Android 14 (API 34, Linux kernel 5.10)
+  * Display Resolution: 720 x 1612 px
+* **Whitespaces & Empty Input Rejection:**
+  * Tested with 5 whitespace characters (`"     "`).
+  * Verified red error border and descriptive error text rendered: *"Message contains only blank or invisible characters. Please enter visible message text."*
+  * "Prepare text" action remained safely disabled.
+* **Text Clearing Workflow:**
+  * Populated text field; tapped "Clear text".
+  * Verified safety confirmation dialog rendered (`"Discard current message?"`).
+  * Confirmed discard; text field reset to `0 / 10,000` characters cleanly.
+* **System Share Intent Delivery & Uncorrupted Display:**
+  * Delivered share intent via ADB with scam text containing currency symbol (`"USPS: Package USPS-928172 is held due to unpaid fee ($1.99). Pay $1.99 redelivery fee at https://usps-post-redelivery.com"`).
+  * Addressed PowerShell/Android shell `$1` variable expansion corruption: verified uncorrupted display of `"$1.99"` in the share receiver modal and text editor.
+  * Cold and warm incoming intent handling verified without ANR or lifecycle crash.
+* **Draft Conflict Handling:**
+  * Tested incoming share when an existing draft was active.
+  * Verified draft conflict dialog: *"Replace existing draft?"* with options *"Keep current draft"* and *"Replace with shared content"*.
+  * Both branches verified: "Keep" preserved existing text; "Replace" cleanly substituted incoming text.
+* **Privacy Review Boundaries & Non-Automatic Execution:**
+  * Tapping "Prepare text" navigates to `/review`.
+  * Verified ZERO automatic analysis or external network calls occur.
+  * User reviews text, makes optional redactions, taps "Confirm reviewed text", and explicitly taps "Analyze on this device".
+* **Analysis Results Display:**
+  * Suspicious USPS message: 1 warning sign detected (Requests for payment), grounded quote `"Pay $1.99 redelivery fee"`.
+  * Benign family message: Calm no-match result rendered with clear disclosure of local heuristic coverage boundaries.
+* **Safe Link Inspection & Two-Step Launch Protection:**
+  * Dangerous URL (`javascript:alert(1)`): Flagged invalid/dangerous with red banner *"Cannot be opened externally"*; external launch button disabled.
+  * Structural anomalies (`http://37.77.150.214:8080/msi/setup_cf4cb3a3.msi`): Correctly flagged numerical IP address, non-standard port 8080, and unencrypted HTTP.
+  * Clean URL (`https://example.com/about`): Flagged eligible for opening.
+  * Two-step browser confirmation: Tapping "Open externally" opens a modal explaining risks of visiting unknown external destinations. Tapping "Cancel" safely dismissed dialog with 0 external network requests or browser launches.
+  * Handoff to text review: Tapping "Review text" cleanly populated `/review` with the URL.
+
+### 16.5 Offline Verification & Strict Network Restoration
+* **Pre-Test Connectivity Baseline:**
+  * Recorded via ADB: `wifi_on: 1, mobile_data: 0, airplane_mode_on: 0`.
+* **Offline Enforcement:**
+  * Disabled Wi-Fi via `adb shell svc wifi disable`.
+  * Verified state: `wifi_on: 0, mobile_data: 0, airplane_mode_on: 0`.
+  * App offline indicator rendered on Home screen.
+* **Offline Feature Verification:**
+  * In-App User Guide: Opened offline; Topic 1 ("Choosing the Right Input") expanded and rendered all 6 subsections offline without error.
+  * Safe Guided Practice: Synthetic Example 1 ("Urgent Account Suspension Threat") launched into review pipeline and analyzed on-device; 3 warning signs displayed with grounded quotes and zero network calls.
+  * Link Inspector: Inspected `https://trustcue.local/test` offline; correctly flagged as internal/local network destination with zero network egress.
+* **Network Restoration & Baseline Reconciliation:**
+  * Re-enabled Wi-Fi via `adb shell svc wifi enable`.
+  * Verified post-test state: `wifi_on: 1, mobile_data: 0, airplane_mode_on: 0`. Bit-for-bit exact match to baseline.
+  * App returned to Home screen in clean operational state.
+
+### 16.6 Provenance of Physical Device Evidence Artifacts
+* `screen_50e1_spaces_validation.png`: Whitespace rejection error banner on Vivo V2207.
+* `screen_clear_dialog.png` & `screen_cleared.png`: Text clear confirmation and reset.
+* `screen_share_dialog_uncorrupted.png`: Incoming share modal with uncorrupted `$1.99` symbol.
+* `screen_50e1_draft_conflict.png` & `screen_50e1_draft_kept.png`: Draft preservation confirmation.
+* `screen_50e1_review_screen.png`: Privacy review screen before analysis.
+* `screen_50e1_results_scrolled.png`: Suspicious analysis results with grounded payment quote.
+* `screen_50e1_benign_results.png`: Calm no-match result with limited-coverage disclaimer.
+* `screen_50e1_link_inspect_dangerous_scrolled.png`: Dangerous scheme rejection banner.
+* `screen_50e1_link_inspect_ip_scrolled_full.png`: Structural URL warning (IP host, port 8080, HTTP).
+* `screen_50e1_clean_url_reviewed.png`: Clean URL inspection state.
+* `screen_50e1_confirmation_card.png` & `screen_50e1_confirmation_dismissed.png`: External browser launch modal and safe dismissal.
+* `screen_50e1_offline_home.png`: Device in offline mode with Wi-Fi disabled.
+* `screen_50e1_user_guide_actual.png` & `screen_50e1_topic1_expanded_verified.png`: User guide rendered offline.
+* `screen_50e1_practice_analyzed_scrolled.png`: Guided practice analyzed offline with zero network egress.
+* `screen_50e1_offline_link_inspected.png`: Offline link inspection.
+* `screen_50e1_network_restored.png`: Hardware connectivity restored to exact pre-test baseline.
+* `screen_50e1_final_home.png`: Application returned cleanly to Home screen.
+
+---
+
 **Audited By:** Antigravity Pairing Assistant  
 **Reviewed For:** Muhammad Taimoor Ajmal (Lead Developer / Student)  
 **Date:** October 19, 2026  
-**Module 50 Status:** IN PROGRESS (Modules 50A, 50B, 50C, 50C.1, and 50D Complete and Verified on Hardware; Gated on final owner approval before main merge)
+**Module 50 Status:** IN PROGRESS (Modules 50A, 50B, 50C, 50C.1, 50D, and 50E.1 Complete and Verified on Hardware; Gated on final owner approval before main merge)
 
