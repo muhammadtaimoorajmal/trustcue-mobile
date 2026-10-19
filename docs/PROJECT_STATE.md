@@ -59,19 +59,19 @@ Implemented: ... Module 49 completed ... and comprehensive 50-module academic au
   - **Module 50 Agreed Completion Steps (Preserving 50 Total Modules):**
     - **50A** — Approved logo and release account verification. *(Completed and verified on Vivo V2207)*
     - **50B** — Clear analysis results and contextual guidance. *(Completed, verified on hardware, and CI verified green in Run 39261099227)*
-    - **50C** — Visual polish: splash, onboarding, Home, sign-in, and sign-up, with relevant bundled illustrations.
+    - **50C** — Visual polish: splash, onboarding, Home, sign-in, and sign-up, with relevant bundled illustrations. *(Completed and verified on Vivo V2207)*
     - **50D** — Complete in-app user guide and guided practice.
     - **50E** — Message/screenshot/link/QR/incoming-share and offline verification.
     - **50F** — Fresh registration, email confirmation/recovery, AI, sync, and account lifecycle verification.
     - **50G** — History, export, privacy, accessibility, and remaining layout checks.
     - **50H** — Independent-device release testing, final handover, and approved main integration.
   - **Acceptance Checklist:**
-    - Implemented: In Progress (Module 50A complete, Module 50B complete & CI verified; four-branch architecture strictly preserved; exactly 50 roadmap modules; main untouched at `a785db8`).
+    - Implemented: In Progress (Module 50A, 50B, 50C complete; four-branch architecture strictly preserved; exactly 50 roadmap modules; main untouched at `a785db8`).
     - Automated Verification: 873 mobile tests PASS (`flutter test`); static analyzer clean (0 issues); code formatting clean (`dart format`).
-    - Physical Device Verification: 100% verified on Vivo V2207 Android 14 API 34.
+    - Physical Device Verification: 100% verified on Vivo V2207 Android 14 API 34 (Release APK SHA-256: `04321A593DF197CAF8ED7A7EA86A3AB77A76A450B4FC917BD796BDFE8F8B513D`).
     - Hosted Infrastructure: Render production web service live; Supabase database active with migrations 00001–00008.
     - Boundaries Preserved: `main` untouched (`a785db8`), 0 secrets leaked, no Play Store submission performed.
-    - Status: Module 50 IN PROGRESS (Module 50B complete; awaiting owner initiation of Step 50C).
+    - Status: Module 50 IN PROGRESS (Module 50C complete and verified on hardware; awaiting owner initiation of Step 50D).
 - **Module 49 Verification & Architecture: Google Play Console Store Listing, Data Safety, and Testing Tracks:**
   - **Comprehensive Store Listing, Compliance & Track Strategy Architecture:**
     - Full details, graphic asset specs, screenshots, code-backed Data Safety section, privacy policies, account deletion web resource, and reviewer credentials guide are recorded in:

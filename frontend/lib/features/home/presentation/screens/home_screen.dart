@@ -41,32 +41,6 @@ class HomeScreen extends GetView<HomeController> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.school_outlined),
-            tooltip: 'Scam Education',
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            onPressed: () {
-              if (Get.currentRoute != AppRoutes.education) {
-                Get.toNamed(AppRoutes.education);
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.shield_outlined),
-            tooltip: 'Privacy & Data',
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            onPressed: () {
-              if (Get.currentRoute != AppRoutes.privacy) {
-                Get.toNamed(AppRoutes.privacy);
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.language),
-            tooltip: 'Language',
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            onPressed: () => LanguageSelectorDialog.show(context),
-          ),
-          IconButton(
             icon: const Icon(Icons.info_outline),
             tooltip: 'About TrustCue',
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
@@ -76,15 +50,92 @@ class HomeScreen extends GetView<HomeController> {
               }
             },
           ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'More options',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            onSelected: (value) {
+              switch (value) {
+                case 'education':
+                  if (Get.currentRoute != AppRoutes.education) {
+                    Get.toNamed(AppRoutes.education);
+                  }
+                  break;
+                case 'privacy':
+                  if (Get.currentRoute != AppRoutes.privacy) {
+                    Get.toNamed(AppRoutes.privacy);
+                  }
+                  break;
+                case 'language':
+                  LanguageSelectorDialog.show(context);
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'education',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.school_outlined,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 12),
+                    const Text('Scam Education'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'privacy',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.shield_outlined,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 12),
+                    const Text('Privacy & Data'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'language',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.language,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 12),
+                    const Text('Language'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: AppPageBody(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Understand the signals.',
-              style: theme.textTheme.headlineSmall,
+            Row(
+              children: [
+                Image.asset(
+                  'assets/branding/logo.png',
+                  width: 32,
+                  height: 32,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Understand the signals.',
+                    style: theme.textTheme.headlineSmall,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.pagePaddingSmall),
             Text(
@@ -96,7 +147,39 @@ class HomeScreen extends GetView<HomeController> {
               'Local checks are available. Results are indicators, not a verdict.',
               style: theme.textTheme.bodyMedium,
             ),
-            const SizedBox(height: AppSpacing.pagePaddingLarge),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withValues(
+                  alpha: 0.22,
+                ),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.shield_outlined,
+                    color: theme.colorScheme.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '100% On-Device Local Checks • No Account Required',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.pagePaddingMedium),
             const _InputOptionCard(
               title: 'Message text',
               description: 'For messages copied from SMS, email, or chat. Review and local checks are available on this device.',
@@ -105,6 +188,7 @@ class HomeScreen extends GetView<HomeController> {
               statusText: 'Local checks available',
               actionLabel: 'Enter message',
             ),
+            const SizedBox(height: AppSpacing.pagePaddingSmall),
             const _InputOptionCard(
               title: 'Screenshot',
               description: 'For suspicious messages captured in an image. Preview, local text extraction, and local checks are available.',
@@ -232,20 +316,57 @@ class _InputOptionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, size: 28, color: theme.colorScheme.primary),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer.withValues(
+                      alpha: 0.35,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 24, color: theme.colorScheme.primary),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(title, style: theme.textTheme.titleMedium),
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),
             if (statusText != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                statusText!,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondaryContainer.withValues(
+                    alpha: 0.3,
+                  ),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 14,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        statusText!,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

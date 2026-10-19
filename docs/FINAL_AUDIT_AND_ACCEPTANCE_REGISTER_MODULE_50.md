@@ -685,7 +685,86 @@ Module 50B resolves all usability, transparency, and evidence hierarchy requirem
 * **Agreed Roadmap Completion Steps (within Module 50):**
   * **50A** — Approved logo and release account verification. *(Completed and verified on hardware)*
   * **50B** — Clear analysis results and contextual guidance. *(Completed, verified on hardware, and CI verified green in Run 39261099227)*
-  * **50C** — Visual polish: splash, onboarding, Home, sign-in, and sign-up, with relevant bundled illustrations.
+  * **50C** — Visual polish: splash, onboarding, Home, sign-in, and sign-up, with relevant bundled illustrations. *(Completed and verified on hardware)*
+  * **50D** — Complete in-app user guide and guided practice.
+  * **50E** — Message/screenshot/link/QR/incoming-share and offline verification.
+  * **50F** — Fresh registration, email confirmation/recovery, AI, sync, and account lifecycle verification.
+  * **50G** — History, export, privacy, accessibility, and remaining layout checks.
+  * **50H** — Independent-device release testing, final handover, and approved main integration.
+* **Owner Rules Preserved:** Main branch untouched (`a785db8`). Strictly 4 repository branches maintained (`main`, `frontend`, `backend`, `database`). Exactly 50 numbered roadmap modules preserved.
+
+---
+
+## 13. Module 50C Acceptance Register: Visual Polish for Splash, Onboarding, Home, Sign-in, and Sign-up
+
+### 13.1 Concrete Objectives & Design Philosophy
+* **Brand Identity & Launch Continuity:** Splash screen uses the approved brand logo (`assets/branding/logo.png`, 72x72) centered cleanly to provide seamless native-to-Flutter launch continuity without layout jumps or ungrounded claims.
+* **Code-Native Vector Illustrations:** Zero external image asset dependencies or stock clip-art shields. Implemented three custom, theme-aware, offline vector illustration painters (`CustomPainter`) in `lib/core/widgets/illustrations/`:
+  1. `EvidenceReviewIllustration`: Visualizes evidence-grounded scam analysis with a stylized message preview bubble, highlighted pattern excerpt in caution amber, and a cue magnifying lens.
+  2. `TextExtractionIllustration`: Visualizes on-device OCR and optical scanning with document bounds, scanning brackets in primary teal, and extracted content blocks.
+  3. `LocalCloudBoundaryIllustration`: Visualizes the explicit architectural separation between private on-device local analysis (sandbox box with verified checkmark and indicator bars), a keyhole gate boundary, and optional cloud AI assistance.
+* **Home Screen AppBar Polish & Title De-Clipping:** Resolved the hardware issue observed on the Vivo V2207 where 6 crowded AppBar icon buttons (288 dp) forced the title `"TrustCue"` to truncate to `"Trus..."`. Re-architected actions to keep 3 primary actions (`Saved Reports`, `Account`, `About TrustCue`) and grouped secondary utilities (`Scam Education`, `Privacy & Data`, `Language`) into an overflow `PopupMenuButton` (`More options`). Title now has 200+ dp logical width, permanently eliminating clipping across narrow and standard devices.
+* **Home Screen Trust & Privacy Hero Badge:** Integrated an honest status container: `"100% On-Device Local Checks • No Account Required"` emphasizing that local analysis and image processing occur strictly on the handset.
+* **Home Screen Input Options:** Polished `_InputOptionCard` with themed icon badge containers, verified pill chips (`"Local checks available"`, `"OCR & local checks available"`, `"Inspection & local checks available"`), and clean secondary buttons.
+* **Reassuring Authentication Experience:** Polish applied symmetrically to `LoginScreen` and `RegisterScreen`:
+  * Brand logo header beside `"Welcome back"` and `"Join TrustCue"`.
+  * Explicit privacy reassurance row: *"Account is optional. Local scam analysis works completely on your device without signing in."*
+  * High-contrast inputs with responsive label wrapping and password visibility toggles.
+  * Code-native `LocalCloudBoundaryIllustration` rendered cleanly below guest options.
+  * Zero interference with test form finders, controller bindings, or input indexing.
+
+### 13.2 Implementation Traceability
+* `frontend/lib/core/widgets/illustrations/evidence_review_illustration.dart`: Code-native vector illustration for evidence grounding.
+* `frontend/lib/core/widgets/illustrations/text_extraction_illustration.dart`: Code-native vector illustration for OCR extraction.
+* `frontend/lib/core/widgets/illustrations/local_cloud_boundary_illustration.dart`: Code-native vector illustration for local-cloud privacy boundary.
+* `frontend/lib/core/widgets/illustrations/app_illustrations.dart`: Barrel export file.
+* `frontend/lib/app/startup_screen.dart`: Polished splash with approved brand logo (72x72) and launch continuity.
+* `frontend/lib/features/onboarding/presentation/screens/onboarding_screen.dart`: Polished onboarding with 3 illustrated step cards, BiDi text support, and 200% font scaling resilience.
+* `frontend/lib/features/home/presentation/screens/home_screen.dart`: Streamlined AppBar actions to 4 buttons (de-clipping title), brand logo in body header, privacy reassurance badge, and polished input cards.
+* `frontend/lib/features/auth/presentation/screens/login_screen.dart`: Polished login with brand logo, privacy reassurance pill, and bottom vector illustration.
+* `frontend/lib/features/auth/presentation/screens/register_screen.dart`: Polished registration with brand logo, privacy reassurance pill, and bottom vector illustration.
+
+### 13.3 Automated Test & Static Analysis Evidence
+* `dart format --output=none --set-exit-if-changed lib test integration_test`: **0 files changed** (100% compliant).
+* `flutter analyze --no-pub`: **0 issues found** (100% clean).
+* `flutter test --no-pub test/features/onboarding/onboarding_test.dart`: **16/16 passed** (including light/dark 200% text scale stress tests).
+* `flutter test --no-pub test/widget_test.dart`: **5/5 passed** (including 200% layout scaling test).
+* `flutter test --no-pub test/features/home/presentation/screens/home_screen_account_test.dart test/app/navigation_test.dart`: **30/30 passed** (all navigation routes, stack observer, and account button constraints verified).
+* `flutter test --no-pub test/features/auth/presentation/`: **42/42 passed** (including all login, registration, email verification, and responsive accessibility tests).
+* `flutter test --no-pub`: **873/873 tests passed** across the entire mobile test suite with 0 failures or regressions.
+
+### 13.4 Cloud-Configured Release Build Provenance
+* **Build Script:** `frontend/scripts/build_release.ps1 -Target apk -Install`
+* **Output Artifact:** `frontend/build/app/outputs/flutter-apk/app-release.apk`
+* **Artifact Size:** 111,426,586 bytes (106.26 MB)
+* **Artifact SHA-256:** `04321A593DF197CAF8ED7A7EA86A3AB77A76A450B4FC917BD796BDFE8F8B513D`
+* **Signature Verification:** APK Signature Scheme v2 = `true` via `apksigner verify`.
+* **Signer Digest:** `66b3fb995dca5ac2ca17bed79c9d746536832129d4ee3d384561f1f609cbcd9f` (identical to Module 48/50A/50B signing key).
+* **Device Installation:** Streamed in-place upgrade via `adb install -r` to Vivo V2207 (`10AC9R1ABF0013A`) -> `Success`.
+
+### 13.5 Physical Hardware Real-Device Verification (Vivo V2207)
+* **Hardware Profile:** Vivo V2207 (Android 14, screen 1080x2408 at ~2.75x density, serial `10AC9R1ABF0013A`).
+* **Before / After Verification Evidence:**
+  * `before_home.png` vs `after_home.png`: Truncated AppBar title (`"Trus..."`) permanently resolved to clean, complete `"TrustCue"`. Brand logo prominently displayed beside `"Understand the signals."`. Privacy hero badge rendered with crisp shield icon.
+  * `before_signin.png` vs `after_signin.png`: Empty stark sign-in screen replaced with brand logo header, explicit privacy reassurance note, clean input fields, and bottom code-native `LocalCloudBoundaryIllustration`.
+  * `before_signup.png` vs `after_signup.png`: Stark registration screen replaced with brand logo header, privacy reassurance note, clear password requirements, and bottom `LocalCloudBoundaryIllustration`.
+  * `after_guidance.png` and `after_guidance_scrolled.png`: Safe-use guidance screen verified displaying all 3 code-native vector illustrations (`EvidenceReviewIllustration`, `TextExtractionIllustration`, and `LocalCloudBoundaryIllustration`) with pixel-perfect clarity in dark mode.
+
+### 13.6 HCI Evaluation Principles
+* **Effectiveness:** Visual illustrations communicate complex privacy concepts (e.g., local boundary vs cloud AI) without requiring users to read dense legal disclaimers.
+* **Efficiency:** Streamlined AppBar prevents visual crowding and speeds up access to primary features (Reports, Account, About).
+* **Safety:** Honest status badges and reassurance pills explicitly communicate that an account is optional and local checks require no network transmission.
+* **Utility:** High visual polish and clear visual signifiers build user trust without making false safety claims or definitive scam guarantees.
+* **Learnability:** Visual step cards in onboarding and guidance educate users on how evidence grounding and optical extraction function.
+* **Memorability:** Consistent branding iconography and cohesive teal/amber theme across splash, onboarding, home, and auth.
+* **Satisfaction:** Elegant, responsive layouts that feel modern, tactile, and calm rather than alarming or sterile.
+* **Accessibility:** WCAG AA contrast compliance verified across all themes, all buttons retain minimum 48x48 dp touch targets, and full Operability confirmed at 200% font scaling on 320 px logical widths.
+
+### 13.7 Carry-Forward & Next Roadmap Steps
+* **Agreed Roadmap Completion Steps (within Module 50):**
+  * **50A** — Approved logo and release account verification. *(Completed and verified on hardware)*
+  * **50B** — Clear analysis results and contextual guidance. *(Completed, verified on hardware, and CI verified green in Run 39261099227)*
+  * **50C** — Visual polish: splash, onboarding, Home, sign-in, and sign-up, with relevant bundled illustrations. *(Completed and verified on hardware)*
   * **50D** — Complete in-app user guide and guided practice.
   * **50E** — Message/screenshot/link/QR/incoming-share and offline verification.
   * **50F** — Fresh registration, email confirmation/recovery, AI, sync, and account lifecycle verification.
@@ -698,5 +777,5 @@ Module 50B resolves all usability, transparency, and evidence hierarchy requirem
 **Audited By:** Antigravity Pairing Assistant  
 **Reviewed For:** Muhammad Taimoor Ajmal (Lead Developer / Student)  
 **Date:** October 19, 2026  
-**Module 50 Status:** IN PROGRESS (Module 50B Complete and CI Verified; Gated on final owner approval before main merge)
+**Module 50 Status:** IN PROGRESS (Module 50C Complete and Verified on Hardware; Gated on final owner approval before main merge)
 

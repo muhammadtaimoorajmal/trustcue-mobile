@@ -4,6 +4,7 @@ import 'package:trustcue_mobile/core/theme/app_spacing.dart';
 import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/core/widgets/app_card.dart';
 import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
+import 'package:trustcue_mobile/core/widgets/illustrations/app_illustrations.dart';
 import 'package:trustcue_mobile/features/onboarding/presentation/controllers/onboarding_controller.dart';
 
 enum OnboardingMode { firstRun, review }
@@ -42,10 +43,104 @@ class OnboardingScreen extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.pagePaddingSmall),
             Text(
-              'TrustCue is being built to help you examine suspicious digital communication, understand potential warning signs, and choose safer verification steps.',
+              'TrustCue helps you examine suspicious digital communication, understand potential warning signs, and choose safer verification steps.',
               style: theme.textTheme.bodyLarge,
             ),
             const SizedBox(height: AppSpacing.pagePaddingLarge),
+
+            // Step 1: Evidence Review Card with Illustration
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: const EvidenceReviewIllustration(
+                        width: 220,
+                        height: 110,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '1. Evidence-grounded analysis',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Pinpoints specific patterns—like urgent threats or pressure to pay—and highlights exact words so you understand why a message is flagged.',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.pagePaddingSmall),
+
+            // Step 2: On-Device Extraction Card with Illustration
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: const TextExtractionIllustration(
+                        width: 220,
+                        height: 110,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '2. On-device extraction',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Analyzes message text, screenshots, and links locally on your phone without sending your messages anywhere.',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.pagePaddingSmall),
+
+            // Step 3: Local & Cloud Privacy Boundary Card with Illustration
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: const LocalCloudBoundaryIllustration(
+                        width: 240,
+                        height: 110,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '3. Private by default',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Core checks require no account. Optional Cloud AI requires an account and your explicit consent for every request.',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.pagePaddingLarge),
+
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

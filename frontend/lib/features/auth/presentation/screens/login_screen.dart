@@ -6,6 +6,7 @@ import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/core/widgets/app_card.dart';
 import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
 import 'package:trustcue_mobile/core/widgets/app_text_field.dart';
+import 'package:trustcue_mobile/core/widgets/illustrations/app_illustrations.dart';
 import 'package:trustcue_mobile/features/auth/presentation/controllers/login_controller.dart';
 
 class LoginScreen extends GetView<LoginController> {
@@ -22,13 +23,49 @@ class LoginScreen extends GetView<LoginController> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Welcome back', style: theme.textTheme.headlineSmall),
-              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Image.asset(
+                    'assets/branding/logo.png',
+                    width: 28,
+                    height: 28,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const SizedBox.shrink(),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Welcome back',
+                      style: theme.textTheme.headlineSmall,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
               Text(
                 'Sign in to manage your account session.',
                 style: theme.textTheme.bodyMedium,
               ),
-              const SizedBox(height: AppSpacing.pagePaddingLarge),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(
+                    Icons.shield_outlined,
+                    size: 16,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Account is optional. Local scam analysis works completely on your device without signing in.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.pagePaddingMedium),
               Obx(() {
                 final error = controller.errorMessage.value;
                 if (error == null) return const SizedBox.shrink();
@@ -125,6 +162,11 @@ class LoginScreen extends GetView<LoginController> {
                   child: const Text('Continue as guest'),
                 ),
               ),
+              const SizedBox(height: 16),
+              const Center(
+                child: LocalCloudBoundaryIllustration(width: 180, height: 90),
+              ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
