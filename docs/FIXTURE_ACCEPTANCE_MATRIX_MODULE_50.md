@@ -16,21 +16,27 @@ This matrix documents the real-world fixture acceptance testing executed for Tru
 ### 1.1 Scope Boundaries & Core Principles
 1. **Privacy-First Local Verification**: All local rules, OCR text extraction (ML Kit), QR code parsing, URL structural inspection, and sensitive data redaction run 100% on-device without network calls.
 2. **Defensive Claim Boundaries**: TrustCue never states a message is "safe" or "guaranteed fraud." It presents calibrated indicator detections, uncertainty disclaimers, and contextual safety recommendations.
-3. **No Overfitting Guarantee**: Rule adjustments made during Module 50 (`UrgencyRule`, `AccountThreatRule`, `PaymentRequestRule`, `RewardClaimRule`, `JobOfferRule`) were authored as generalized linguistic patterns and proven against negative/ambiguous counterexamples with **zero false positives**.
+3. **No Overfitting Guarantee**: Rule adjustments made during Module 50 (`UrgencyRule`, `AccountThreatRule`, `PaymentRequestRule`, `RewardClaimRule`, `JobOfferRule`) were authored as generalized linguistic patterns and proven against negative/ambiguous counterexamples: **No indicators matched in the six tested benign fixtures**.
 4. **Physical Device Staging**: All 19 scam screenshot images and 9 QR code images were pushed to the physical device storage at `/sdcard/Download/TrustCue_Testing/` and indexed via Android MediaScanner.
+
+### 1.2 Three-Layer Verification Architecture
+The complete fixture corpus was executed across three complementary testing layers to guarantee both deterministic rule correctness and real-device integration integrity:
+- **Layer 1: Deterministic Engine Tests (Offline Heuristic Pipeline & Structural Guard)**: Automated Dart test suite (`acceptance_fixtures_test.dart`) executing the 10-rule heuristic engine, URL structural parser, and PII redaction pipeline against 26 scam text scenarios (TXT-01 to TXT-26), 6 benign everyday controls (BEN-01 to BEN-06), 57 suspicious/malicious URLs (LNK-01 to LNK-57), and 24 category taxonomies.
+- **Layer 2: Native Device OCR & Barcode Extraction (Google ML Kit On-Device Vision)**: Execution of Google ML Kit Text Recognition on 19 scam screenshot images (IMG-01 to IMG-19) and Google ML Kit Barcode Scanning on 9 QR codes (QR-01 to QR-09) staged on device storage (`/sdcard/Download/TrustCue_Testing/`).
+- **Layer 3: Physical UI & End-to-End Workflow Verification (Vivo V2207, Android 14 API 34)**: User journey verification on physical hardware running production release APK (`7E7E90...`): intent intake, redaction review, persistence across process death, detail view, export via system ShareSheet, typography notices, and scoped deletion.
 
 ---
 
 ## 2. Test Fixture Inventory & Classification
 
-| Fixture Category | Source File / Directory | Total Items | Primary Test Target |
-| :--- | :--- | :---: | :--- |
-| **Scam Text Messages** | `Scam Text Messages.txt` (Blocks 00–25) | 26 | Local Rule Engine, PII Redaction, Synthesis |
-| **Category Taxonomies** | `Scam Text Messages.txt` (Blocks 26–49) | 24 | Reference Taxonomies, Secondary Classification |
-| **Benign Counterexamples** | `acceptance_fixtures_test.dart` | 6 | Negative Control, False-Positive Resistance |
-| **Malicious & Phishing Links** | `Links.txt` | 57 | URL Structural Inspection, IP Detection, Scheme Guard |
-| **Scam Screenshot Images** | `Scam Messages Images/` | 19 | ML Kit OCR Intake, Script Detection, PII Redaction |
-| **Scam QR Code Images** | `Scam OR Images/` | 9 | ML Kit Barcode Parsing, Offline Link Guard, Intent Guard |
+| Fixture Category | Source File / Directory | Total Items | Execution Layer | Primary Test Target |
+| :--- | :--- | :---: | :---: | :--- |
+| **Scam Text Messages** | `Scam Text Messages.txt` (Blocks 00–25) | 26 | Layer 1 & Layer 3 | Local Rule Engine, PII Redaction, Synthesis |
+| **Category Taxonomies** | `Scam Text Messages.txt` (Blocks 26–49) | 24 | Layer 1 | Reference Taxonomies, Secondary Classification |
+| **Benign Counterexamples** | `acceptance_fixtures_test.dart` | 6 | Layer 1 | Negative Control, Benign Communication Resistance |
+| **Malicious & Phishing Links** | `Links.txt` | 57 | Layer 1 & Layer 3 | URL Structural Inspection, IP Detection, Scheme Guard |
+| **Scam Screenshot Images** | `Scam Messages Images/` | 19 | Layer 2 & Layer 3 | ML Kit OCR Intake, Script Detection, PII Redaction |
+| **Scam QR Code Images** | `Scam OR Images/` | 9 | Layer 2 & Layer 3 | ML Kit Barcode Parsing, Offline Link Guard, Intent Guard |
 
 ---
 
@@ -43,6 +49,16 @@ This matrix documents the real-world fixture acceptance testing executed for Tru
 - **Installed Package:** `io.github.muhammadtaimoorajmal.trustcue`
 - **App Version:** `0.1.0` (Build `1`)
 - **Package Verification:** Signatures `[ab284969]`, APK Signature Scheme v2 valid, signed with official 4096-bit RSA certificate (`CN=TrustCue Release Signer, OU=Mobile Security, O=TrustCue, L=London, ST=Greater London, C=GB`).
+- **Installed Release APK Binary:**
+  - File: `build/app/outputs/flutter-apk/app-release.apk`
+  - Exact Size: `108,831,743` bytes (103.79 MB)
+  - SHA-256 Digest: `7E7E90295AEE7D77E158EA67755CF107BA4504B6A31A5F2E2E9A32296E782083`
+  - In-Place Upgrade Timestamp: `lastUpdateTime=2026-10-19 13:01:47` (preserving `firstInstallTime=2026-10-18 21:53:59`)
+- **Matching Release AAB Binary:**
+  - File: `build/app/outputs/bundle/release/app-release.aab`
+  - Exact Size: `82,219,015` bytes (78.41 MB)
+  - SHA-256 Digest: `EAF6AAD7D927D20194836A27F372D06D125910ABA255DAD25B2959BA8450E8A5`
+- **Local SQLite Database Name:** `trustcue_local.db` (app-private sandboxed database defined by `DatabaseConstants.databaseName`)
 - **Device Staging Path:**
   - `/sdcard/Download/TrustCue_Testing/scam_messages/` (19 files)
   - `/sdcard/Download/TrustCue_Testing/scam_qr/` (9 files)
@@ -99,7 +115,7 @@ To prove that local rule expansions do not produce false alarms or alert fatigue
 | **AMB-01** | Delivery notification (no links): `"Your package has been delivered to your front porch. Carrier tracking #9400100000000000000000."` | PASS | 0 | `noIndicatorsMatched` | "No suspicious indicators were detected in this message. Always exercise personal discretion." |
 | **AMB-02** | Gym renewal reminder: `"Hi, this is a reminder from your gym that your monthly membership renews on the 1st. Visit the front desk if you have any questions."` | PASS | 0 | `noIndicatorsMatched` | "No suspicious indicators were detected in this message. Always exercise personal discretion." |
 
-**False Positive Rate: 0.0% (0 / 6 flagged).**
+**Empirical Evaluation Result: No indicators matched in the six tested benign fixtures.**
 
 ---
 
@@ -187,13 +203,37 @@ All 9 QR code fixtures were transferred to `/sdcard/Download/TrustCue_Testing/sc
 | **TC-RD-10** | Plaintext Export | `/history/detail` -> Export | Tap "Export Plaintext Report" | Formats sanitized text report, writes to cache, triggers Android share sheet | PASS: Share sheet opens cleanly with redacted report body |
 | **TC-RD-11** | PDF Report Export | `/history/detail` -> Export PDF | Tap "Export PDF" | PDF document generated with clean TrustCue branding and disclaimer | PASS: PDF rendered with zero layout overflow, saved to app cache |
 | **TC-RD-12** | Theme & High Scaling | Settings -> Theme / System Accessibility | Toggled Dark Mode; set Vivo system font scale to 200% | High contrast maintained; zero text clipping or layout overflow | PASS: Responsive layouts scale gracefully across all cards and buttons |
+| **TC-RD-13** | Process-Restart SQLite Retention | Process Death -> `/history` | Dispatched faithful `TXT-03` (`Pay $1.99 redelivery fee`), saved report, executed `am force-stop io.github.muhammadtaimoorajmal.trustcue`, relaunched via `am start` | Saved report retained in `trustcue_local.db` across cold start | PASS: Card rendered with exact timestamp, "1 saved report(s)", High Risk badge, and `[On-device heuristic]` indicator count |
+| **TC-RD-14** | Evidence Citation & Offset Detail | `/history/detail` Screen | Tapped saved report card to view full detail view | Excerpt and character offsets rendered accurately | PASS: Rendered `rule.payment.solicitation` with exact quote `"Pay $1.99 redelivery fee"`, span `[67, 91)`, and calibrated uncertainty disclaimer |
+| **TC-RD-15** | Plain Text (.txt) ShareSheet Export | `/history/detail` -> Export Modal | Selected "Plain Text (.txt)", tapped "Share Report" | Sanitized `.txt` file generated in app cache and handed to Android ShareSheet | PASS: System ShareSheet opened cleanly displaying generated `trustcue_report_20261019_082301.txt` |
+| **TC-RD-16** | PDF (.pdf) Export with Typography Notice | `/history/detail` -> Export Modal | Selected "PDF Document (.pdf)", tapped "Share Report" | Modal displays script notice, renders branded PDF, opens ShareSheet | PASS: Notice *"PDF uses Latin typography. Plain Text (.txt) is recommended for full Urdu and non-Latin script fidelity."* rendered; ShareSheet received `trustcue_report_20261019_082454.pdf` |
+| **TC-RD-17** | Reactive Scoped Deletion | `/history` Screen | Tapped trash icon on report card, confirmed "Delete from device" | Record removed from `trustcue_local.db` and UI list reactively cleared | PASS: SQLite row deleted; screen updated to `"0 saved report(s), No saved reports yet"` without restart or manual pull |
+| **TC-RD-18** | Offline Cloud Service Boundary | `/account` Screen | Navigated to Account screen on release build | Informs user cloud auth is not configured while maintaining 100% local functionality | PASS: Notice *"Cloud Service Not Configured. Cloud authentication is not configured in this build. All local scam analysis, text extraction, link inspection, and evidence review features remain 100% operational on this device."* displayed |
+| **TC-RD-19** | Faithful Intent Input Delivery | `android.intent.action.SEND` | Sent `TXT-03` via Python ADB dispatch with single-quote escaping | Full message with literal `$1.99` delivered without variable corruption | PASS: Intent dialogue and input review showed literal `"Pay $1.99 redelivery fee: https://usps-redelivery.example/track"`, matching regex `[67, 91)` |
 
 ---
 
-## 10. Acceptance Sign-Off
+## 10. Technical Root Cause: Shell Escaping & Input Fidelity
+
+During initial real-device intent testing, the input text `"Pay $1.99 redelivery fee"` was observed arriving in the app as `"Pay .99 redelivery fee"`, causing the initial rule match to miss the currency symbol.
+
+### 10.1 Root Cause Diagnosis
+1. **PowerShell String Interpolation**: When invoking `adb shell am start ... --es android.intent.extra.TEXT "Pay $1.99..."` inside PowerShell, PowerShell interpreted `$1` as a variable expression (`$1`), which evaluated to an empty string (`""`). The text dispatched to the shell was thus `"Pay .99"`.
+2. **Android POSIX Shell Expansion**: Furthermore, Android's `/system/bin/sh` also performs variable substitution on double-quoted strings if passed through an unescaped shell wrapper.
+
+### 10.2 Resolution & Verification
+- Test input dispatch was re-implemented using Python with `subprocess.run` where the intent argument is strictly isolated or wrapped in POSIX single quotes (`'Pay $1.99 redelivery fee: ...'`).
+- The faithfully delivered text was verified on the Vivo V2207:
+  - Input Review Dialog: Rendered literal `"Pay $1.99 redelivery fee: https://usps-redelivery.example/track"`.
+  - Indicator Output: Matched `rule.payment.solicitation` on exact excerpt `"Pay $1.99 redelivery fee"` with character span `[67, 91)`.
+
+---
+
+## 11. Acceptance Sign-Off
 
 1. **Local Rule Generalization:** All 5 modified rules pass local analysis tests and prove generalized scam indicator detection across diverse phrasing.
-2. **False Positive Rigor:** All 6 benign everyday communications evaluate to `noIndicatorsMatched` with zero alarms.
-3. **Hardware Provenance:** Evaluated on physical Vivo V2207 (`10AC9R1ABF0013A`) running production release APK signed with the official release key.
-4. **Data Privacy:** 100% offline verification; zero external network requests made during local rule evaluation, OCR text recognition, QR decoding, or URL inspection.
+2. **Benign Control Performance:** No indicators matched in the six tested benign fixtures (BEN-01 to BEN-06), demonstrating resistance to false alarms on everyday legitimate communication.
+3. **Hardware Provenance:** Evaluated on physical Vivo V2207 (`10AC9R1ABF0013A`) running production release APK (`7E7E9029...`, size 108,831,743 bytes) signed with the official 4096-bit RSA release key.
+4. **Data Privacy & Boundaries:** 100% offline verification; zero external network requests made during local rule evaluation, OCR text recognition, QR decoding, URL inspection, or export generation.
+5. **Database Integrity:** App-private SQLite database canonically identified as `trustcue_local.db` (`DatabaseConstants.databaseName`), verified across cold process restarts and scoped deletions.
 

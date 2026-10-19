@@ -39,7 +39,7 @@ Implemented: ... Module 49 completed ... and comprehensive 50-module academic au
     - Empirical Audit of Inconsistencies Resolved:
       - Programmatic Character Counts: Title (25/30), Short Description (77/80), Full Description (3358/4000) verified via Python AST parser.
       - Live Transport Security: Python SSL socket test empirically proved `TLSv1.3` negotiation with `TLS_AES_256_GCM_SHA384` on Render and Supabase.
-      - Data Storage Security Nuance: Distinguishes hardware KeyStore AES-GCM token encryption (`flutter_secure_storage`) from sandboxed local SQLite storage (`trustcue.db`), which relies on Android Linux UID sandbox isolation and `android:allowBackup="false"`.
+      - Data Storage Security Nuance: Distinguishes hardware KeyStore AES-GCM token encryption (`flutter_secure_storage`) from sandboxed local SQLite storage (`trustcue_local.db`), which relies on Android Linux UID sandbox isolation and `android:allowBackup="false"`.
       - Account Deletion Pathway: Responsive web form on `account_deletion.html` generating prefilled `mailto:` and clipboard copy, backed by a 7-day fulfillment SLA.
       - Reviewer Account Setup: Documented Supabase Auth setup with "Auto Confirm User?" enabled to bypass email deliverability hurdles for Google Play reviewers.
       - Release Signing Proof: APK Signature Scheme v2 verified by `apksigner.bat verify --verbose`; verified OpenSSL PBKDF2 AES-256 keystore backup procedure.
@@ -48,7 +48,7 @@ Implemented: ... Module 49 completed ... and comprehensive 50-module academic au
       - Hardware Test Bed & Fixture Acceptance (`docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md`):
         - Transferred 19 screenshot fixtures to `/sdcard/Download/TrustCue_Testing/scam_messages/` and 9 QR fixtures to `/sdcard/Download/TrustCue_Testing/scam_qr/` on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34).
         - Repaired 5 heuristic rules (`UrgencyRule`, `AccountThreatRule`, `PaymentRequestRule`, `RewardClaimRule`, `JobOfferRule`) to improve real-world match coverage on supplied scam messages without overfitting.
-        - Verified 6 benign everyday counterexamples with zero false-positive scam alarms (0.0% FP rate).
+        - Verified 6 benign everyday counterexamples with zero false-positive scam alarms: No indicators matched in the six tested benign fixtures.
         - Inspected 57 links from `Links.txt` offline; safely flagged 15 numeric IP hosts and quarantined dangerous schemes.
     - Multi-Worktree Automated Test Total:
       - **1,025 automated tests passing with 100% pass rate** across all project domains:
@@ -123,11 +123,11 @@ Implemented: ... Module 49 completed ... and comprehensive 50-module academic au
       - Strict secret hygiene: Keystores, passwords, and `key.properties` are strictly gitignored in `.gitignore`, never committed or exposed in logs.
       - Fail-safe build contract: Release builds explicitly halt with `GradleException` if `key.properties` is missing, preventing silent unsigned release builds. Debug builds (`assembleDebug`, CI) remain unaffected and pass cleanly without release credentials.
     - Production Artifact Verification:
-      - Signed Release APK (`build/app/outputs/flutter-apk/app-release.apk`): 108,831,743 bytes (103.79 MB), SHA-256 `883e2f04314632277b01d3df1962fa56f69a6f82f47f98ae501f0b23da330f58`. Verified v2 signature via `apksigner`; verified non-debuggable via `aapt dump badging`. Scanned for secrets: 0 server or signing secrets packaged.
-      - Signed Release AAB (`build/app/outputs/bundle/release/app-release.aab`): 82,213,947 bytes (78.41 MB), SHA-256 `7fea32f893512ecf22c3bb229e97101502196d61e719e88c48b567866f2e94fa`. Scanned for secrets: 0 server or signing secrets packaged.
+      - Signed Release APK (`build/app/outputs/flutter-apk/app-release.apk`): 108,831,743 bytes (103.79 MB), SHA-256 `7e7e90295aee7d77e158ea67755cf107ba4504b6a31a5f2e2e9a32296e782083` (Rebuilt & verified in Module 50; initial Module 48 SHA `883e2f...`). Verified v2 signature via `apksigner`; verified non-debuggable via `aapt dump badging`. Scanned for secrets: 0 server or signing secrets packaged.
+      - Signed Release AAB (`build/app/outputs/bundle/release/app-release.aab`): 82,219,015 bytes (78.41 MB), SHA-256 `eaf6aad7d927d20194836a27f372d06d125910aba255dad25b2959ba8450e8a5` (Rebuilt & verified in Module 50; initial Module 48 SHA `7fea32...`). Scanned for secrets: 0 server or signing secrets packaged.
     - Physical Device Live Verification (Vivo V2207, Android 14 API 34):
-      - Installed signed release APK via `adb install -r`: Success.
-      - Launched app via `am start`: PID 21147 active in foreground (`MainActivity`).
+      - Installed signed release APK via `adb install -r`: Success (in-place update `lastUpdateTime=2026-10-19 13:01:47`, preserving `firstInstallTime=2026-10-18 21:53:59`).
+      - Launched app via `am start`: PID 21147 / PID 10188 active in foreground (`MainActivity`).
       - Verified logcat: Impeller OpenGLES engine initialized cleanly; 0 native crashes, 0 ANRs, 0 unhandled exceptions.
   - **Acceptance Checklist:**
     - Implemented: Yes (Identity, branding, adaptive/legacy icons, splash screen, ProGuard/R8 rules, 4096-bit RSA release signing, signed APK & AAB).

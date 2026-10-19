@@ -51,7 +51,7 @@ Google Play policy strictly defines **collection** as any off-device transmissio
    - All network communication (FastAPI backend, Supabase GoTrue Auth, and Groq Cloud) enforces HTTPS (TLS 1.2 / TLS 1.3, empirically verified negotiating `TLSv1.3` with `TLS_AES_256_GCM_SHA384` on October 18, 2026). Plaintext HTTP traffic is rejected.
 2. **Data Encrypted at Rest & Sandboxing:**
    - **Hardware KeyStore Token Encryption:** Authentication refresh and access tokens are encrypted at rest using `flutter_secure_storage: 11.2.0` backed by the Android Hardware KeyStore (AES-GCM encryption with RSA key wrapping).
-   - **Sandboxed Local SQLite:** Locally saved reports, local feedback, and preferences are stored in the app-private internal storage sandbox (`/data/user/0/io.github.muhammadtaimoorajmal.trustcue/databases/trustcue.db`), protected by Android's Linux UID isolation and `android:allowBackup="false"`. Note: SQLite table rows are stored as standard unencrypted SQLite records, not database-level SQLCipher encrypted.
+   - **Sandboxed Local SQLite:** Locally saved reports, local feedback, and preferences are stored in the app-private internal storage sandbox (`/data/user/0/io.github.muhammadtaimoorajmal.trustcue/databases/trustcue_local.db`), protected by Android's Linux UID isolation and `android:allowBackup="false"`. Note: SQLite table rows are stored as standard unencrypted SQLite records, not database-level SQLCipher encrypted.
    - **Cloud Storage:** Hosted Supabase PostgreSQL database uses host-level volume encryption at rest (AES-256) and strict Row Level Security (RLS) policies. User email resides in `auth.users` and profile display name in `public.profiles`.
 3. **Data Deletion Mechanism Provided:**
    - Users can delete their account and all associated cloud data directly within the app (`Account -> Delete Account`).
@@ -65,7 +65,7 @@ Google Play policy strictly defines **collection** as any off-device transmissio
 |---|---|---|---|
 | `google_mlkit_text_recognition: 0.17.1` | On-device Latin OCR | **No** | Runs bundled on-device model (`com.google.android.gms.vision`). No images or OCR text uploaded. |
 | `google_mlkit_barcode_scanning: 0.16.1` | QR code decoding | **No** | Runs on-device Barcode scanner. No network queries. |
-| `sqflite: 2.4.4+2` | Local SQLite database | **No** | Operates exclusively on local file `/data/user/0/.../databases/trustcue.db`. |
+| `sqflite: 2.4.4+2` | Local SQLite database | **No** | Operates exclusively on local file `/data/user/0/.../databases/trustcue_local.db`. |
 | `flutter_secure_storage: 11.2.0` | Hardware KeyStore wrapper | **No** | Encrypts credentials locally with Android Keystore. |
 | `supabase_flutter: 2.18.3` | Authentication client | **Yes** | Connects to configured Supabase HTTPS endpoint for signup, login, session refresh, and token management. |
 | `http: 1.6.0` | Backend API client | **Yes** | Communicates with `https://trustcue-backend.onrender.com` over TLS. |

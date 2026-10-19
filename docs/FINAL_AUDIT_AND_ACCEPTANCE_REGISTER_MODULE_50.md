@@ -79,7 +79,7 @@ The following register details the reconciliation of every individual module in 
 | **33** | Protected Cloud AI Provider | Groq API adapter (`llama-3.3-70b-versatile`), XML prompt isolation. | `backend/src/trustcue_backend/providers/groq.py` | Unit tests mock Groq API; live hosted tests verify inference latency. | **Verified / Complete** | AI secrets stay exclusively on backend environment. |
 | **34** | AI Output Grounding & Adversarial | Byte-exact evidence grounding, hallucination filter, prompt injection test. | `backend/src/trustcue_backend/validation/output_validator.py` | Adversarial test suite proves prompt injections cannot flip verdicts. | **Verified / Complete** | Ungrounded excerpts discarded with logged metrics. |
 | **35** | Mobile Upload Consent & AI Workflow | Pre-upload consent modal with raw text preview, distinct AI provenance badges. | `lib/features/analysis/presentation/widgets/ai_consent_dialog.dart` | Widget tests confirm analysis cannot upload without explicit tap. | **Verified / Complete** | Editing message invalidates prior consent token. |
-| **36** | Local Report Persistence & SQLite | App-private SQLite database (`trustcue.db`), versioned schema migrations. | `lib/features/reports/data/repositories/sqlite_report_repository.dart` | Database tests verify offline CRUD operations and indexes. | **Verified / Complete** | Sandboxed with `android:allowBackup="false"`. |
+| **36** | Local Report Persistence & SQLite | App-private SQLite database (`trustcue_local.db`), versioned schema migrations. | `lib/features/reports/data/repositories/sqlite_report_repository.dart` | Database tests verify offline CRUD operations and indexes. | **Verified / Complete** | Sandboxed with `android:allowBackup="false"`. |
 | **37** | History, Search & Scoped Deletion | History screen (`/history`), full-text search, date filter, immediate deletion. | `lib/features/reports/presentation/screens/history_screen.dart` | UI tests verify live search filtering and deletion from disk. | **Verified / Complete** | Added mutex to prevent double-tap deletion race. |
 | **38** | Account Settings & Profile Deletion | Settings screen (`/settings`), user profile update, server account deletion. | `lib/features/account/`, `backend/src/trustcue_backend/api/routes/account.py` | End-to-end tests verify `ON DELETE CASCADE` purges user records. | **Verified / Complete** | Added confirmation challenge modal before delete. |
 | **39** | Optional Cloud Sync & Isolation | Metadata-only report sync (`/api/v1/sync/reports`), tombstone handling. | `lib/features/sync/`, `backend/src/trustcue_backend/services/sync_service.py` | Sync tests verify zero message text or evidence quotes uploaded. | **Verified / Complete** | Disabled by default; requires opt-in toggle. |
@@ -150,7 +150,7 @@ During the final Module 50 audit, ten specific architectural, security, and docu
 - **Initial Report Claim:** Early drafts vaguely described all local data as "hardware-encrypted".
 - **Empirical Re-Verification:**
   - **Auth Tokens:** Encrypted at rest using `flutter_secure_storage: 11.2.0`, which utilizes the Android KeyStore provider with AES-256-GCM cipher encryption and RSA master key wrapping.
-  - **Report Database (`trustcue.db`):** Standard SQLite database stored in the app-private internal storage directory (`/data/user/0/io.github.muhammadtaimoorajmal.trustcue/databases/`). It is isolated by the Android Linux kernel UID sandbox and protected against extraction via `android:allowBackup="false"` in `AndroidManifest.xml`.
+  - **Report Database (`trustcue_local.db`):** Standard SQLite database stored in the app-private internal storage directory (`/data/user/0/io.github.muhammadtaimoorajmal.trustcue/databases/trustcue_local.db`). It is isolated by the Android Linux kernel UID sandbox and protected against extraction via `android:allowBackup="false"` in `AndroidManifest.xml`.
 - **Resolution:** Disclosures updated in `docs/DATA_SAFETY_AND_DISCLOSURES_MODULE_49.md` and `docs/privacy/PRIVACY_POLICY.md` to precisely distinguish cryptographic token encryption from OS sandbox isolation.
 
 ### 3.7 Programmatic Play Store Character Count Compliance
@@ -186,19 +186,24 @@ During the final Module 50 audit, ten specific architectural, security, and docu
 ### 3.11 Authentic Binary Size & Certificate Provenance Reconciliation
 - **Initial Report Claim:** Prior documentation pass referenced estimated binary sizes (52.8 MB APK / 31.7 MB AAB) and an unverified certificate DN.
 - **Empirical Re-Verification:**
-  - `build/app/outputs/flutter-apk/app-release.apk`: Exact size `108,831,743` bytes (~103.79 MB), SHA-256 `883E2F04314632277B01D3DF1962FA56F69A6F82F47F98AE501F0B23DA330F58`.
-  - `build/app/outputs/bundle/release/app-release.aab`: Exact size `82,213,947` bytes (~78.41 MB), SHA-256 `7FEA32F893512ECF22C3BB229E97101502196D61E719E88C48B567866F2E94FA`.
+  - **Module 48 Initial Release Artifacts:** `build/app/outputs/flutter-apk/app-release.apk` (SHA-256 `883E2F...`, 108,831,743 bytes) and `build/app/outputs/bundle/release/app-release.aab` (SHA-256 `7FEA32...`, 82,213,947 bytes).
+  - **Module 50 Re-Compiled & Verified Release Artifacts:** Re-built following heuristic rule updates (`bccaeb9`) to ensure on-device binaries contain all verified analysis rules:
+    - `build/app/outputs/flutter-apk/app-release.apk`: Exact size `108,831,743` bytes (~103.79 MB), SHA-256 `7E7E90295AEE7D77E158EA67755CF107BA4504B6A31A5F2E2E9A32296E782083`.
+    - `build/app/outputs/bundle/release/app-release.aab`: Exact size `82,219,015` bytes (~78.41 MB), SHA-256 `EAF6AAD7D927D20194836A27F372D06D125910ABA255DAD25B2959BA8450E8A5`.
+    - Streamed to connected Vivo V2207 via `adb install -r`: Verified in-place upgrade (`lastUpdateTime=2026-10-19 13:01:47`, preserving `firstInstallTime=2026-10-18 21:53:59`).
   - `apksigner.bat verify --verbose --print-certs`: Verified with APK Signature Scheme v2. Signer certificate: `CN=TrustCue Release Signer, OU=Mobile Security, O=TrustCue, L=London, ST=Greater London, C=GB`, 4096-bit RSA, SHA-256 digest `66b3fb995dca5ac2ca17bed79c9d746536832129d4ee3d384561f1f609cbcd9f`.
-- **Resolution:** Full universal multi-ABI binaries with bundled ML Kit models verified on physical storage. Reconciled in `docs/RELEASE_CONFIGURATION_MODULE_48.md`.
+- **Resolution:** Full universal multi-ABI binaries with bundled ML Kit models verified on physical storage. Reconciled in `docs/RELEASE_CONFIGURATION_MODULE_48.md` and `docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md`.
 
 ### 3.12 Comprehensive Supplied Test Fixtures Acceptance & Rule Generalization
 - **Initial Report Claim:** Automated tests passed on synthetic fixtures, but full acceptance testing on user-supplied real-world scam corpora (`Testing Data/`) was required.
 - **Empirical Re-Verification:**
   - **Staging on Vivo V2207:** Transferred 19 scam screenshot fixtures to `/sdcard/Download/TrustCue_Testing/scam_messages/` and 9 scam QR fixtures to `/sdcard/Download/TrustCue_Testing/scam_qr/`. Scanned into Android media gallery via `MEDIA_SCANNER_SCAN_FILE`.
   - **Linguistic Heuristic Improvements:** Generalized 5 local warning rules (`UrgencyRule`, `AccountThreatRule`, `PaymentRequestRule`, `RewardClaimRule`, `JobOfferRule`) to recognize contemporary phrase variants without overfitting.
-  - **Negative Control Rigor:** Added 6 everyday benign and ambiguous counterexamples (`BEN-01` to `BEN-04`, `AMB-01` to `AMB-02`). All 6 evaluate to `noIndicatorsMatched` (0.0% false positive rate).
+  - **Negative Control Rigor:** Added 6 everyday benign and ambiguous counterexamples (`BEN-01` to `BEN-04`, `AMB-01` to `AMB-02`). All 6 evaluate to `noIndicatorsMatched`: No indicators matched in the six tested benign fixtures.
   - **Link Safety:** 57 links from `Links.txt` inspected offline; 15 raw numeric IP hosts identified; dangerous non-web schemes (`javascript:`, `file:`, `data:`, `intent:`) rejected.
   - **Full Suite Integrity:** Automated test suite `frontend/test/fixtures/acceptance_fixtures_test.dart` passes cleanly; full frontend test suite remains 100% green (870 / 870 tests).
+  - **Physical Device Workflow Verification:** Verified process-restart retention in `trustcue_local.db` across `am force-stop`, detailed evidence citation offset rendering, native ShareSheet TXT and PDF export with Latin typography fallback notice, and reactive SQLite scoped deletion.
+  - **Input Fidelity & Escaping Root Cause:** Resolved shell `$1` variable expansion during intent dispatch via single-quoted argument escaping, guaranteeing faithful character-exact input delivery.
 - **Resolution:** Authored authoritative reference register `docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md`.
 
 ---
@@ -215,7 +220,7 @@ flowchart TB
         QR["Google ML Kit QR / Barcode"]
         RuleEng["Pure-Dart 10-Rule Heuristics Engine"]
         Redact["Local Sensitive Data Detector (Luhn / PII)"]
-        SQLite[("Sandboxed SQLite Database (trustcue.db)")]
+        SQLite[("Sandboxed SQLite Database (trustcue_local.db)")]
         KeyStore[("Android KeyStore (AES-GCM Tokens)")]
     end
 
@@ -287,7 +292,7 @@ flowchart TD
     LocalAssess --> ResultsScreen["Display Results Screen & Provenance Badges"]
 
     ResultsScreen --> UserChoice{"User Action"}
-    UserChoice -->|"Save to Device"| SaveLocal["Persist to Sandboxed SQLite (trustcue.db)"]
+    UserChoice -->|"Save to Device"| SaveLocal["Persist to Sandboxed SQLite (trustcue_local.db)"]
     UserChoice -->|"Export Report"| GenExport["Generate Sanitized PDF / TXT -> ShareSheet"]
     UserChoice -->|"Request Cloud AI"| AuthCheck{"User Authenticated?"}
 
@@ -321,7 +326,7 @@ flowchart TD
 
 ### 5.2 Storage Schema Comparison: Local SQLite vs. Hosted PostgreSQL
 
-| Feature / Attribute | Local Client SQLite (`trustcue.db`) | Hosted PostgreSQL (`synced_reports`) |
+| Feature / Attribute | Local Client SQLite (`trustcue_local.db`) | Hosted PostgreSQL (`synced_reports`) |
 |---|---|---|
 | **Storage Medium** | SQLite 3 database file on internal Flash | Managed PostgreSQL 16 cluster (AWS Singapore) |
 | **Security Controls** | Linux kernel UID sandbox; `allowBackup=false` | Row Level Security (RLS); JWT claims enforcement |
@@ -406,7 +411,7 @@ Original message text, OCR drafts, evidence quotes, and contact details stay 100
 ### Q6: What is the exact difference between how auth tokens and local reports are secured at rest?
 **Answer:**  
 - **Auth Session Tokens:** Stored using `flutter_secure_storage: 11.2.0`. On Android, this writes to encrypted shared preferences where values are encrypted with AES-256-GCM, and the encryption key is wrapped by an RSA key stored in the hardware-backed Android KeyStore.
-- **Local Reports Database (`trustcue.db`):** Stored as a standard SQLite 3 database in the application's internal sandboxed directory (`/data/user/0/io.github.muhammadtaimoorajmal.trustcue/databases/`). It is not encrypted with SQLCipher; instead, it relies on Android's Linux kernel UID isolation (preventing other apps from reading it) and has `android:allowBackup="false"` in `AndroidManifest.xml` to prevent unauthorized ADB/cloud backup extraction.
+- **Local Reports Database (`trustcue_local.db`):** Stored as a standard SQLite 3 database in the application's internal sandboxed directory (`/data/user/0/io.github.muhammadtaimoorajmal.trustcue/databases/trustcue_local.db`). It is not encrypted with SQLCipher; instead, it relies on Android's Linux kernel UID isolation (preventing other apps from reading it) and has `android:allowBackup="false"` in `AndroidManifest.xml` to prevent unauthorized ADB/cloud backup extraction.
 
 ### Q7: How does TrustCue ensure accessibility compliance (WCAG 2.1 AA) for visually impaired users?
 **Answer:**  
