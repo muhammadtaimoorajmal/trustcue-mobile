@@ -36,6 +36,8 @@ import 'package:trustcue_mobile/features/reports/presentation/screens/saved_repo
 import 'package:trustcue_mobile/features/education/presentation/bindings/education_binding.dart';
 import 'package:trustcue_mobile/features/education/presentation/screens/education_screen.dart';
 import 'package:trustcue_mobile/features/education/presentation/screens/education_topic_detail_screen.dart';
+import 'package:trustcue_mobile/features/guide/presentation/bindings/user_guide_binding.dart';
+import 'package:trustcue_mobile/features/guide/presentation/screens/user_guide_screen.dart';
 
 class AppPages {
   AppPages(this.preferences, {this.requestedRoute});
@@ -143,6 +145,11 @@ class AppPages {
       name: AppRoutes.educationTopic,
       page: () => const EducationTopicDetailScreen(),
       binding: EducationBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.guide,
+      page: () => const UserGuideScreen(),
+      binding: UserGuideBinding(),
     ),
     unknownRoute,
   ];

@@ -831,8 +831,94 @@ Module 50B resolves all usability, transparency, and evidence hierarchy requirem
 
 ---
 
+## 15. Module 50D Acceptance Register: Complete Offline User Guide and Safe Guided Practice
+
+### 15.1 Handover Discrepancies Forensic Reconciliation
+* **Item 1A — GitHub Actions Run 39277319664:**
+  * Verified against tested commit `7f269ee` (Module 50C.1).
+  * Run status: `completed`, conclusion: `success`, completed at `2026-10-19T15:44:18Z` (duration 21m 56s).
+  * Cause of discrepancy: The user's screenshot was captured during execution while the run was yellow/pending.
+* **Item 1B — VS Code Diagnostic on `test_build_release.ps1`:**
+  * Diagnostic `PSUseDeclaredVarsMoreThanAssignments` flagged line 20 where `$cmd = "..."` was assigned but never referenced.
+  * Line removed; test harness re-run and confirmed passing all 8/8 tests cleanly.
+* **Item 1C — Test Count History Reconciled:**
+  * Commit history demonstrates that test count increased from 870 to 873 in Module 50B (commit `b10a436`), which added tests in `analysis_results_screen_test.dart` and `saved_report_detail_screen_test.dart`.
+  * Updated `README.md` to reflect the accurate baseline of 873 tests (and now 885 with Module 50D).
+* **Item 1D — Task-25504 Provenance:**
+  * Verified that `task-25504.log` (`step_index: 25506`) ran cleanly in 278.6s sourcing `https://yzqkmoqqvnhfmmrayfko.supabase.co`, while the spurious `yutidihosnphjtrcpxin` and AAPT error in `step_index: 25505` were premature model narration.
+* **Item 1E — Live Auth Profile/Quota Check:**
+  * Recorded as **OUTSTANDING** and carried forward into Module 50F.
+
+### 15.2 In-App Offline User Guide Architecture
+* **Clear Conceptual Separation:**
+  * *Scam Education Center (`/education`):* Focuses on the 10 scam indicator taxonomy families, scammer psychology, and why patterns deserve attention.
+  * *User Guide (`/guide`):* Focuses on operational guidance for using TrustCue: choosing input methods, correcting OCR text, sensitive data masking, interpreting evidence quotes vs verdicts, local SQLite storage, TXT/PDF exports, account/cloud boundaries, and troubleshooting.
+* **Domain Model & Catalog (`GuideCatalog`):**
+  * 6 comprehensive offline reference topics covering actual implemented features:
+    1. *Choosing the Right Input* (pasting text, screenshots, links, QR codes, system share, privacy guarantees).
+    2. *Reviewing Before Analysis* (OCR corrections, Latin script boundary, sensitive data detection, redaction masking, local snapshot freezing).
+    3. *Understanding Your Results* (indicators vs verdicts, grounded evidence quotes, calm no-match state, 10 indicator families, safe verification steps, offline URL inspection, local vs cloud AI).
+    4. *Saving, History, & Exporting* (local SQLite database, browsing past reports, report deletion, TXT and PDF export, Urdu script recommendations).
+    5. *Accounts & Cloud Boundaries* (guest mode first, optional Supabase login, per-request cloud AI consent, daily quotas, metadata-only cloud sync, signing out).
+    6. *Troubleshooting & Tips* (blurry OCR images, unsupported languages, QR focus, photo permissions, offline resilience, data resets).
+  * Reuses existing code-native vector illustrations (`TextExtractionIllustration`, `EvidenceReviewIllustration`, `LocalCloudBoundaryIllustration`).
+* **Quick-Start 3-Step Banner:**
+  * Step 1: *Enter or extract text*
+  * Step 2: *Review & redact*
+  * Step 3: *Inspect evidence & verify*
+
+### 15.3 Safe Guided Practice Engine
+* **Synthetic Demonstration Examples:**
+  * *Example 1 — Urgent Account Suspension Threat (`practice_warning_threat`):*
+    * Synthetic text: `"URGENT: Your bank account has been suspended due to suspicious activity. Send your login credentials immediately to verify your identity or your account will be permanently closed within 24 hours."`
+    * Demonstrates: High urgency deadline, account suspension threat, credential harvesting, grounded quote evidence, and safe verification guidance.
+  * *Example 2 — Benign Family Message (`practice_benign_friendly`):*
+    * Synthetic text: `"Hi Mom, please bring groceries home tonight. Love you."`
+    * Demonstrates: Calm no-match result, reminder that no-match is not an absolute safety verdict, and local heuristic coverage scope.
+* **Safety Invariants Enforced:**
+  * *Active Draft Preservation:* If `InputTextController` contains an active draft, displays a confirmation dialog (`guide_draft_dialog_title`) before replacing the draft text.
+  * *Zero Network Transmissions:* Guided practice executes exclusively on-device without network requests or cloud AI calls.
+  * *Zero Automatic History Saving:* Reports are never automatically persisted to local SQLite during practice; saving only occurs if the user explicitly taps `"Save report to device"`. (Empirically verified on physical device: report count remained at 1).
+
+### 15.4 Bilingual Localization
+* Full translation keys for English (`enUS`) and Urdu (`urPK`) added to `app_translations.dart`.
+* Urdu layout supports natural RTL reading (AppBar buttons mirror, text aligns right) while preserving authentic Latin message text, quoted evidence, and technical terms.
+
+### 15.5 Navigation Integration
+* Route `/guide` registered with `UserGuideBinding` and `UserGuideScreen`.
+* Accessible from `HomeScreen` overflow popup menu (`More options` -> `User Guide`).
+* Accessible from `AboutScreen` secondary button (`User Guide & Safe Practice`).
+
+### 15.6 Automated & Real Hardware Verification
+* **Automated Tests:**
+  * 12 new automated tests implemented across `test/features/guide/`:
+    * `guide_catalog_test.dart` (3 tests): Topics catalog, illustration builders, and practice examples.
+    * `user_guide_controller_test.dart` (3 tests): Accordion toggling, draft replacement prompt, and direct navigation.
+    * `user_guide_screen_test.dart` (4 tests): Header, quick-start banner, accordion expansion/collapse, practice launch, and Urdu rendering.
+    * `guide_navigation_test.dart` (2 tests): Entry from Home popup menu and About screen.
+  * Mobile test total: **885 tests PASS** (`flutter test`, 100% pass rate).
+  * Static analyzer: **0 issues found** (`flutter analyze --no-pub`).
+  * Formatting: **100% clean** (`dart format`).
+  * Release build tests: **8/8 PASS** (`test_build_release.ps1`).
+* **Release Artifact Provenance:**
+  * Build script: `frontend/scripts/build_release.ps1 -Target apk -Install`
+  * Artifact: `frontend/build/app/outputs/flutter-apk/app-release.apk`
+  * Size: 111,625,006 bytes (106.45 MB)
+  * SHA-256: `FF02F2A79A4D1755EA1CF354BAB434658397DAAE760E7736622E90CBB16D006D`
+  * Signature: APK Signature Scheme v2 = `true` (signed with official 4096-bit RSA keystore).
+* **Physical Device Testing (Vivo V2207, Android 14 API 34):**
+  * Entry to User Guide verified from Home popup menu and About screen.
+  * Quick-Start 3-step banner rendered without text clipping.
+  * Topic accordion expansion verified (Topic 1 expanded to display all 6 subsections).
+  * Guided Practice Example 1 launched: text review screen rendered with synthetic text; confirmed and analyzed; 3 warning signs displayed with grounded quotes and verification steps.
+  * Guided Practice Example 2 launched: confirmed and analyzed; calm no-match state rendered with limited-coverage notice.
+  * Saved reports checked: report count remained at 1; zero automatic reports saved.
+  * Language switching to Urdu verified: RTL alignment, Urdu labels, and preservation of Latin message text. Language restored to English.
+
+---
+
 **Audited By:** Antigravity Pairing Assistant  
 **Reviewed For:** Muhammad Taimoor Ajmal (Lead Developer / Student)  
 **Date:** October 19, 2026  
-**Module 50 Status:** IN PROGRESS (Module 50C and 50C.1 Complete and Verified; Gated on final owner approval before main merge)
+**Module 50 Status:** IN PROGRESS (Modules 50A, 50B, 50C, 50C.1, and 50D Complete and Verified on Hardware; Gated on final owner approval before main merge)
 

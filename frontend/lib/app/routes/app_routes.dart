@@ -21,4 +21,5 @@ abstract class AppRoutes {
   static const privacy = '/privacy';
   static const education = '/education';
   static const educationTopic = '/education/topic';
+  static const guide = '/guide';
 }

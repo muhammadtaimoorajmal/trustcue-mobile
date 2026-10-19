@@ -73,6 +73,16 @@ class AboutScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             AppButton.secondary(
+              label: 'User Guide & Safe Practice',
+              icon: Icons.help_outline_rounded,
+              onPressed: () {
+                if (Get.currentRoute != AppRoutes.guide) {
+                  Get.toNamed(AppRoutes.guide);
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+            AppButton.secondary(
               label: 'Review safe-use guidance',
               onPressed: () {
                 if (Get.currentRoute != AppRoutes.guidance) {

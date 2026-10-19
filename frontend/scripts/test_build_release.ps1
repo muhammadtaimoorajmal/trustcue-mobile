@@ -17,7 +17,6 @@ function Assert-BuildScriptFailure {
         [string]$ExpectedOutputPattern
     )
     Write-Host -NoNewline "  Testing: $TestName ... "
-    $cmd = "powershell -ExecutionPolicy Bypass -File `"$buildScript`" $Arguments"
     $pinfo = New-Object System.Diagnostics.ProcessStartInfo
     $pinfo.FileName = "powershell.exe"
     $pinfo.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$buildScript`" $Arguments"

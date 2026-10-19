@@ -61,6 +61,11 @@ class HomeScreen extends GetView<HomeController> {
                     Get.toNamed(AppRoutes.education);
                   }
                   break;
+                case 'guide':
+                  if (Get.currentRoute != AppRoutes.guide) {
+                    Get.toNamed(AppRoutes.guide);
+                  }
+                  break;
                 case 'privacy':
                   if (Get.currentRoute != AppRoutes.privacy) {
                     Get.toNamed(AppRoutes.privacy);
@@ -72,6 +77,19 @@ class HomeScreen extends GetView<HomeController> {
               }
             },
             itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'guide',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.help_outline_rounded,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 12),
+                    Text('guide_title'.tr),
+                  ],
+                ),
+              ),
               PopupMenuItem(
                 value: 'education',
                 child: Row(
