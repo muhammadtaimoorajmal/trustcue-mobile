@@ -1,0 +1,116 @@
+https://facebook-verification-system4.blogspot.com/
+
+https://www.online-facebook-privacy.blogspot.com/
+
+https://trust-wallet-login.vercel.app/staking
+
+https://ledger-live-cloud-deesktop.pages.dev/
+
+http://connect-ledger-login.wasmer.app/
+
+https://www.paypal-transactions.sbs/shop/checkout.html
+
+https://paypal-password.blogspot.com/
+
+https://www.roblox.com.bn/users/619170392353/profile
+
+https://www.roblox.com.bn/games/76111710810728/NEW-Steal-A-Zoo?privateServerLinkCode=...
+
+https://www.robiox.com.py/users/370132405543/profile (Note the typo in "roblox")
+
+https://https--www--roblox.com/users/475726061/profile
+
+https://www.instagram-users.blogspot.com/?m=1
+
+https://instagram-com-ig.github.io/instagram-com.github.io
+
+https://www.loginmyfacebook.blogspot.com/
+
+https://community-fb1.vercel.app/
+
+http://www.facebook-verification-system4.blogspot.com/
+
+https://www.facebook--br.blogspot.com/
+
+https://facebooklogin1234.blogspot.com/
+
+https://neda-facebook.blogspot.com/
+
+https://www.jo-facebook.blogspot.com/
+
+https://davidco564.github.io/r4w2ws2
+
+https://officialgangwaranmol.github.io/amazone_clone/ (A fake Amazon page)
+
+https://manikandan-moto.github.io/netflixwebpage (A fake Netflix page)
+
+http://uspssmartparcellocker.tech/
+
+https://www.uspssmartpackagelockers.com/
+
+http://vonovia-immobilien-house.com/
+
+https://s4w.in/roblox-com-uk-users-8928613773-profile
+
+https://wells99.github.io/pageAlunos/
+
+https://f005.backblazeb2.com/b2api/v1/b2_download_file_by_id?fileId=...
+
+https://share.google/1CUx4XF0XRwYPB1HR (A shortened URL, a common phishing tactic)
+
+Malware & Exploit URLs
+These URLs are associated with malware downloads, exploit kits, or command-and-control (C2) infrastructure.
+
+http://37.77.150.214:8080/msi/setup_cf4cb3a3.msi
+
+http://193.143.1.174/index.ps1
+
+http://193.143.1.217/scheldt (Tagged as ACRStealer)
+
+http://193.143.1.16/g8hrS4f4vh/Plugins/cred.dll (Tagged as Amadey)
+
+http://193.143.1.16/g8hrS4f4vh/Plugins/vnc.exe (Tagged as TinyNuke)
+
+http://193.143.1.133/test/amnew.exe (Tagged as Amadey)
+
+http://193.143.1.117/hmips (An ELF file, often for Linux/IoT devices)
+
+http://193.143.1.32/tmips (Tagged as Mirai botnet)
+
+http://ets-cold.duckdns.org/powerpc.nn (Part of a Gorilla Botnet campaign)
+
+http://ets-cold.duckdns.org/arm.nn
+
+http://ets-cold.duckdns.org/arm6.nn
+
+http://ets-cold.duckdns.org/mipsel.nn
+
+http://ets-cold.duckdns.org/arm7.nn
+
+http://ets-cold.duckdns.org/m68k.nn
+
+http://ets-cold.duckdns.org/sparc.nn
+
+http://ets-cold.duckdns.org/arm5.nn
+
+http://ets-cold.duckdns.org/x86_64.nn
+
+http://ets-cold.duckdns.org/mips.nn
+
+https://hardly-signatures-loc-surf.trycloudflare.com/download/WindowsUpdate.ps1 (A malicious PowerShell script)
+
+https://raw.githubusercontent.com/thuhangn562727-del/maqueo/raw/refs/heads/main/gaylo.exe
+
+http://185.166.155.141:5001/irzfcxiywhew.exe
+
+http://108.168.10.70:38308/i
+
+http://163.142.86.141:43603/i
+
+https://37.77.150.120/Bin/ScreenConnect.ClientSetup.exe (A remote access tool)
+
+https://37.77.150.120/bin/support.client.exe
+
+http://193.143.1.186/cl-ncl-start (A PowerShell script)
+
+http://193.143.1.118/main_arm (Tagged as Mirai)

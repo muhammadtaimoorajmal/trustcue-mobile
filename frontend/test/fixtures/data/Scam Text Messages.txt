@@ -1,0 +1,152 @@
+Bank fraud alert
+[Bank]: Did you authorize $487.32 at Walmart? Reply Y/N. If not, verify now: hxxps://bank-secure-verify[.]example/login
+Why it works: real bank name, amount, urgency. Red flag: link + “reply Y/N”.
+
+Account locked
+Apple ID: Your account is locked due to suspicious activity. Verify within 24 hours: hxxps://appleid-verify[.]example
+Red flag: shortened/odd domain, deadline, login request.
+
+Delivery fee
+USPS: Your package is held at the depot due to incomplete address. Pay $1.99 redelivery fee: hxxps://usps-redelivery[.]example/track
+Red flag: small fee to lower suspicion; unofficial link.
+
+Unpaid toll
+E-ZPass: You have an unpaid toll of $6.95. Avoid a $50 late fee: hxxps://ezpass-pay[.]example
+Red flag: toll agencies usually direct you to official site, not random link.
+
+Utility disconnection
+Your electricity service will be disconnected today. Call 1-555-0100 to pay immediately.
+Red flag: same-day threat; number in text; payment pressure.
+
+OTP forwarding scam
+Hi, this is Ahmed. I accidentally sent my verification code to your number. Can you forward it? It’s urgent.
+Red flag: never share OTPs. This is account takeover.
+
+Job offer
+Hi, I’m HR at [Company]. We saw your CV. Work from home, $35/hr, 2 hrs/day. No interview needed. WhatsApp +1-555-0199.
+Red flag: no interview, WhatsApp-only, unrealistic pay.
+
+Crypto withdrawal
+Coinbase: Your withdrawal is pending. Confirm wallet access: hxxps://coinbase-wallet-check[.]example
+Red flag: fake exchange domain; seed phrase/wallet login theft.
+
+Wrong-number romance
+Hey is this Dr. Ayesha? Sorry, wrong number. You seem kind. What do you do for work?
+Red flag: “wrong number” then relationship building; eventually investment/crypto ask.
+
+Family emergency
+Mom, I broke my phone. This is my new number. I need $850 for rent urgently. Can you Zelle me?
+Red flag: new number + urgent money + payment app.
+
+Tax refund
+IRS: You have an unclaimed refund of $1,240. Submit bank details here: hxxps://irs-refund[.]example
+Red flag: tax agencies don’t request bank details by text link.
+
+Tech support
+Microsoft: Your device is infected with 5 viruses. Call 1-555-0123 immediately.
+Red flag: unsolicited infection warning; call-center scam.
+
+Subscription failed
+Netflix: Your payment failed. Update your billing info within 24h: hxxps://netflix-billing[.]example
+Red flag: fake login page; credential theft.
+
+Prize/gift card
+Congratulations! You won a $500 gift card. Claim here: hxxps://reward-claim[.]example
+Red flag: you didn’t enter; claim link; data/payment harvesting.
+
+CEO/gift-card fraud
+Hi, this is the CEO. I’m in a meeting. Please buy 5 x $100 gift cards and send me the codes. Urgent.
+Red flag: gift-card codes are a classic BEC scam.
+
+Invoice scam
+Invoice INV-8841 attached. Please pay today to avoid service interruption: hxxps://invoice-pay[.]example
+Red flag: unexpected invoice; link instead of known portal.
+
+Rental scam
+Apartment still available. $600/month. Send deposit today and I’ll courier keys.
+Red flag: deposit before viewing; pressure; no verified contract.
+
+Charity scam
+Donate to flood relief: every $10 feeds a family. Send to hxxps://relief-donate[.]example
+Red flag: emotional urgency; unverified charity; direct payment link.
+
+Loan scam
+Pre-approved $5,000 loan. No credit check. Pay $75 processing fee to release funds.
+Red flag: upfront fee; guaranteed approval.
+
+Warranty scam
+Your car warranty has expired. Renew today or lose coverage: 1-555-0177.
+Red flag: vague vehicle details; call-back number.
+
+Travel scam
+Your flight is canceled. Rebook now and pay $49 fee: hxxps://airline-rebook[.]example
+Red flag: airline would use official app/booking reference.
+
+Pet scam
+I found your dog. I can keep it safe but need $100 for vet check. Send gift card code.
+Red flag: payment by gift card; emotional pressure.
+
+Government benefits
+SNAP: Your benefits are suspended. Verify identity to restore: hxxps://benefits-verify[.]example
+Red flag: government impersonation; identity theft.
+
+Insurance verification
+Your health insurance needs verification or claims will be denied. Upload ID and card: hxxps://insurance-check[.]example
+Red flag: sensitive document request by text link.
+
+Sextortion
+I have webcam footage of you. Pay $900 in Bitcoin within 48h or I send it to your contacts.
+Red flag: mass-sent fear tactic; often no real footage.
+
+QR-code scam
+Scan this QR to pay your parking fee: [QR image]
+Red flag: QR codes can hide malicious payment links; verify official app.
+
+Common scam text types
+Smishing/phishing: fake bank, Apple, PayPal, delivery, tax links.
+
+OTP interception: “send me the code” / “wrong number” code forwarding.
+
+Bank impersonation: fraud alerts, account lock, card activation.
+
+Delivery/parcel scams: unpaid fee, address issue, redelivery.
+
+Toll/utility scams: unpaid toll, disconnection notice.
+
+Job scams: work-from-home, task scams, fake recruiters, WhatsApp/Telegram interviews.
+
+Investment/crypto scams: fake exchanges, wallet verification, “guaranteed returns”, pig-butchering.
+
+Romance/wrong-number scams: relationship building then money/investment ask.
+
+Family emergency scams: new number, urgent money, Zelle/gift card.
+
+Government impersonation: IRS/tax, benefits, fines, immigration.
+
+Tech support scams: virus warnings, Microsoft/Apple support calls.
+
+Subscription renewal scams: Netflix, antivirus, cloud storage payment failed.
+
+Prize/lottery scams: gift cards, vouchers, “claim now”.
+
+CEO/BEC/invoice scams: gift cards, wire transfer, fake invoice.
+
+Rental/real-estate scams: deposit before viewing.
+
+Charity scams: disaster relief, medical fundraising.
+
+Loan/debt scams: upfront fee, no credit check.
+
+Warranty/insurance scams: car warranty, health insurance verification.
+
+Travel scams: canceled flight, rebooking fee.
+
+Pet scams: lost/found pet, adoption fee.
+
+Sextortion scams: webcam threats, Bitcoin demand.
+
+Refund scams: overpayment refund, fake order cancellation.
+
+QR-code scams: parking meters, menus, payment codes.
+
+SIM-swap/social engineering: carrier port-out, account takeover.

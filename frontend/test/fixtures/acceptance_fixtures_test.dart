@@ -13,6 +13,26 @@ import 'package:trustcue_mobile/features/input/domain/models/text_snapshot.dart'
 import 'package:trustcue_mobile/features/input/domain/services/url_inspection_service.dart';
 import 'package:trustcue_mobile/features/input/domain/services/local_sensitive_data_detector.dart';
 
+File _resolveFixtureFile(String fileName) {
+  final candidatePaths = [
+    'test/fixtures/data/$fileName',
+    'frontend/test/fixtures/data/$fileName',
+    '../test/fixtures/data/$fileName',
+    '../../test/fixtures/data/$fileName',
+    'D:/ALL DATA/PROJECTS/TrustCue/Testing Data/$fileName',
+    'd:/ALL DATA/PROJECTS/TrustCue/Testing Data/$fileName',
+  ];
+  for (final path in candidatePaths) {
+    final file = File(path);
+    if (file.existsSync()) {
+      return file;
+    }
+  }
+  throw StateError(
+    'Fixture file not found: $fileName across candidate paths: $candidatePaths',
+  );
+}
+
 void main() {
   late LocalRuleEngine ruleEngine;
   late LocalRuleRegistry registry;
@@ -100,9 +120,7 @@ void main() {
     test(
       'Loads and evaluates Scam Text Messages from fixture folder',
       () async {
-        final file = File(
-          r'd:\ALL DATA\PROJECTS\TrustCue\Testing Data\Scam Text Messages.txt',
-        );
+        final file = _resolveFixtureFile('Scam Text Messages.txt');
         expect(file.existsSync(), isTrue);
         final content = file.readAsStringSync();
         final blocks = content.split(RegExp(r'\n\s*\n'));
@@ -169,9 +187,7 @@ void main() {
 
   group('Fixtures Acceptance: URLs and Links', () {
     test('Inspects all links from Links.txt without crashing or making network calls', () {
-      final file = File(
-        r'd:\ALL DATA\PROJECTS\TrustCue\Testing Data\Links.txt',
-      );
+      final file = _resolveFixtureFile('Links.txt');
       expect(file.existsSync(), isTrue);
       final lines = file
           .readAsLinesSync()
