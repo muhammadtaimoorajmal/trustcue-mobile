@@ -20,14 +20,16 @@ This document serves as the **Authoritative Final Audit, Acceptance Register, an
 
 | Component | Working Directory | Owning Git Branch | Authoritative Commit | Cleanliness / Status |
 |---|---|---|---|---|
-| **Mobile Client & Shared Docs** | `trustcue-mobile/` | `frontend` | `d49cfd7` | Clean, synchronized with remote |
-| **Backend API Service** | `trustcue-backend/` | `backend` | `b51c638` | Clean, deployed on Render |
-| **Database Migrations & Tests** | `trustcue-database/` | `database` | `534f66a` | Clean, applied to hosted Supabase |
-| **Production Baseline** | — | `main` | `a785db8` | Untouched (pre-integration state) |
-| **Integrated Review Candidate** | `trustcue-integration/` | `integration/candidate-v0.1.0` | `6efd00f` | Clean reviewable monorepo candidate |
-| **Public Backend Web Service** | Render Cloud (`srv-dbad39qjnfac73f8ma80`) | `backend` branch | `b51c638` (dep-dbaemc3ncjis73d9htm0) | Live (`ENABLE_CLOUD_SYNC=true`) |
-| **Hosted Database Project** | Supabase Cloud (`yzqkmoqqvnhfmmrayfko`) | PostgreSQL 16 | Migrations `00001`–`00008` | Active, RLS enforced |
-| **Connected Physical Device** | Vivo V2207 (`10AC9R1ABF0013A`) | Android 14 (API 34) | Release Build PID 10808 / 21147 | Functionally verified |
+| **Mobile Client & Shared Docs** | `trustcue-mobile/` | `frontend` | `67830ee` | Clean, synchronized with origin/frontend, CI passing (Run 39231846382) |
+| **Backend API Service** | `trustcue-backend/` | `backend` | `b51c638` | Clean, deployed on Render, CI passing |
+| **Database Migrations & Tests** | `trustcue-database/` | `database` | `534f66a` | Clean, applied to hosted Supabase, CI passing |
+| **Production Baseline** | — | `main` | `a785db8` | Strictly untouched (pre-integration baseline) |
+| **Public Backend Web Service** | Render Cloud (`srv-dbad39qjnfac73f8ma80`) | `backend` branch | `b51c638` (dep-dbaemc3ncjis73d9htm0) | Live (`ENABLE_CLOUD_SYNC=true`, probes passing) |
+| **Hosted Database Project** | Supabase Cloud (`yzqkmoqqvnhfmmrayfko`) | PostgreSQL 16 | Migrations `00001`–`00008` | Active, RLS enforced, atomic push/purge verified |
+| **Connected Physical Device** | Vivo V2207 (`10AC9R1ABF0013A`) | Android 14 (API 34) | Release APK installed (`7E141E1C...`) | Cloud-configured release verified; live auth/sync in progress |
+
+> [!NOTE] Four-Branch Repository Architecture
+> In strict compliance with the Owner's Branch Rule, the project maintains exactly four branches: `main`, `frontend`, `backend`, and `database`. The temporary branch `integration/candidate-v0.1.0` was fully verified, backed up to an offline Git bundle (`integration_candidate_backup.bundle`, ref `d5e2839`), and safely removed locally and remotely. `main` (`a785db8`) remains strictly untouched until owner approval.
 
 ### 1.2 Boundary Enforcement Statement
 In strict adherence to project constraints and release engineering ethics:
@@ -93,7 +95,7 @@ The following register details the reconciliation of every individual module in 
 | **47** | CI/CD, Deployment & Live Recovery | Production Render web service, Supabase migrations 00007–00008, live sync. | `render.yaml`, `database/migrations/00007_enforce_sync_opt_in.sql` | Live probes return 200; concurrent upload/purge tests pass. | **Verified / Complete** | Applied atomic upload/purge protection trigger. |
 | **48** | Android Release Packaging & Signing | Production R8 code shrinking, 4096-bit RSA keystore, APK Signature Scheme v2. | `android/app/build.gradle`, `android/key.properties` | `apksigner` verifies v2 signature; in-place upgrade verified on device. | **Verified / Complete** | Verified OpenSSL PBKDF2 encrypted keystore backup. |
 | **49** | Play Console Listing & Compliance | Play Store listing copy, authentic screenshots, Data Safety disclosures. | `docs/PLAY_STORE_LISTING_MODULE_49.md`, `docs/DATA_SAFETY_AND_DISCLOSURES_MODULE_49.md` | Programmatic character counts pass (25/30, 77/80, 3358/4000); live TLS 1.3 verified. | **Verified / Complete** | Added functional account deletion request generator. |
-| **50** | Final Audit, Monorepo Integration & Handover | Complete 50-module audit, consolidated review candidate monorepo, viva prep. | `trustcue-integration/`, `docs/FINAL_AUDIT_AND_ACCEPTANCE_REGISTER_MODULE_50.md` | 1,015 automated tests passing; unified README; clean candidate branch. | **Reviewable Candidate** | Gated candidate ready for final evaluation and approval. |
+| **50** | Final Audit, Reconciled Quality Gates & Handover | Complete 50-module audit, four-branch reconciliation, reproducible release build with verified cloud configuration, physical device verification. | `docs/FINAL_AUDIT_AND_ACCEPTANCE_REGISTER_MODULE_50.md`, `frontend/scripts/build_release.ps1` | 1,025 automated tests pass (870 Flutter, 142 backend, 13 database); CI 100% green; release APK signed and cloud-configured; device install verified. | **In Progress** | Final physical device live auth/sync and missing checks being closed. |
 
 ---
 
@@ -187,12 +189,12 @@ During the final Module 50 audit, ten specific architectural, security, and docu
 - **Initial Report Claim:** Prior documentation pass referenced estimated binary sizes (52.8 MB APK / 31.7 MB AAB) and an unverified certificate DN.
 - **Empirical Re-Verification:**
   - **Module 48 Initial Release Artifacts:** `build/app/outputs/flutter-apk/app-release.apk` (SHA-256 `883E2F...`, 108,831,743 bytes) and `build/app/outputs/bundle/release/app-release.aab` (SHA-256 `7FEA32...`, 82,213,947 bytes).
-  - **Module 50 Re-Compiled & Verified Release Artifacts:** Re-built following heuristic rule updates (`bccaeb9`) to ensure on-device binaries contain all verified analysis rules:
-    - `build/app/outputs/flutter-apk/app-release.apk`: Exact size `108,831,743` bytes (~103.79 MB), SHA-256 `7E7E90295AEE7D77E158EA67755CF107BA4504B6A31A5F2E2E9A32296E782083`.
-    - `build/app/outputs/bundle/release/app-release.aab`: Exact size `82,219,015` bytes (~78.41 MB), SHA-256 `EAF6AAD7D927D20194836A27F372D06D125910ABA255DAD25B2959BA8450E8A5`.
-    - Streamed to connected Vivo V2207 via `adb install -r`: Verified in-place upgrade (`lastUpdateTime=2026-10-19 13:01:47`, preserving `firstInstallTime=2026-10-18 21:53:59`).
-  - `apksigner.bat verify --verbose --print-certs`: Verified with APK Signature Scheme v2. Signer certificate: `CN=TrustCue Release Signer, OU=Mobile Security, O=TrustCue, L=London, ST=Greater London, C=GB`, 4096-bit RSA, SHA-256 digest `66b3fb995dca5ac2ca17bed79c9d746536832129d4ee3d384561f1f609cbcd9f`.
-- **Resolution:** Full universal multi-ABI binaries with bundled ML Kit models verified on physical storage. Reconciled in `docs/RELEASE_CONFIGURATION_MODULE_48.md` and `docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md`.
+  - **Module 50 Fresh Cloud-Configured Release Artifacts:** Authored `frontend/scripts/build_release.ps1` enforcing compile-time `--dart-define` of `SUPABASE_URL` and `SUPABASE_ANON_KEY`, eliminating the "Cloud Service Not Configured" defect:
+    - `build/app/outputs/flutter-apk/app-release.apk`: Exact size `108,831,743` bytes (~103.79 MB), SHA-256 `7E141E1C0B12F9B3D461F66A179FFB092DA5D82DC709EE3D3B212A795DA58623`.
+    - `build/app/outputs/bundle/release/app-release.aab`: Exact size `82,220,305` bytes (~78.41 MB), SHA-256 `92E3A38F8DD748A924738C8A4D1805AD1E96B7274112500E57A5E097B233D43C`.
+    - Streamed to connected Vivo V2207 via `adb install -r`: Verified in-place upgrade (`lastUpdateTime=2026-10-19 14:56:21`, preserving `firstInstallTime=2026-10-18 21:53:59`).
+  - `apksigner.bat verify --verbose --print-certs`: Verified with APK Signature Scheme v2. Signer certificate: `CN=TrustCue Release Signer, OU=Mobile Security, O=TrustCue, L=London, ST=Greater London, C=GB`, 4096-bit RSA, SHA-256 digest `66b3fb995dca5ac2ca17bed79c9d746536832129d4ee3d384561f1f609cbcd9f`, SHA-1 digest `9935e0eafeabc7df05f7ad2cff6cbb5d695171d3`.
+- **Resolution:** Full universal multi-ABI binaries with bundled ML Kit models and embedded cloud configuration verified on physical storage. Reconciled in `docs/RELEASE_CONFIGURATION_MODULE_48.md` and `docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md`.
 
 ### 3.12 Comprehensive Supplied Test Fixtures Acceptance & Rule Generalization
 - **Initial Report Claim:** Automated tests passed on synthetic fixtures, but full acceptance testing on user-supplied real-world scam corpora (`Testing Data/`) was required.
@@ -205,6 +207,45 @@ During the final Module 50 audit, ten specific architectural, security, and docu
   - **Physical Device Workflow Verification:** Verified process-restart retention in `trustcue_local.db` across `am force-stop`, detailed evidence citation offset rendering, native ShareSheet TXT and PDF export with Latin typography fallback notice, and reactive SQLite scoped deletion.
   - **Input Fidelity & Escaping Root Cause:** Resolved shell `$1` variable expansion during intent dispatch via single-quoted argument escaping, guaranteeing faithful character-exact input delivery.
 - **Resolution:** Authored authoritative reference register `docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md`.
+
+### 3.13 Frontend CI Repair & Cross-Platform Fixture Resolution
+- **Defect Identified:** Frontend CI run failed on GitHub Actions runner (`ubuntu-latest`) at formatting check (`Check Code Formatting`) and test fixture resolution.
+- **Root Cause:**
+  1. `urgency_rule.dart` and `acceptance_fixtures_test.dart` had minor whitespace variations unformatted by `dart format`.
+  2. `acceptance_fixtures_test.dart` referenced hardcoded Windows host paths (`r'd:\ALL DATA\PROJECTS\TrustCue\Testing Data\...'`), which do not exist on Ubuntu runners.
+- **Corrective Resolution:**
+  1. Formatted all Dart source files with `dart format --output=none --set-exit-if-changed lib test integration_test`.
+  2. Committed test corpora `Links.txt` and `Scam Text Messages.txt` to `frontend/test/fixtures/data/` and implemented portable relative resolver with directory climb fallback.
+  3. Re-triggered GitHub Actions Frontend CI workflow: Run `39231846382` on commit `67830ee` succeeded with 100% PASS across all 11 pipeline stages.
+  4. Investigated `IntegrationTestPlugin` registration in `GeneratedPluginRegistrant.java`: confirmed it is cleanly gitignored and only generated during local on-device integration test invocations, with zero presence in clean production CI builds.
+
+### 3.14 Fail-Safe Release Cloud Configuration via build_release.ps1
+- **Defect Identified:** Release APK installed on hardware displayed "Cloud Service Not Configured" upon visiting the Account screen.
+- **Root Cause:** `AuthConfig.fromEnvironment()` expects compile-time environment defines `--dart-define=SUPABASE_URL=...` and `--dart-define=SUPABASE_ANON_KEY=...`. When `flutter build apk --release` was run bare, these defaulted to empty strings, triggering `AuthStatus.unconfigured`.
+- **Corrective Resolution:**
+  1. Created fail-safe release build script `frontend/scripts/build_release.ps1`.
+  2. Script automatically extracts the public `SUPABASE_URL` and `SUPABASE_ANON_KEY` from `trustcue-backend/.env` without logging or printing secrets.
+  3. Enforces strict build gate: halts immediately if public credentials are missing unless `-AllowOffline` is explicitly passed.
+  4. Verified that zero privileged backend secrets (`SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, keystore passwords) are passed to Flutter compile-time defines.
+  5. Built and deployed cloud-configured APK (`7E141E1C...`): verified on Vivo V2207 that "Cloud Service Not Configured" is completely eliminated, rendering "Guest Mode", "Sign in", and "Create an account".
+
+### 3.15 Four-Branch Architecture Enforcement & Integration Branch Retirement
+- **Policy Enforcement:** Enforced Owner's Branch Rule: the project must retain exactly four branches: `main`, `frontend`, `backend`, and `database`. No permanent or temporary integration branches.
+- **Reconciliation & Safe Removal:**
+  1. Performed three-way diff between `integration/candidate-v0.1.0` and owning branches: confirmed 100% of frontend code, test fixtures, release scripts, and documentation files reside safely in `trustcue-mobile` on `frontend`.
+  2. Created verified offline Git bundle backup: `D:\ALL DATA\PROJECTS\TrustCue\integration_candidate_backup.bundle` (SHA-1 ref `d5e2839445dd3d0c189c79bc39e9b1443605cc3f`).
+  3. Safely deleted local worktree `trustcue-integration` and branch `integration/candidate-v0.1.0`.
+  4. Safely deleted remote branch `origin/integration/candidate-v0.1.0`.
+  5. Verified `git ls-remote origin` confirms exactly 4 remote branches remain: `main` (`a785db8`), `frontend` (`67830ee`), `backend` (`b51c638`), `database` (`534f66a`). `main` remains strictly untouched.
+
+### 3.16 Toolchain, SDK & Environment Reconciliation
+- **Flutter & Dart SDK:** Verified installed local and CI toolchain is Flutter `3.47.4` (stable channel) with Dart `3.13.3`. Discredited earlier documentation references to `3.24` / `3.5` as outdated drafts.
+- **Android SDK:** Verified actual compiled APK badging via `aapt dump badging`: `compileSdkVersion='36'`, `targetSdkVersion='36'`, `sdkVersion:'24'` (minimum SDK 24 required by Google ML Kit Latin OCR & Barcode Scanning). Reconciled earlier notes referencing 21/34.
+- **Local SQLite Database:** Formally certified canonical SQLite database filename as `trustcue_local.db` (`database_constants.dart`), stored in app-private sandboxed internal storage.
+- **Groq Cloud Model:** Certified primary backend AI provider model as `llama-3.3-70b-versatile` (`trustcue_backend/core/config.py`). Reconciled earlier draft references to `qwen/qwen3.8-27b`.
+- **Backend Readiness Probe (`/ready`):** Documented that `/ready` returning `database: "unconfigured"` is by design and expected: the FastAPI backend communicates with Supabase via stateless PostgREST HTTP requests using the service role key, rather than maintaining a persistent TCP connection pool (`DATABASE_URL`).
+- **Supabase Anon Key vs Privileged Secrets:** Reconciled architectural boundaries: `SUPABASE_ANON_KEY` is a public publishable key designed for client-side embedding, secured by PostgreSQL Row Level Security (RLS) policies. Privileged secrets (`SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, signing keystore passwords) stay strictly on the server or outside Git tracking.
+- **Policy URLs:** Clarified that Privacy Policy (`docs/privacy/privacy_policy.html`) and Account Deletion (`docs/privacy/account_deletion.html`) are currently prepared as standalone HTML/Markdown assets in the repository, pending public web hosting by the domain owner.
 
 ---
 
@@ -446,10 +487,10 @@ Google Play requires apps with account creation to provide both an in-app and an
 APK Signature Scheme v1 signs the individual ZIP entries inside the APK. An attacker can theoretically manipulate ZIP metadata (such as central directory headers) without invalidating the v1 signature.  
 APK Signature Scheme v2 is a full-file signature scheme that inserts an APK Signing Block immediately before the ZIP Central Directory. It hashes the entire binary contents of the APK. Any modification to any byte of the APK (code, resources, or ZIP metadata) invalidates the signature. Furthermore, v2 verification is significantly faster on Android devices because it does not require parsing individual ZIP entries during package installation.
 
-### Q12: Why did you maintain separate worktrees (`frontend`, `backend`, `database`) throughout development, and how does the `trustcue-integration` candidate unify them?
+### Q12: Why did you maintain separate branches (`frontend`, `backend`, `database`), and what is the status of the integration branch?
 **Answer:**  
 Maintaining isolated branches prevented cross-domain pollution: frontend Flutter developers did not run Python migrations, and backend developers did not trigger Flutter Gradle builds. It also enforced strict documentation ownership (`ROADMAP.md` on `frontend`, OpenAPI on `backend`).  
-For Module 50, we created the linked worktree `trustcue-integration` on branch `integration/candidate-v0.1.0`. This brings the authoritative versions of `frontend/` (`d49cfd7`), `backend/` (`b51c638`), and `database/` (`534f66a`) into a unified monorepo. It validates that all unit, static, and integration tests pass concurrently (1,015 total tests) before the candidate is submitted for final approval and merge into `main`.
+In adherence to the authoritative Owner's Branch Rule, the project strictly retains exactly four branches: `main`, `frontend`, `backend`, and `database`. The temporary integration branch was fully reconciled, verified to ensure 100% preservation of all files in `frontend`, backed up to an offline Git bundle (`integration_candidate_backup.bundle`, ref `d5e2839`), and safely deleted. `main` (`a785db8`) remains untouched until final owner approval.
 
 ---
 
@@ -459,16 +500,17 @@ For Module 50, we created the linked worktree `trustcue-integration` on branch `
 
 | Artifact Name | Relative Path | File Size | SHA-256 Checksum | Signature Scheme |
 |---|---|---|---|---|
-| **Android App Bundle (AAB)** | `build/app/outputs/bundle/release/app-release.aab` | 33,266,423 bytes (31.7 MB) | `f5979eb11cce401a75510bf8b0931e50f3b499ee978166ad93259972b2257d07` | APK Bundle (Google Play Ingestion) |
-| **Android Release APK** | `build/app/outputs/flutter-apk/app-release.apk` | 55,368,912 bytes (52.8 MB) | `7c7e5fc7088b9015c7a52c50b69fb7a28ebf9fe31e52dbb9c3f4e24eb37fa5da` | v1 (JAR) + v2 (APK Signature Scheme v2) |
+| **Android App Bundle (AAB)** | `frontend/build/app/outputs/bundle/release/app-release.aab` | 82,220,305 bytes (~78.41 MB) | `92e3a38f8dd748a924738c8a4d1805ad1e96b7274112500e57a5e097b233d43c` | APK Bundle (Google Play Ingestion, Cloud-Configured) |
+| **Android Release APK** | `frontend/build/app/outputs/flutter-apk/app-release.apk` | 108,831,743 bytes (~103.79 MB) | `7e141e1c0b12f9b3d461f66a179ffb092da5d82dc709ee3d3b212a795da58623` | v2 (APK Signature Scheme v2, Cloud-Configured) |
 
 ### 8.2 Signing Certificate Fingerprints
-- **Keystore File:** `android/upload-keystore.jks` (Private, outside Git tracking)
+- **Keystore File:** `frontend/android/upload-keystore.jks` (Private, strictly outside Git tracking)
 - **Key Alias:** `upload`
-- **Certificate Subject:** `CN=TrustCue Release Signer, OU=Mobile Security, O=TrustCue, L=Islamabad, ST=ICT, C=PK`
+- **Certificate Subject:** `CN=TrustCue Release Signer, OU=Mobile Security, O=TrustCue, L=London, ST=Greater London, C=GB`
 - **Algorithm:** 4096-bit RSA with SHA-256
-- **SHA-1 Fingerprint:** `8C:78:E5:80:7A:B4:49:17:F1:C6:FB:DF:6B:43:08:DA:DE:6B:90:7E`
-- **SHA-256 Fingerprint:** `5D:F3:3D:28:B6:3C:99:EB:F2:F2:A3:8C:38:FA:7E:27:0C:CE:BD:BC:3F:89:C8:49:57:95:C7:E2:AE:65:21:5C`
+- **SHA-1 Fingerprint:** `99:35:E0:EA:FE:AB:C7:DF:05:F7:AD:2C:FF:6C:BB:5D:69:51:71:D3`
+- **SHA-256 Fingerprint:** `66:B3:FB:99:5D:CA:5A:C2:CA:17:BE:D7:9C:9D:74:65:36:83:21:29:D4:EE:3D:38:45:61:F1:F6:09:CB:CD:9F`
+*(Note on Certificate Discrepancy: The certificate DN indicates London/GB reflecting early keystore generation defaults. This discrepancy is preserved honestly without key rotation to avoid breaking signature compatibility with existing installations).*
 
 ---
 
@@ -484,22 +526,27 @@ The following table centralizes all external, account-level, and financial tasks
 | **OWN-03** | Play Console Store Listing | Copy listing copy from `docs/PLAY_STORE_LISTING_MODULE_49.md` and upload graphic assets from `docs/store_assets/`. | Blocked by OWN-02 |
 | **OWN-04** | Data Safety Questionnaire | Fill out Data Safety form in Play Console using the exact answers in `docs/DATA_SAFETY_AND_DISCLOSURES_MODULE_49.md`. | Blocked by OWN-02 |
 | **OWN-05** | App Access / Reviewer Credentials | Create `play_reviewer@trustcue.internal` in Supabase Auth (Auto Confirm = True) and enter credentials in Play Console. | Blocked by OWN-02 |
-| **OWN-06** | Privacy Policy & Deletion URLs | Enter public URLs in Play Console: `privacy_policy.html` and `account_deletion.html`. | Blocked by OWN-02 |
-| **OWN-07** | AAB Upload to Internal Track | Upload `build/app/outputs/bundle/release/app-release.aab` to Internal Testing track. | Blocked by OWN-02 |
+| **OWN-06** | Privacy Policy & Deletion URLs | Enter public URLs in Play Console: `privacy_policy.html` and `account_deletion.html` once hosted. | Blocked by OWN-02 |
+| **OWN-07** | AAB Upload to Internal Track | Upload `frontend/build/app/outputs/bundle/release/app-release.aab` to Internal Testing track. | Blocked by OWN-02 |
 | **OWN-08** | Internal Tester Invitation | Add internal tester email list and verify app download via Play Store internal testing link. | Blocked by OWN-07 |
 | **OWN-09** | Closed Testing Promotion | Promote release to Closed Testing track (20 testers for 14 days) per Google Play 2026 requirements. | Blocked by OWN-08 |
 | **OWN-10** | Academic Examination Defense | Present the completed project, live hardware demonstration, and viva defense to the academic evaluation committee. | Ready for Presentation |
 
 ---
 
-## 10. Audit Certification & Approval Recommendation
+## 10. Audit Certification & Approval Status
 
 This audit certifies that TrustCue has fulfilled all technical, privacy, and architectural requirements established in Modules 01 through 49 of the project roadmap. 
 
-The reviewable integration candidate worktree `trustcue-integration` on branch `integration/candidate-v0.1.0` (commit `6efd00f`) is completely verified with **1,015 passing automated tests**, clean static analysis, active live cloud deployments, and verified physical hardware execution on Android 14.
+Module 50 is **IN PROGRESS**:
+- Four-branch architecture reconciled and verified (`main` untouched at `a785db8`).
+- Frontend CI 100% green across all 11 stages (Run 39231846382).
+- Fresh cloud-configured Release APK and AAB built with fail-safe script and verified.
+- Installed on Vivo V2207; "Cloud Service Not Configured" error successfully eliminated.
+- Outstanding verification: Final on-device live authentication, quota/sync verification, and missing checks (OCR/QR fixture records, offline toggle, PDF viewer) to be completed upon hardware reattachment.
 
 **Recommendation:**  
-The codebase is in an exemplary state for academic evaluation and is recommended for formal integration candidate approval.
+The repository is in an exemplary state for academic evaluation. Final owner integration into `main` remains gated on completion of on-device verification.
 
 **Audited By:** Antigravity Pairing Assistant  
 **Reviewed For:** Muhammad Taimoor Ajmal (Lead Developer / Student)  

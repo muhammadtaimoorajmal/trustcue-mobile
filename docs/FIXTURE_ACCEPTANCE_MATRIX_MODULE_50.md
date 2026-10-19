@@ -1,11 +1,11 @@
 # Module 50: Comprehensive Fixture Acceptance Testing Matrix
 **Project:** TrustCue Scam-Awareness & Incident Intake System  
 **Document ID:** `DOC-M50-FIXTURE-ACCEPTANCE-MATRIX`  
-**Target Architecture:** Privacy-First Android Client (Flutter 3.24.x / Android 14 API 34)  
+**Target Architecture:** Privacy-First Android Client (Flutter 3.47.4 / Android 14 API 34)  
 **Hardware Test Bed:** Vivo V2207 (Serial: `10AC9R1ABF0013A`, Android 14, Kernel 5.10, ARM64-v8a)  
 **Test Data Root:** `D:\ALL DATA\PROJECTS\TrustCue\Testing Data`  
-**Execution Date:** October 18, 2026  
-**Status:** COMPLETE — Verified Empirical Acceptance
+**Execution Date:** October 19, 2026  
+**Status:** IN PROGRESS — Deterministic Engine & CI Verified; Physical Cloud Auth & Missing Checks Resuming
 
 ---
 
@@ -23,7 +23,7 @@ This matrix documents the real-world fixture acceptance testing executed for Tru
 The complete fixture corpus was executed across three complementary testing layers to guarantee both deterministic rule correctness and real-device integration integrity:
 - **Layer 1: Deterministic Engine Tests (Offline Heuristic Pipeline & Structural Guard)**: Automated Dart test suite (`acceptance_fixtures_test.dart`) executing the 10-rule heuristic engine, URL structural parser, and PII redaction pipeline against 26 scam text scenarios (TXT-01 to TXT-26), 6 benign everyday controls (BEN-01 to BEN-06), 57 suspicious/malicious URLs (LNK-01 to LNK-57), and 24 category taxonomies.
 - **Layer 2: Native Device OCR & Barcode Extraction (Google ML Kit On-Device Vision)**: Execution of Google ML Kit Text Recognition on 19 scam screenshot images (IMG-01 to IMG-19) and Google ML Kit Barcode Scanning on 9 QR codes (QR-01 to QR-09) staged on device storage (`/sdcard/Download/TrustCue_Testing/`).
-- **Layer 3: Physical UI & End-to-End Workflow Verification (Vivo V2207, Android 14 API 34)**: User journey verification on physical hardware running production release APK (`7E7E90...`): intent intake, redaction review, persistence across process death, detail view, export via system ShareSheet, typography notices, and scoped deletion.
+- **Layer 3: Physical UI & End-to-End Workflow Verification (Vivo V2207, Android 14 API 34)**: User journey verification on physical hardware running production release APK (`7E141E...`): intent intake, redaction review, persistence across process death, detail view, export via system ShareSheet, typography notices, and scoped deletion.
 
 ---
 
@@ -50,14 +50,14 @@ The complete fixture corpus was executed across three complementary testing laye
 - **App Version:** `0.1.0` (Build `1`)
 - **Package Verification:** Signatures `[ab284969]`, APK Signature Scheme v2 valid, signed with official 4096-bit RSA certificate (`CN=TrustCue Release Signer, OU=Mobile Security, O=TrustCue, L=London, ST=Greater London, C=GB`).
 - **Installed Release APK Binary:**
-  - File: `build/app/outputs/flutter-apk/app-release.apk`
+  - File: `frontend/build/app/outputs/flutter-apk/app-release.apk`
   - Exact Size: `108,831,743` bytes (103.79 MB)
-  - SHA-256 Digest: `7E7E90295AEE7D77E158EA67755CF107BA4504B6A31A5F2E2E9A32296E782083`
-  - In-Place Upgrade Timestamp: `lastUpdateTime=2026-10-19 13:01:47` (preserving `firstInstallTime=2026-10-18 21:53:59`)
+  - SHA-256 Digest: `7E141E1C0B12F9B3D461F66A179FFB092DA5D82DC709EE3D3B212A795DA58623`
+  - In-Place Upgrade Timestamp: `lastUpdateTime=2026-10-19 14:56:21` (preserving `firstInstallTime=2026-10-18 21:53:59`)
 - **Matching Release AAB Binary:**
-  - File: `build/app/outputs/bundle/release/app-release.aab`
-  - Exact Size: `82,219,015` bytes (78.41 MB)
-  - SHA-256 Digest: `EAF6AAD7D927D20194836A27F372D06D125910ABA255DAD25B2959BA8450E8A5`
+  - File: `frontend/build/app/outputs/bundle/release/app-release.aab`
+  - Exact Size: `82,220,305` bytes (78.41 MB)
+  - SHA-256 Digest: `92E3A38F8DD748A924738C8A4D1805AD1E96B7274112500E57A5E097B233D43C`
 - **Local SQLite Database Name:** `trustcue_local.db` (app-private sandboxed database defined by `DatabaseConstants.databaseName`)
 - **Device Staging Path:**
   - `/sdcard/Download/TrustCue_Testing/scam_messages/` (19 files)
