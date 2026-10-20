@@ -1,0 +1,218 @@
+================================================================================
+TRUSTCUE CLASSROOM DEMONSTRATION: COPY-PASTE INPUT FIXTURES
+Course: CS3643 - Mobile Application Development (BSCS 5-1, Fall 2026)
+Presenter: Muhammad Taimoor Ajmal (SAP ID: 63461)
+Instructor: Mr. Muhammad Shariq Hasnain
+Target Device: Vivo V2207 (Android 14 API 34) running Release APK
+================================================================================
+
+INSTRUCTIONS FOR THE PRESENTER:
+- Keep this text file open on your laptop during the presentation.
+- When demonstrating an input method, copy ONLY the text between the START and END markers.
+- Do NOT copy the markers or commentary.
+- Every fixture below is 100% synthetic, privacy-safe, and pre-verified on the real app.
+- Never use real banking credentials, passwords, or personal messages in class.
+
+================================================================================
+FIXTURE 1: SUSPICIOUS DELIVERY FEE MESSAGE (EXACT $1.99 SCAM TEXT)
+================================================================================
+Route in App:
+  Home Dashboard -> Tap "Check a message" -> Paste text in editor
+
+Taps in UI:
+  1. Paste text below into "Message text" field
+  2. Tap "Prepare text" (navigates to Privacy Review)
+  3. Notice zero automatic network traffic
+  4. Tap "Confirm reviewed text"
+  5. Tap "Analyze on this device"
+
+Expected Result:
+  - Outcome: Indicators Detected (1 Warning Sign)
+  - Category: Requests for payment
+  - Grounded Evidence Quote: "Pay $1.99 redelivery fee"
+  - Guidance: Advises contacting the courier directly via official channels
+
+What to Say Aloud:
+  "Here we test a classic delivery scam. TrustCue extracts the exact phrase 'Pay $1.99 redelivery fee' without sending this message to any server. Notice the literal dollar sign is preserved and grounded verbatim."
+
+--- [COPY ONLY THE TEXT BELOW THIS LINE] ---
+USPS: Package USPS-928172 is held due to unpaid fee ($1.99). Pay $1.99 redelivery fee at https://usps-post-redelivery.com
+--- [END COPY] ---
+
+
+================================================================================
+FIXTURE 2: URGENT BANK SUSPENSION THREAT (ACCOUNT & CREDENTIAL LURE)
+================================================================================
+Route in App:
+  Method A: Home Dashboard -> Overflow Menu (three dots) -> "User Guide" -> Scroll to "Safe Guided Practice" -> Tap "Try Suspicious Example"
+  Method B: Home Dashboard -> Tap "Check a message" -> Paste text below
+
+Taps in UI (if pasting manually):
+  1. Paste text into editor
+  2. Tap "Prepare text" -> "Confirm reviewed text" -> "Analyze on this device"
+
+Expected Result:
+  - Outcome: Indicators Detected (3 Warning Signs)
+  - Category 1: Urgent language or artificial deadlines ("URGENT", "within 24 hours")
+  - Category 2: Threats of account suspension or penalties ("account has been suspended", "permanently closed")
+  - Category 3: Requests for credentials or sensitive codes ("Send your login credentials immediately")
+  - Evidence: Grounded quotes highlighted directly from the message text
+  - Safe Next Steps: Advises logging into the bank's official app or calling the number on the back of your bank card
+
+What to Say Aloud:
+  "This synthetic message tests three simultaneous indicator families: artificial urgency, account closure threats, and credential requests. TrustCue groups these clearly and provides safe verification steps."
+
+--- [COPY ONLY THE TEXT BELOW THIS LINE] ---
+URGENT: Your bank account has been suspended due to suspicious activity. Send your login credentials immediately to verify your identity or your account will be permanently closed within 24 hours.
+--- [END COPY] ---
+
+
+================================================================================
+FIXTURE 3: BENIGN EVERYDAY MESSAGE (CALM NO-MATCH CONTROL)
+================================================================================
+Route in App:
+  Home Dashboard -> Tap "Check a message" -> Paste text in editor
+
+Taps in UI:
+  1. Paste text below into editor
+  2. Tap "Prepare text" -> "Confirm reviewed text" -> "Analyze on this device"
+
+Expected Result:
+  - Outcome: No Indicators Detected (Calm Blue/Neutral Card)
+  - Warning Signs: 0
+  - Honest Limitation Banner: Explicitly states that finding no indicators does NOT certify the message is 100% safe; it only means it matched none of our 10 local indicator rules.
+
+What to Say Aloud:
+  "Now we test a completely ordinary family message. Notice TrustCue does NOT panic or invent a fake danger score. It displays a calm 'No indicators detected' state, but honestly reminds the user that no-match is not a guarantee of safety."
+
+--- [COPY ONLY THE TEXT BELOW THIS LINE] ---
+Hi Mom, please bring groceries home tonight. Love you.
+--- [END COPY] ---
+
+
+================================================================================
+FIXTURE 4: NORMAL CLEAN HTTPS LINK (RESERVED EXAMPLE DOMAIN)
+================================================================================
+Route in App:
+  Home Dashboard -> Tap "Inspect a link" -> Paste URL
+
+Taps in UI:
+  1. Paste URL below into the link input field
+  2. Tap "Inspect Link"
+  3. Observe protocol, host, and port badges
+  4. Tap "Open externally" -> Observe 2-step confirmation modal
+  5. Tap "Cancel" to dismiss safely without launching the browser
+
+Expected Result:
+  - Outcome: Valid HTTPS Link
+  - Protocol: HTTPS (Encrypted)
+  - Host: example.com (Standard domain)
+  - Port: Standard (443)
+  - Open Externally Button: Enabled with 2-step confirmation protection
+
+What to Say Aloud:
+  "This is a standard encrypted HTTPS link. Notice TrustCue provides an external warning card before launching any browser, giving the user a chance to cancel."
+
+--- [COPY ONLY THE TEXT BELOW THIS LINE] ---
+https://example.com/about
+--- [END COPY] ---
+
+
+================================================================================
+FIXTURE 5: STRUCTURAL WARNING URL (NUMERICAL IP + CUSTOM PORT + UNENCRYPTED HTTP)
+================================================================================
+Route in App:
+  Home Dashboard -> Tap "Inspect a link" -> Paste URL
+
+Taps in UI:
+  1. Paste URL below into the link input field
+  2. Tap "Inspect Link"
+  3. Observe structural indicator badges
+
+Expected Result:
+  - Outcome: Valid link with Multiple Structural Warnings
+  - Warning 1: Unencrypted connection (HTTP instead of HTTPS)
+  - Warning 2: Direct numerical IP address used as host (`37.77.150.214`) instead of a registered domain name
+  - Warning 3: Non-standard web port (`:8080`) instead of default port 80/443
+  - Warning 4: Suspicious file download extension (`.msi` executable installer)
+  - Safety Guidance: Warns against opening raw IP addresses and unencrypted executable downloads
+
+What to Say Aloud:
+  "Here we test an unencrypted link pointing to a raw numerical IP address with a custom port 8080. Legitimate institutions use registered domain names and HTTPS. TrustCue highlights these architectural anomalies offline without ever connecting to the server."
+
+--- [COPY ONLY THE TEXT BELOW THIS LINE] ---
+http://37.77.150.214:8080/msi/setup_cf4cb3a3.msi
+--- [END COPY] ---
+
+
+================================================================================
+FIXTURE 6: DANGEROUS SCHEME REJECTION TEST (JAVASCRIPT URI)
+================================================================================
+Route in App:
+  Home Dashboard -> Tap "Inspect a link" -> Paste URL
+
+Taps in UI:
+  1. Paste URI below into the link input field
+  2. Tap "Inspect Link"
+  3. Observe immediate red rejection banner
+
+Expected Result:
+  - Outcome: Rejected Scheme (Cannot be opened externally)
+  - Banner: Red warning badge stating the URI scheme is dangerous/invalid
+  - Open Externally Button: Strictly DISABLED to prevent cross-site scripting or code execution
+
+What to Say Aloud:
+  "If a user or QR code attempts to feed a dangerous URI scheme like javascript: or file:, TrustCue intercepts it locally and disables external launch completely."
+
+--- [COPY ONLY THE TEXT BELOW THIS LINE] ---
+javascript:alert('TrustCue Safety Check')
+--- [END COPY] ---
+
+
+================================================================================
+FIXTURE 7: SCREENSHOT OCR FIXTURE (STAGED ON VIVO V2207)
+================================================================================
+Device Staged Location:
+  Internal Storage: /sdcard/Download/TrustCue_Testing/scam_messages/images (1).jpg
+  Workspace Source: Testing Data\Scam Messages Images\images (1).jpg
+
+Route in App:
+  Home Dashboard -> Tap "Scan a screenshot" -> Select from Gallery -> Choose image (1).jpg
+
+Taps in UI:
+  1. Tap "Scan a screenshot"
+  2. Select `images (1).jpg` from Downloads / TrustCue_Testing
+  3. Wait ~1 second for on-device Google ML Kit Latin OCR to extract text
+  4. Review extracted text in the Review Screen
+  5. Tap "Confirm reviewed text" -> "Analyze on this device"
+
+Expected Result:
+  - Extracted Text: Contains scam package / prize / urgency text
+  - Analysis Outcome: Indicators Detected
+  - Latin Boundary: Demonstrates clean OCR on Latin script
+
+What to Say Aloud:
+  "TrustCue uses Google ML Kit's on-device Latin OCR model. The image is processed locally on the phone's CPU/NPU in under one second; no image bytes are sent over the network. The user can review and edit any misread characters before analysis."
+
+
+================================================================================
+FIXTURE 8: QR CODE FIXTURE (STAGED ON VIVO V2207)
+================================================================================
+Device Staged Location:
+  Internal Storage: /sdcard/Download/TrustCue_Testing/scam_qr/images (1).png
+  Workspace Source: Testing Data\Scam OR Images\images (1).png
+
+Route in App:
+  Home Dashboard -> Tap "Inspect a link" -> Tap the QR Scanner icon in the AppBar or input field
+
+Taps in UI:
+  1. Point camera at staged QR code OR select QR image
+  2. Barcode scanner decodes payload on-device
+  3. URL is loaded directly into the Link Inspector for structural review before opening
+
+Expected Result:
+  - Decoded Payload: Embedded URL extracted offline via Google ML Kit Barcode Scanning
+  - Handoff: Transferred to Link Inspector with external launch protected by two-step confirmation
+
+What to Say Aloud:
+  "QR codes in public spaces can hide malicious URLs. TrustCue decodes the QR code on-device, displays the actual destination URL, and runs structural heuristics before the user ever opens their browser."
