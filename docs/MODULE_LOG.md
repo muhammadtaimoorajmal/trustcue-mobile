@@ -1908,5 +1908,40 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Updated `docs/MODULE_LOG.md`.
 - **Status:** Complete on `frontend`. Four branches strictly preserved; `main` untouched at `a785db8`. Prepared for owner review. Ready for Module 54 (Live Cloud AI End-to-End Verification).
 
+## Module 54: Live "Ask Cloud AI" End-to-End Verification
+- **Scope & Objectives:**
+  - Execute live end-to-end "Ask Cloud AI" verification on the physical Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34).
+  - Target hosted FastAPI backend on Render (`https://trustcue-backend.onrender.com`) and Supabase project (`https://yzqkmoqqvnhfmmrayfko.supabase.co`).
+  - Target synthetic message: `"Your account will be suspended within 24 hours. Send your password and verification code to https://account-check.example to keep access."` (137 characters).
+  - Build and install release APK (`build_release.ps1 -Install`) with verified build provenance and signing.
+  - Sign in on release app using authorized dedicated test account (`play_reviewer@trustcue.internal`, UUID `b2e2d115-7b87-47ee-8f82-9f24d7e72be9`), preserving personal data.
+  - Verify local on-device analysis first (3 warning signs found: credential requests, OTP/verification code requests, account suspension threats).
+  - Verify `UploadConsentDialog`: raw 137-character text preview, TLS transit disclosure, Groq LPU destination, ephemeral processing notice, and zero image upload guarantee.
+  - Verify consent cancellation: selecting "Keep on-device only" submits zero requests, leaves quota untouched at 15/15, and preserves local results.
+  - Verify consented submission: phone -> FastAPI backend on Render -> Groq Cloud LPU (`qwen/qwen3.8-27b`) -> phone in ~6.2 seconds.
+  - Verify UI rendering: badge `[AI-Assisted: Groq]`, model provenance `groq-cloud • qwen/qwen3.8-27b`, non-guarantee disclosure, and grounded excerpts (`"within 24 hours"`, `"Send your password"`).
+  - Verify quota decrement: exactly 15 -> 14 analysis queries remaining today.
+  - Verify offline handling: disable device Wi-Fi/cellular (`svc wifi disable`, `svc data disable`), run local analysis (succeeds 100% offline), attempt Cloud AI (displays non-blocking error banner `Cloud AI analysis unavailable: Network connection failed. Local analysis results preserved.` without crash), and restore network.
+  - Repair confirmed defects:
+    1. `AuthRepository` lifecycle disposal when leaving `/account` caused subsequent AI queries to fail with an unauthenticated status error. Repaired by registering `AuthRepository` as permanent in `auth_binding.dart`, updating `currentStatus` and `currentUser` to check `currentSession` directly in `supabase_auth_repository.dart`, and awaiting `auth.initialize()` in `analysis_results_controller.dart`.
+    2. R8 reflection stripping bug on `shared_preferences_android` (`NoSuchMethodError` on `SharedPreferencesApiRegistrar.getAll`) in release builds. Repaired in `android/app/proguard-rules.pro` by explicitly keeping `io.flutter.plugins.sharedpreferences.**`, `dev.flutter.pigeon.shared_preferences_android.**`, and `kotlin.coroutines.**`.
+- **Branch:** `frontend`
+- **Checks Performed:**
+  - `flutter analyze`: 0 issues found across all files.
+  - `flutter test`: 1,020/1,020 tests passed.
+  - Android release APK built with R8 shrinking and signed with production key: SHA-256 `5BB2E7745D127ADB64470304228D984D5432EBBB7F8869EE60313ACCC296539E`.
+  - Streamed installation to Vivo V2207 succeeded.
+  - Live round-trip on physical hardware verified against Render backend and Groq provider.
+- **Deliverables:**
+  - Repaired `frontend/lib/features/analysis/presentation/controllers/analysis_results_controller.dart`.
+  - Repaired `frontend/lib/features/auth/data/repositories/supabase_auth_repository.dart`.
+  - Repaired `frontend/lib/features/auth/presentation/bindings/auth_binding.dart`.
+  - Updated `frontend/android/app/proguard-rules.pro`.
+  - Evidence dossier `docs/evidence/module_54/LIVE_CLOUD_AI_VERIFICATION_EVIDENCE.md`.
+  - Updated `docs/COMPLETION_REGISTER.md` (F-18 status updated to PASS / PARTIALLY VERIFIED, Continuation Roadmap updated).
+  - Updated `docs/MODULE_LOG.md`.
+- **Status:** Complete on `frontend`. Four branches strictly preserved; `main` untouched at `a785db8`. Prepared for owner review. Ready for Module 55 (Extended Link & Scheme Inspection Corpus).
+
+
 
 

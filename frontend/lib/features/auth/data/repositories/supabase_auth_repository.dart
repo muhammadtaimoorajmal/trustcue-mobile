@@ -30,10 +30,37 @@ class SupabaseAuthRepository implements AuthRepository {
   Stream<AuthStatus> get statusStream => _statusController.stream;
 
   @override
-  AuthStatus get currentStatus => _currentStatus;
+  AuthStatus get currentStatus {
+    if (_currentStatus == AuthStatus.authenticated) {
+      return _currentStatus;
+    }
+    if (_config.isConfigured) {
+      try {
+        final session = _activeClient.auth.currentSession;
+        if (session != null && !session.isExpired) {
+          _currentUser ??= _mapUser(session.user);
+          _currentStatus = AuthStatus.authenticated;
+          return AuthStatus.authenticated;
+        }
+      } catch (_) {}
+    }
+    return _currentStatus;
+  }
 
   @override
-  AuthUser? get currentUser => _currentUser;
+  AuthUser? get currentUser {
+    if (_currentUser != null) return _currentUser;
+    if (_config.isConfigured) {
+      try {
+        final session = _activeClient.auth.currentSession;
+        if (session != null && !session.isExpired) {
+          _currentUser = _mapUser(session.user);
+          return _currentUser;
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
 
   @override
   bool get isConfigured => _config.isConfigured;

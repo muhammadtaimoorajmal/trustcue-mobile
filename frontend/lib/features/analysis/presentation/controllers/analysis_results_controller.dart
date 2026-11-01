@@ -230,6 +230,10 @@ class AnalysisResultsController extends GetxController {
         (Get.isRegistered<AuthRepository>()
             ? Get.find<AuthRepository>()
             : null);
+    if (auth != null && auth.currentStatus != AuthStatus.authenticated) {
+      await auth.initialize();
+    }
+    if (!context.mounted) return;
     final isAuthenticated =
         auth != null && auth.currentStatus == AuthStatus.authenticated;
 

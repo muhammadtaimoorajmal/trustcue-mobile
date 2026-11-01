@@ -26,9 +26,9 @@ class AuthBinding extends Bindings {
 
   static void ensureInitialized({AuthRepository? authRepository}) {
     if (!Get.isRegistered<AuthRepository>()) {
-      Get.lazyPut<AuthRepository>(
-        () => authRepository ?? SupabaseAuthRepository(),
-        fenix: true,
+      Get.put<AuthRepository>(
+        authRepository ?? SupabaseAuthRepository(),
+        permanent: true,
       );
     }
 

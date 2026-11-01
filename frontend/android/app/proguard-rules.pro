@@ -28,5 +28,17 @@
 -keep class com.google.protobuf.** { *; }
 -dontwarn com.google.protobuf.**
 
+# Shared Preferences Android & Pigeon
+-keep class io.flutter.plugins.sharedpreferences.** { *; }
+-keep interface io.flutter.plugins.sharedpreferences.** { *; }
+-dontwarn io.flutter.plugins.sharedpreferences.**
+-keep class dev.flutter.pigeon.shared_preferences_android.** { *; }
+-keep interface dev.flutter.pigeon.shared_preferences_android.** { *; }
+-keep class kotlin.Unit { *; }
+-keep class kotlin.coroutines.** { *; }
+-keep interface kotlin.coroutines.** { *; }
+-keep class kotlin.Result { *; }
+-keep class kotlin.Result$Failure { *; }
+
 # Keep generic annotations and attributes needed for reflection/serialization
 -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
