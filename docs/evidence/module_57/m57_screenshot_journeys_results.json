@@ -1,0 +1,146 @@
+{
+  "IMG-03": {
+    "fixture_file": "images (2).jpg",
+    "scenario": "Amazon Gift Card Lottery Lure",
+    "extracted_text_chars": 268,
+    "extracted_text_excerpt": "Texting with (970) 815- Congratulations! You've been selected to receive a $500 Amazon gift card...",
+    "outcome_headline": "No warning signs found by the on-device checks",
+    "warning_details": "No indicators were matched by these local checks. This does not establish that the message is safe."
+  },
+  "IMG-04": {
+    "fixture_file": "images (2).png",
+    "scenario": "Overdue Fake Invoice Typosquatted Link",
+    "extracted_text_chars": 347,
+    "extracted_text_excerpt": "000 Sprint LTE 4:08 PM <Messages AMAZON.CON ATTENTION: You have been fined $85.22 for failing to return Order No. #23442",
+    "outcome_headline": "2 potential warning signs found by on-device checks\nLocal checks identified 2 potential warning indicators across 2 categories: Urgency or pressure, Requests for payment.",
+    "warning_details": "2 potential warning signs found by on-device checks\nLocal checks identified 2 potential warning indicators across 2 categories: Urgency or pressure, Requests for payment."
+  },
+  "IMG-05": {
+    "fixture_file": "images (3).jpg",
+    "scenario": "Security Verification Code Pretext",
+    "extracted_text_chars": 125,
+    "extracted_text_excerpt": "9:41 Your [account name] verification code is: 123456. If you did not request this, secure your account here: [phishing ",
+    "outcome_headline": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.",
+    "warning_details": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."
+  },
+  "IMG-06": {
+    "fixture_file": "images (3).png",
+    "scenario": "Wells Fargo Card Locked Phishing Alert",
+    "extracted_text_chars": 133,
+    "extracted_text_excerpt": "6:45 l 5G O Your Wells Fargo account has been locked for suspicious activity. Please call us at 201-429-3304 to verify y",
+    "outcome_headline": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.",
+    "warning_details": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."
+  },
+  "IMG-07": {
+    "fixture_file": "images (4).jpg",
+    "scenario": "High-Yield Crypto Investment Telegram",
+    "extracted_text_chars": 440,
+    "extracted_text_excerpt": "< 418093) Text Message SMS Sun, Sep7 at 2:58 PM Hello, I am a recruitment assistant at background and resume have been r",
+    "outcome_headline": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.",
+    "warning_details": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."
+  },
+  "IMG-08": {
+    "fixture_file": "images (4).png",
+    "scenario": "Conversational Wrong-Number Romance",
+    "extracted_text_chars": 84,
+    "extracted_text_excerpt": "Text extraction can miss or misread words. Check the result against your screenshot.",
+    "outcome_headline": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.",
+    "warning_details": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."
+  },
+  "IMG-09": {
+    "fixture_file": "images (5).jpg",
+    "scenario": "Pig-Butchering Equestrian Romance",
+    "extracted_text_chars": 295,
+    "extracted_text_excerpt": "< 6:17A Text Message Today 6:05 PM Are you working today? Yes I am, who is this? I'm Kathy. Are you the equestrian coach",
+    "outcome_headline": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.",
+    "warning_details": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."
+  },
+  "IMG-10": {
+    "fixture_file": "images (6).jpg",
+    "scenario": "E-ZPass Toll Violation with SCAM Overlay",
+    "extracted_text_chars": 295,
+    "extracted_text_excerpt": "< 6:17A Text Message Today 6:05 PM Are you working today? Yes I am, who is this? I'm Kathy. Are you the equestrian coach",
+    "outcome_headline": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.",
+    "warning_details": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."
+  },
+  "IMG-11": {
+    "fixture_file": "images (7).jpg",
+    "scenario": "DMV Toll Suspension Threat on Phone Screen",
+    "extracted_text_chars": 794,
+    "extracted_text_excerpt": "Department of Motor Vehicles (DMV) Final Notice: Entorcement Penalties Begin on June 3. Our recorcds indicate that you c",
+    "outcome_headline": "2 potential warning signs found by on-device checks\nLocal checks identified 2 potential warning indicators across 2 categories: Urgency or pressure, Requests for payment.",
+    "warning_details": "2 potential warning signs found by on-device checks\nLocal checks identified 2 potential warning indicators across 2 categories: Urgency or pressure, Requests for payment."
+  },
+  "IMG-12": {
+    "fixture_file": "images (8).jpg",
+    "scenario": "VenPal Unauthorized Payment Cancellation",
+    "extracted_text_chars": 191,
+    "extracted_text_excerpt": "12:21 39 +1 (555) 555-1234> Text Message Today 12:03 PM VenPal Notice: the transaction for $260 was approved, please vis",
+    "outcome_headline": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.",
+    "warning_details": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."
+  },
+  "IMG-13": {
+    "fixture_file": "images (9).jpg",
+    "scenario": "Canada Omicron Emergency Benefit Transfer",
+    "extracted_text_chars": 229,
+    "extracted_text_excerpt": "0AT&T < Messages 12:15 PM Text Message Today 12:15 PM (lnteracNotification) CANADA COVID \"OMICRON\" EMERGENCY BENEFIT has",
+    "outcome_headline": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.",
+    "warning_details": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."
+  },
+  "IMG-14": {
+    "fixture_file": "images (10).jpg",
+    "scenario": "Wells Fargo Walmart Purchase Fraud Box",
+    "extracted_text_chars": 229,
+    "extracted_text_excerpt": "10:39 L 2 1 +1 (323) 646-3182 WELLS FARGO: 3 Text Message Today 9:38 AM A purchase of $1168.89 at WALMART#129 in LOS ANG",
+    "outcome_headline": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.",
+    "warning_details": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."
+  },
+  "IMG-15": {
+    "fixture_file": "images (11).jpg",
+    "scenario": "NY DMV Toll Notice from Philippines (+63)",
+    "extracted_text_chars": 731,
+    "extracted_text_excerpt": "220 +63 950 944 6874 New York State Department of Motor Vehicles - Final Notice: Enforcement Actions Effective July 13, ",
+    "outcome_headline": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.",
+    "warning_details": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."
+  },
+  "IMG-16": {
+    "fixture_file": "images (12).jpg",
+    "scenario": "Hey Dad Water Damage New Number Lure",
+    "extracted_text_chars": 185,
+    "extracted_text_excerpt": "13:04 +1 (437) 898-5817> Text Message SMS Today 13:03 Hey Dad, here's my new number. Could you message me back to confir",
+    "outcome_headline": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.",
+    "warning_details": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."
+  },
+  "IMG-17": {
+    "fixture_file": "images (13).jpg",
+    "scenario": "Hi Mom Friend's Phone Urgent Rent Scam",
+    "extracted_text_chars": 404,
+    "extracted_text_excerpt": "000 Sprint LTE 4:08 PM < Messages Unknown number Details Hi mom, my phone and I'm using my friend's phone. Can you confi",
+    "outcome_headline": "1 potential warning sign found by on-device checks\nLocal checks identified 1 potential warning indicator across 1 category: Urgency or pressure.",
+    "warning_details": "1 potential warning sign found by on-device checks\nLocal checks identified 1 potential warning indicator across 1 category: Urgency or pressure."
+  },
+  "IMG-18": {
+    "fixture_file": "images.jpg",
+    "scenario": "USPS Invalid Zip Code Detained Parcel",
+    "extracted_text_chars": 555,
+    "extracted_text_excerpt": "iMessage Tuesday 1:01PM U.S. Post: You have a USPS parcel being cleared, due to the detection of an invalid zip code add",
+    "outcome_headline": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.",
+    "warning_details": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."
+  },
+  "IMG-19": {
+    "fixture_file": "images.png",
+    "scenario": "Amazon Security OTP Notification Phish",
+    "extracted_text_chars": 121,
+    "extracted_text_excerpt": "4:19 5G O Amazon: Your code is 412739. If you didn't request this, click here https://amazon.com/ 73538111 Delete Messag",
+    "outcome_headline": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe.",
+    "warning_details": "No warning signs found by the on-device checks\nNo indicators were matched by these local checks. This does not establish that the message is safe.\nThese checks found no matching warning signs. This does not verify the sender or guarantee that the message or link is safe."
+  },
+  "IMG-01": {
+    "fixture_file": "images (1).jpg",
+    "scenario": "CEO / Executive Gift Card Request",
+    "extracted_text_chars": 315,
+    "extracted_text_excerpt": "555-555-8765 Good morning Tom! Let me know if you got my text. Thanks, E.J. Doe...",
+    "outcome_headline": "No warning signs found by the on-device checks",
+    "warning_details": "No indicators were matched by these local checks. This does not establish that the message is safe."
+  }
+}

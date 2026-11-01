@@ -2034,4 +2034,38 @@ eturn,
   - Updated docs/MODULE_LOG.md
   - Updated docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md
 - **Status:** Complete on rontend. Four branches strictly preserved; main untouched at 785db8. Prepared for owner review. Ready for Module 57 (Edge-Case Text Intake & Native Hardware Intake Testing).
-
+## Module 57: Edge-Case Text Intake and Native Hardware Intake Verification
+- **Scope & Objectives:**
+  - Formally establish and verify production text intake boundaries across `MessageTextValidator`, `InputTextController`, `InputReviewController`, `TextSnapshot`, and `EvidenceReference`.
+  - Enforce the precise contract: 10,000 Unicode code points (runes) and 40,000 UTF-8 bytes limit; whitespace-only and invisible character rejection; CRLF newline normalization; Urdu and Arabic script preservation; BiDi override character resistance; malformed/unpaired surrogate rejection; and surrogate pair split prevention in `EvidenceReference.isSurrogateSplit`.
+  - Codify 18 comprehensive automated unit boundary tests in `frontend/test/features/input/domain/validation/edge_case_text_intake_test.dart`.
+  - Execute all 18 outstanding physical screenshot journeys (`IMG-01` and `IMG-03` through `IMG-19`, referencing `IMG-02` proven in Modules 50/52) on the connected Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34).
+  - Verify complete workflow on hardware: modern Android Photo Picker (`com.google.android.photopicker`), preview with geometry/size, Google ML Kit Latin OCR extraction, review & redaction check, user confirmation, local rule evaluation, results display, and discard navigation guards.
+  - Record empirical hardware observations across all 18 fixtures without simulated precision, establishing why conversational scams and link-centric scams without overt pressure words produce neutral `noIndicatorsMatched` results accompanied by the invariant safe-harbor warning: *"No indicators were matched by these local checks. This does not establish that the message is safe."*
+  - Test Android intent sharing channels:
+    - Single-item `ACTION_SEND` text intake: preview dialog, "Use as message", loaded into draft, confirmed, and analyzed.
+    - Multiple-item `ACTION_SEND_MULTIPLE` intent: intercepted in `MainActivity.kt` and rejected with clear user guidance (*"Sharing multiple items at once is not supported. Please share one message or one image."*).
+  - Formally document continuous camera capture as unincluded by design (privacy-preserving Photo Picker only; zero camera permissions in `AndroidManifest.xml`).
+  - Verify offline air-gap safety on hardware: severed Wi-Fi and cellular data (`svc wifi disable; svc data disable`), executed end-to-end OCR and local analysis on `IMG-17`, verified zero network calls, displayed local-only safety notice (*"Local on-device analysis: Evaluated on this device using local rules. Nothing was uploaded."*), and restored connectivity.
+  - Reconcile Module 56 evidence details:
+    - Reclassify Quota reset (15->14 in M54 vs 15/15 in M55) as an architectural hypothesis (ephemeral container restart of `InMemoryQuotaStore` in Python RAM on Render free tier) pending telemetry audit in Modules 63–64.
+    - Clarify that the 400+ character link was an ordinary long-input smoke test, not the true 4,096-byte boundary (`maxUrlLengthBytes = 4096`).
+- **Branch:** `frontend`
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test`: Formatted 329 files (0 changed), 100% compliant.
+  - `flutter analyze --no-pub`: 0 issues found across all files.
+  - `flutter test`: 1,066/1,066 tests passed (1,048 existing baseline + 18 new Module 57 tests).
+  - Physical execution on Vivo V2207:
+    - All 18 screenshot journeys executed with full screenshot and XML provenance (`screen_phone_m57_preview_imgXX.png`, `screen_phone_m57_ocr_imgXX.png`, `screen_phone_m57_review_imgXX.png`, `screen_phone_m57_results_imgXX.png`, `dump_m57_results_imgXX.xml`).
+    - Intent sharing tested: single `ACTION_SEND` text dialog/applied/review/results and multiple `ACTION_SEND_MULTIPLE` rejection.
+    - Fully offline air-gap safety test verified on `IMG-17` (`screen_phone_m57_offline_safety.png`, `dump_m57_offline_safety.xml`).
+- **Deliverables:**
+  - `frontend/lib/main.dart`
+  - `frontend/test/features/input/domain/validation/edge_case_text_intake_test.dart`
+  - `docs/evidence/module_57/TEXT_AND_HARDWARE_INTAKE_VERIFICATION_EVIDENCE.md`
+  - `docs/evidence/module_57/m57_screenshot_journeys_results.json`
+  - 82 hardware screenshots and UI hierarchy dumps in `docs/evidence/module_57/`
+  - Updated `docs/COMPLETION_REGISTER.md`
+  - Updated `docs/MODULE_LOG.md`
+  - Updated `docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md`
+- **Status:** Complete on `frontend`. Four branches strictly preserved; `main` untouched at `a785db8`. Prepared for owner review. Ready for Module 58 (PII Redaction Pipeline Hardening & Phase 6 Sign-Off).
