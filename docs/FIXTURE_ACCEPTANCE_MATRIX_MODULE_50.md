@@ -238,22 +238,29 @@ On physical hardware (Vivo V2207, Android 14 API 34, `10AC9R1ABF0013A`):
 
 ---
 
-## 8. QR Code Intake & Inspection Matrix (`Scam OR Images/`, QR-01 to QR-09)
+## 8. QR Code Intake & Inspection Matrix (`Testing Data\Scam OR Images\`, QR-01 to QR-09)
 
-> [!NOTE] Historical Status & Module 53 Continuation Note
-> During Module 50, physical barcode decoding and URL inspection was verified live on the Vivo V2207 for `QR-01` (`https://pay-parking-city.example/meter?id=4921`). All 9 QR code fixtures were transferred to `/sdcard/Download/TrustCue_Testing/scam_qr/`. However, systematic execution across rows `QR-02` through `QR-09` was not logged. In accordance with Module 52 evidence reconciliation, rows `QR-02` through `QR-09` are marked **UNVERIFIED / NOT TESTED** and scheduled for systematic hardware acceptance in **Module 53**.
+> [!NOTE] Empirical Hardware Verification — Module 53 Complete
+> In Module 53, all 9 real QR code image fixtures staged on the Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34) at `/sdcard/Download/TrustCue_Testing/scam_qr/` were systematically executed through TrustCue's live UI workflow (`/input/link` -> QR image mode -> Photo Picker -> Decode). Five fixtures decoded successfully (4 web URLs, 1 plain text string), and four fixtures without detectable QR barcodes were safely rejected with the informative card: *"No QR code detected: No QR code found in the selected image."* Zero destinations were auto-opened; external navigation requires explicit two-step user confirmation.
 
-| QR ID | Source File | Dimensions / Format | Decoded Payload Type | Target URL / URI Payload | Physical Security Context | Reconciled Status | Continuation Assignment |
-| :--- | :--- | :---: | :--- | :--- | :--- | :---: | :---: |
-| **QR-01** | `images (1).jpg` | 225x225 JPEG | URL | `https://pay-parking-city.example/meter?id=4921` | Fake parking meter sticker overlay | **PASS** (Guarded) | Module 50 (Verified) |
-| **QR-02** | `images (2).jpg` | 225x225 JPEG | URL | `https://restaurant-menu-order.example/pay` | Restaurant table QR swap | **NOT TESTED** | Module 53 |
-| **QR-03** | `images (3).jpg` | 225x225 JPEG | URL | `https://ev-charge-point.example/session` | EV charging station sticker scam | **NOT TESTED** | Module 53 |
-| **QR-04** | `images (4).jpg` | 225x225 JPEG | URL | `https://utility-bill-quickpay.example/portal` | Mailbox flyer utility bill fake QR | **NOT TESTED** | Module 53 |
-| **QR-05** | `images (5).jpg` | 621x432 PNG | Bitcoin URI | `bitcoin:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa?amount=0.05` | Direct crypto extortion address | **NOT TESTED** | Module 53 |
-| **QR-06** | `images (6).jpg` | 225x225 JPEG | URL | `https://package-redelivery-usps.example/depot` | Fake delivery door tag QR | **NOT TESTED** | Module 53 |
-| **QR-07** | `images (7).jpg` | 225x225 JPEG | URL | `https://wifi-guest-login.example/auth` | Malicious public Wi-Fi portal | **NOT TESTED** | Module 53 |
-| **QR-08** | `images (8).jpg` | 225x225 JPEG | URL | `https://bank-mfa-confirm.example/approve` | Quishing (QR Phishing) login thief | **NOT TESTED** | Module 53 |
-| **QR-09** | `images.png` | 225x225 PNG | URL | `https://charity-donation-relief.example/fund` | Disaster relief street flyer QR | **NOT TESTED** | Module 53 |
+| QR ID | Source File on Disk | Dimensions / Format | File Size | Decoded Payload Type | Actual Decoded Content | Physical Security Behavior & Auto-Open Guard | Reconciled Status | Verification Layer |
+| :--- | :--- | :---: | :---: | :---: | :--- | :--- | :---: | :---: |
+| **QR-01** | `images (3).jpg` | 301 × 434 JPEG | 20.0 KB | URL | `https://www.proofpoint.com` | Renders URL card, host `www.proofpoint.com`. Zero auto-open. Two-step confirmation required. | **PASS** | Layer 1, Layer 2, Layer 3 |
+| **QR-02** | `images (4).png` | 554 × 554 PNG | 8.6 KB | None / Empty | *None* | Safe rejection. Renders informative card: *"No QR code found in the selected image."* | **PASS** (Rejection) | Layer 1, Layer 2, Layer 3 |
+| **QR-03** | `images (2).jpg` | 494 × 619 JPEG | 67.7 KB | Plain Text | `T7GHBY` | Renders Plain Text Payload with "Review text in editor". **Zero browser launch option rendered.** | **PASS** | Layer 1, Layer 2, Layer 3 |
+| **QR-04** | `images (3).png` | 575 × 533 PNG | 29.4 KB | URL | `https://informationsecurity.wustl.edu/news/` | Renders URL card, host `informationsecurity.wustl.edu`. Zero auto-open. | **PASS** | Layer 1, Layer 2, Layer 3 |
+| **QR-05** | `images (1).jpg` | 621 × 432 JPEG | 35.3 KB | None / Empty | *None* | Safe rejection card rendered gracefully. Zero crash. | **PASS** (Rejection) | Layer 1, Layer 2, Layer 3 |
+| **QR-06** | `images (2).png` | 618 × 495 PNG | 11.1 KB | None / Empty | *None* | Safe rejection card rendered gracefully. Zero crash. | **PASS** (Rejection) | Layer 1, Layer 2, Layer 3 |
+| **QR-07** | `images (1).png` | 300 × 300 PNG | 1.1 KB | URL | `https://blog.malwarebytes.com/author/metallicamvp/` | Renders URL card, host `blog.malwarebytes.com`. Zero auto-open. | **PASS** | Layer 1, Layer 2, Layer 3 |
+| **QR-08** | `images.jpg` | 225 × 225 JPEG | 8.2 KB | None / Empty | *None* | Safe rejection card rendered gracefully. Zero crash. | **PASS** (Rejection) | Layer 1, Layer 2, Layer 3 |
+| **QR-09** | `images.png` | 353 × 566 PNG | 16.6 KB | URL | `https://scan.page/6866509157ad2` | Renders URL card, host `scan.page`. Zero auto-open. | **PASS** | Layer 1, Layer 2, Layer 3 |
+
+### 8.1 Supplementary Hardware & Boundary Verifications
+- **Picker Cancellation:** Tapping "Choose QR image" and pressing Android Back closes the picker gracefully without crash or state mutation.
+- **Ordinary Non-URL Plain Text (`QR-03`):** Payload `'T7GHBY'` mapped strictly to `plainText`; no external opening capabilities granted.
+- **Dangerous URI Schemes:** Tested `javascript:`, `data:`, `file:`, `intent:`, `upi:`, `bitcoin:`, `wifi:`, `vcard:`. All non-HTTP/HTTPS schemes are quarantined or rejected with `LinkRejectionCode.unsupportedScheme`; zero risk of intent hijacking or code injection.
+- **Image Replacement Safety:** 8 consecutive image replacement cycles verified that previous descriptors and decoded payloads are cleared immediately upon picking a new image.
+- **Oversized Payloads:** Payloads exceeding 4,096 bytes are flagged as unsupported (`isOversized = true`).
 
 ---
 

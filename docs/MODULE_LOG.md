@@ -1871,5 +1871,42 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Updated `docs/MODULE_LOG.md`.
 - **Status:** Complete on `frontend`. Four branches strictly preserved; `main` untouched at `a785db8`. Prepared for owner review. Ready for Module 53 (QR Corpus Verification).
 
+## Module 53: QR Intake and Safe Decoding Verification
+- **Scope & Objectives:**
+  - Audit and correct specific Module 52 records: record that 19 native OCR extractions were reported but only 1 full physical UI journey was completed; carry the remaining 18 full UI journeys forward into Module 57; document that `screenshot_ocr_acceptance_test.dart` evaluates recorded/hardcoded OCR strings and synthesizer logic (Layer 1 pure Dart); reconcile total test count (1,005 passing baseline tests across the repo); record OCR CER calculation constraints; establish tested APK provenance; clarify that dashboard errors must not be described as HTTP 500 without server log proof.
+  - Discover and inventory the true 9-fixture QR corpus on disk under `Testing Data\Scam OR Images\` and push all 9 files to `/sdcard/Download/TrustCue_Testing/scam_qr/` on the physical phone.
+  - Address Android MediaStore shell escaping conflict for parentheses in filenames (`am broadcast` command) ensuring all 9 images acquire valid `date_modified` timestamps and display in system photo picker.
+  - Execute all 9 QR fixtures through TrustCue's live UI workflow on the Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34) running release APK `FF02F2A7...`.
+  - Record empirical decoding results: 5 decoded (4 web URLs, 1 plain text), 4 safely rejected as "No QR code detected".
+  - Enforce and verify the zero auto-open invariant (no destination is visited or opened automatically without explicit two-step user confirmation).
+  - Execute supplementary check set: photo picker cancellation, non-QR image, unreadable/damaged QR, ordinary non-URL text, dangerous URI schemes (`javascript:`, `data:`, `file:`, `intent:`, `upi:`, `bitcoin:`, `wifi:`, `vcard:`), and selecting a second image after the first.
+  - Implement Layer 1 automated acceptance test suite `frontend/test/fixtures/qr_acceptance_test.dart` (15 tests).
+  - Update `docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md` (Section 8) and `docs/COMPLETION_REGISTER.md` (F-10 status and Phase 6/7 continuation roadmap prioritizing Module 54 live Cloud AI verification).
+- **Branch:** `frontend`
+- **Checks Performed:**
+  - `dart format frontend/test/fixtures/qr_acceptance_test.dart` (Clean).
+  - `flutter test test/fixtures/qr_acceptance_test.dart` (15/15 tests passed in 7s).
+  - `flutter analyze --no-pub` (0 issues found across all files).
+  - `flutter test --no-pub` (All 1,020 tests passed).
+- **Physical Hardware Verification (Vivo V2207, `10AC9R1ABF0013A`, Android 14 API 34):**
+  - Package: `io.github.muhammadtaimoorajmal.trustcue` (v0.1.0, build 1, Release APK SHA-256 `FF02F2A7...`).
+  - QR-01 (`images (3).jpg`, 301x434 JPEG): Decoded `https://www.proofpoint.com`. URL inspection card displayed host `www.proofpoint.com`. Zero auto-open.
+  - QR-02 (`images (4).png`, 554x554 PNG): No QR code detected. Informative card rendered without crash.
+  - QR-03 (`images (2).jpg`, 494x619 JPEG): Decoded `T7GHBY`. Classified as Plain Text. Offered "Review text in editor". Zero browser launch option rendered.
+  - QR-04 (`images (3).png`, 575x533 PNG): Decoded `https://informationsecurity.wustl.edu/news/`. URL inspection card rendered. Zero auto-open.
+  - QR-05 (`images (1).jpg`, 621x432 JPEG): No QR code detected. Safe rejection card rendered gracefully.
+  - QR-06 (`images (2).png`, 618x495 PNG): No QR code detected. Safe rejection card rendered gracefully.
+  - QR-07 (`images (1).png`, 300x300 PNG): Decoded `https://blog.malwarebytes.com/author/metallicamvp/`. URL inspection card rendered. Zero auto-open.
+  - QR-08 (`images.jpg`, 225x225 JPEG): No QR code detected. Safe rejection card rendered gracefully.
+  - QR-09 (`images.png`, 353x566 PNG): Decoded `https://scan.page/6866509157ad2`. URL inspection card rendered. Zero auto-open.
+  - Supplementary Checks: Picker cancel verified (Back keyevent 4); Image replacement verified 8 consecutive times (clears prior descriptor & result); Scheme isolation verified (dangerous schemes quarantined).
+- **Deliverables:**
+  - Automated test suite `frontend/test/fixtures/qr_acceptance_test.dart` (15 tests).
+  - Evidence dossier `docs/evidence/module_53/QR_INTAKE_AND_DECODING_EVIDENCE.md`.
+  - Reconciled `docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md` (Section 8).
+  - Updated `docs/COMPLETION_REGISTER.md` (F-10 status updated to PASS / PARTIALLY VERIFIED, Continuation Roadmap updated to prioritize Module 54 Live Cloud AI).
+  - Updated `docs/MODULE_LOG.md`.
+- **Status:** Complete on `frontend`. Four branches strictly preserved; `main` untouched at `a785db8`. Prepared for owner review. Ready for Module 54 (Live Cloud AI End-to-End Verification).
+
 
 
