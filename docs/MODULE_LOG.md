@@ -1942,6 +1942,54 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Updated `docs/MODULE_LOG.md`.
 - **Status:** Complete on `frontend`. Four branches strictly preserved; `main` untouched at `a785db8`. Prepared for owner review. Ready for Module 55 (Extended Link & Scheme Inspection Corpus).
 
+## Module 55: Session Lifecycle and Accurate Cloud Analysis State
+- **Scope & Objectives:**
+  - Verify and repair session lifecycle integrity across `SupabaseAuthRepository`, `AuthController`, and `AnalysisResultsController`.
+  - Shift "Extended Link & Scheme Inspection Corpus" to pending Module 56 within the continuation roadmap, maintaining the strict 100-module ceiling.
+  - Eliminate stale cached authentication status and user getters: dynamically inspect active session so logout, token expiry, or refresh failure immediately transitions status to `unauthenticated`.
+  - Ensure repository initialization is idempotent and prevents duplicate listener registrations (`_authSubscription ??= ...`).
+  - Ensure logout clears account-specific state, profile, and quota immediately.
+  - Discard delayed async profile fetch responses from earlier sessions or different users (`user.value?.id != targetUserId || !isAuthenticated`).
+  - Prevent expired or revoked sessions from authorizing cloud requests.
+  - Correct analysis results screen upload disclosures:
+    - Replace static top banner with reactive 5-state banner (`completed`, `submitting`, `failed`, `consentCancelled`, `idle`) via `Obx()`.
+    - Distinguish on-device findings from safe-guarantees: update heading to `assessment.totalFindingsCount == 1 ? '1 potential warning sign found by on-device checks' : '${assessment.totalFindingsCount} potential warning signs found by on-device checks'`.
+    - Update Cloud AI scope card across all 5 states, ensuring timeout/error states state: "Local checks completed on this device. Cloud AI assistance could not be completed; local results remain valid." (never claiming nothing was uploaded if network transmission commenced).
+    - Ensure editing or re-confirming text invalidates prior snapshot's AI report and consent.
+  - Reconcile Module 54 evidence dossier:
+    - Fix typo ("14 of 15" instead of "14 of 14").
+    - Explicitly distinguish online retry for "Urgent: Verify your account now" from offline failure test.
+    - Document that consent cancellation absence of analysis request was measured via code return, ADB logcat/network monitoring, and quota check.
+    - Retain F-18's pending status for hardware rate limiting (429) and prompt injection in Modules 64–65.
+    - Document observed AI quality defect: "If no alert is present, the message is likely fraudulent" as a pending AI-quality issue.
+    - Do not claim fresh registration, email confirmation, recovery, sync, or deletion were verified.
+  - Physical Device Validation on Vivo V2207 (`10AC9R1ABF0013A`, Android 14 API 34):
+    - Authenticated session survived app rebuild/reinstall and navigation (`b2e2d115-7b87-47ee-8f82-9f24d7e72be9`, 15/15 quota).
+    - Sign out produced Guest Mode: confirmed "Guest Mode: You are currently using TrustCue locally without an account".
+    - Re-login restored session: signed back in with test credentials, restored account `b2e2d115-7b87-47ee-8f82-9f24d7e72be9` and 15/15 quota.
+    - Local text analysis intake & review: confirmed review text, ran local analysis, received accurate on-device results ("2 potential warning signs found by on-device checks", header banner "Local on-device analysis: Evaluated on this device using local rules. Nothing was uploaded.", scope card "Cloud AI assistance: Not requested. Local on-device analysis only.").
+- **Branch:** `frontend`
+- **Checks Performed:**
+  - `flutter analyze lib/ test/`: 0 issues found across all files.
+  - `flutter test`: 1,025/1,025 tests passed (including new `auth_controller_lifecycle_test.dart` and expanded `analysis_results_screen_test.dart`).
+  - Android release APK built with production keys: SHA-256 `3A48418A09400E226A3EB78658B6568A7A6FCB6038689F2ECA2B31E3C526187A` (112,223,333 bytes / 107.02 MB).
+  - Streamed installation to Vivo V2207 succeeded.
+  - Complete sign out, guest mode, re-login, and local analysis journey verified on hardware.
+- **Deliverables:**
+  - `frontend/lib/features/auth/data/repositories/supabase_auth_repository.dart`
+  - `frontend/lib/features/auth/presentation/controllers/auth_controller.dart`
+  - `frontend/lib/features/analysis/presentation/controllers/analysis_results_controller.dart`
+  - `frontend/lib/features/analysis/presentation/screens/analysis_results_screen.dart`
+  - `frontend/test/features/auth/presentation/controllers/auth_controller_lifecycle_test.dart`
+  - `frontend/test/features/analysis/presentation/screens/analysis_results_screen_test.dart`
+  - `frontend/test/features/analysis/presentation/controllers/analysis_results_controller_test.dart`
+  - `frontend/test/features/auth/presentation/screens/account_profile_deletion_test.dart`
+  - `docs/evidence/module_54/LIVE_CLOUD_AI_VERIFICATION_EVIDENCE.md`
+  - Updated `docs/COMPLETION_REGISTER.md`
+  - Updated `docs/MODULE_LOG.md`
+- **Status:** Complete on `frontend`. Four branches strictly preserved; `main` untouched at `a785db8`. Prepared for owner review. Ready for Module 56 (Extended Link & Scheme Inspection Corpus).
+
+
 
 
 

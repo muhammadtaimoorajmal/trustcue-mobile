@@ -221,44 +221,80 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
   }
 
   Widget _buildHeaderBanner(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.pagePaddingSmall),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.phonelink_lock_outlined,
-            size: 20,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Local on-device analysis',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Evaluated on this device using local rules. Nothing was uploaded.',
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
+    return Obx(() {
+      final aiState = controller.aiState.value;
+      final consentCancelled = controller.consentCancelled.value;
+
+      final String title;
+      final String subtitle;
+      final IconData icon;
+
+      if (aiState == AiAnalysisState.completed) {
+        title = 'On-device analysis + Cloud AI evaluation';
+        subtitle =
+            'Local checks completed on-device. Reviewed text was transmitted over TLS with your explicit consent.';
+        icon = Icons.auto_awesome;
+      } else if (aiState == AiAnalysisState.submitting) {
+        title = 'Cloud AI request in progress';
+        subtitle =
+            'Local checks completed on-device. Transmitting reviewed text over TLS with your explicit consent...';
+        icon = Icons.cloud_upload_outlined;
+      } else if (aiState == AiAnalysisState.failed) {
+        title = 'Local on-device analysis';
+        subtitle =
+            'Local checks completed on this device. Cloud AI assistance could not be completed; local results remain valid.';
+        icon = Icons.phonelink_lock_outlined;
+      } else if (consentCancelled) {
+        title = 'Local on-device analysis';
+        subtitle =
+            'Evaluated on this device using local rules. Cloud consent was declined; nothing was uploaded.';
+        icon = Icons.phonelink_lock_outlined;
+      } else {
+        title = 'Local on-device analysis';
+        subtitle =
+            'Evaluated on this device using local rules. Nothing was uploaded.';
+        icon = Icons.phonelink_lock_outlined;
+      }
+
+      return Container(
+        padding: const EdgeInsets.all(AppSpacing.pagePaddingSmall),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.dividerColor),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: theme.colorScheme.primary,
             ),
-          ),
-        ],
-      ),
-    );
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildOutcomeSummary(ThemeData theme, LocalAssessment assessment) {
@@ -272,8 +308,8 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
         icon = Icons.warning_amber_rounded;
         iconColor = theme.colorScheme.error;
         heading = assessment.totalFindingsCount == 1
-            ? '1 potential warning sign found'
-            : '${assessment.totalFindingsCount} potential warning signs found';
+            ? '1 potential warning sign found by on-device checks'
+            : '${assessment.totalFindingsCount} potential warning signs found by on-device checks';
         bannerBg = theme.colorScheme.errorContainer.withValues(alpha: 0.18);
         break;
       case AssessmentOutcomeState.noIndicatorsMatched:
@@ -408,21 +444,34 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
           const SizedBox(height: 6),
           Obx(() {
             final aiState = controller.aiState.value;
+            final consentCancelled = controller.consentCancelled.value;
             final String aiTitle;
             final String aiSubtitle;
             final IconData aiIcon;
             if (aiState == AiAnalysisState.completed) {
               aiTitle = 'Cloud AI assistance: Completed';
               aiSubtitle =
-                  'Evaluated secondary linguistic patterns via ${controller.aiReport.value?.provider ?? 'Groq Cloud'}.';
+                  'Evaluated secondary linguistic patterns via ${controller.aiReport.value?.provider ?? 'Groq Cloud'} with explicit upload consent.';
               aiIcon = Icons.auto_awesome;
+            } else if (aiState == AiAnalysisState.submitting) {
+              aiTitle = 'Cloud AI assistance: In progress';
+              aiSubtitle =
+                  'Transmitting reviewed text over TLS with your explicit consent.';
+              aiIcon = Icons.cloud_sync_outlined;
             } else if (aiState == AiAnalysisState.failed) {
               aiTitle = 'Cloud AI assistance: Unavailable';
-              aiSubtitle = 'Secondary cloud check could not be completed. Your local on-device results remain valid.';
+              aiSubtitle =
+                  'Cloud AI check could not be completed. Your local on-device results remain valid.';
               aiIcon = Icons.info_outline;
+            } else if (consentCancelled) {
+              aiTitle = 'Cloud AI assistance: Consent declined';
+              aiSubtitle =
+                  'Cloud upload consent was declined. No text was uploaded to cloud AI.';
+              aiIcon = Icons.cloud_off_outlined;
             } else {
               aiTitle = 'Cloud AI assistance: Not requested';
-              aiSubtitle = 'Local on-device analysis only. No text was uploaded to cloud AI.';
+              aiSubtitle =
+                  'Local on-device analysis only. No text was uploaded to cloud AI.';
               aiIcon = Icons.cloud_off_outlined;
             }
             return _buildCheckItem(

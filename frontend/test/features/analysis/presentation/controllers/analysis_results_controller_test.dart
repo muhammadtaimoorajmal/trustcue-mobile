@@ -596,12 +596,30 @@ void main() {
         suggestedActions: const [],
       );
 
+      controller.consentCancelled.value = true;
       controller.invalidateConsent();
 
       expect(controller.currentConsent.value, isNull);
       expect(controller.aiReport.value, isNull);
       expect(controller.aiState.value, equals(AiAnalysisState.idle));
       expect(controller.aiErrorMessage.value, isNull);
+      expect(controller.consentCancelled.value, isFalse);
+    });
+
+    test('startAnalysis resets consentCancelled and invalidates previous AI state', () async {
+      final controller = AnalysisResultsController(
+        pipeline: dummyPipeline,
+        args: AnalysisResultsArgs(reviewResult: reviewResult),
+      );
+      controller.consentCancelled.value = true;
+      controller.aiState.value = AiAnalysisState.completed;
+
+      await controller.startAnalysis();
+
+      expect(controller.consentCancelled.value, isFalse);
+      expect(controller.aiState.value, equals(AiAnalysisState.idle));
+      expect(controller.currentConsent.value, isNull);
+      expect(controller.aiReport.value, isNull);
     });
 
     testWidgets(

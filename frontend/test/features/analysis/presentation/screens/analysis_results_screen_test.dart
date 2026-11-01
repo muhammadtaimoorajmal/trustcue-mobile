@@ -181,7 +181,7 @@ void main() {
       );
 
       // B. Outcome Summary
-      expect(find.text('1 potential warning sign found'), findsOneWidget);
+      expect(find.text('1 potential warning sign found by on-device checks'), findsOneWidget);
       expect(
         find.text(
           'Local checks identified 1 potential warning indicator: Requests for credentials.',
@@ -701,5 +701,110 @@ void main() {
       );
       expect(find.text('Retry AI review'), findsOneWidget);
     });
+    testWidgets(
+      'renders accurate disclosure banner and scope card across all 5 states',
+      (tester) async {
+        final review = _makeReview('Sample message text');
+        final assessment = LocalAssessment(
+          reportId: 'rep-states-test',
+          snapshotId: review.snapshot.id,
+          snapshotSource: InputSource.messageText,
+          outcomeState: AssessmentOutcomeState.noIndicatorsMatched,
+          factualSummary: 'Local analysis completed.',
+          groupedIndicators: const [],
+          coverageInfo: AssessmentCoverageInfo(
+            executedRuleIds: const ['rule-1'],
+            evaluatedCategories: const [IndicatorCategory.requestsForCredentials],
+          ),
+          uncertaintyNotes: const [],
+          actionableSteps: const [],
+          createdAt: DateTime.utc(2026, 1, 1),
+        );
+
+        final pipeline = LocalAnalysisPipeline(
+          engine: _MockEngine(),
+          synthesizer: _MockSynthesizer(assessment),
+          registry: LocalRuleCatalog.createRegistry(),
+        );
+
+        final controller = AnalysisResultsController(
+          pipeline: pipeline,
+          args: AnalysisResultsArgs(reviewResult: review),
+        );
+
+        await tester.pumpWidget(createTestWidget(controller: controller));
+        await tester.pumpAndSettle();
+
+        // 1. Idle state (local only)
+        expect(find.text('Local on-device analysis'), findsOneWidget);
+        expect(
+          find.text('Evaluated on this device using local rules. Nothing was uploaded.'),
+          findsOneWidget,
+        );
+        expect(find.text('Cloud AI assistance: Not requested'), findsOneWidget);
+        expect(
+          find.text('Local on-device analysis only. No text was uploaded to cloud AI.'),
+          findsOneWidget,
+        );
+
+        // 2. Consent cancelled state
+        controller.consentCancelled.value = true;
+        await tester.pumpAndSettle();
+
+        expect(find.text('Local on-device analysis'), findsOneWidget);
+        expect(
+          find.text('Evaluated on this device using local rules. Cloud consent was declined; nothing was uploaded.'),
+          findsOneWidget,
+        );
+        expect(find.text('Cloud AI assistance: Consent declined'), findsOneWidget);
+        expect(
+          find.text('Cloud upload consent was declined. No text was uploaded to cloud AI.'),
+          findsOneWidget,
+        );
+
+        // 3. Submitting state (use pump(Duration) since submitting renders loading indicator)
+        controller.consentCancelled.value = false;
+        controller.aiState.value = AiAnalysisState.submitting;
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(find.text('Cloud AI request in progress'), findsOneWidget);
+        expect(
+          find.text('Local checks completed on-device. Transmitting reviewed text over TLS with your explicit consent...'),
+          findsOneWidget,
+        );
+        expect(find.text('Cloud AI assistance: In progress'), findsOneWidget);
+        expect(
+          find.text('Transmitting reviewed text over TLS with your explicit consent.'),
+          findsOneWidget,
+        );
+
+        // 4. Completed state
+        controller.aiState.value = AiAnalysisState.completed;
+        await tester.pumpAndSettle();
+
+        expect(find.text('On-device analysis + Cloud AI evaluation'), findsOneWidget);
+        expect(
+          find.text('Local checks completed on-device. Reviewed text was transmitted over TLS with your explicit consent.'),
+          findsOneWidget,
+        );
+        expect(find.text('Cloud AI assistance: Completed'), findsOneWidget);
+
+        // 5. Failed state (Does NOT claim nothing was uploaded)
+        controller.aiState.value = AiAnalysisState.failed;
+        await tester.pumpAndSettle();
+
+        expect(find.text('Local on-device analysis'), findsOneWidget);
+        expect(
+          find.text('Local checks completed on this device. Cloud AI assistance could not be completed; local results remain valid.'),
+          findsOneWidget,
+        );
+        expect(find.text('Cloud AI assistance: Unavailable'), findsOneWidget);
+        expect(
+          find.text('Cloud AI check could not be completed. Your local on-device results remain valid.'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

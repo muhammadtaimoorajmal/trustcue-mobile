@@ -109,6 +109,7 @@ class AnalysisResultsController extends GetxController {
   final Rxn<String> aiErrorMessage = Rxn<String>();
   final Rxn<String> aiRetryAfter = Rxn<String>();
   final Rxn<UploadConsent> currentConsent = Rxn<UploadConsent>();
+  final RxBool consentCancelled = false.obs;
   final RxBool isRequestingAi = false.obs;
 
   // Local persistence state
@@ -256,8 +257,10 @@ class AnalysisResultsController extends GetxController {
         accountId: accountId,
       );
       if (granted == null || !granted.granted) {
+        consentCancelled.value = true;
         return; // User cancelled or declined
       }
+      consentCancelled.value = false;
       currentConsent.value = granted;
       consent = granted;
     }
@@ -328,6 +331,7 @@ class AnalysisResultsController extends GetxController {
     aiState.value = AiAnalysisState.idle;
     aiErrorMessage.value = null;
     aiRetryAfter.value = null;
+    consentCancelled.value = false;
   }
 
   /// Deliberate user retry for a failed operation using the still-valid snapshot.

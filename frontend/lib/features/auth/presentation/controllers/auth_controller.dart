@@ -48,7 +48,9 @@ class AuthController extends GetxController {
   final Rxn<DateTime> lastSyncTime = Rxn<DateTime>();
   final RxnString syncError = RxnString();
 
-  bool get isAuthenticated => status.value == AuthStatus.authenticated;
+  bool get isAuthenticated =>
+      status.value == AuthStatus.authenticated ||
+      authRepository.currentStatus == AuthStatus.authenticated;
   bool get isConfigured => authRepository.isConfigured;
 
   @override
@@ -60,7 +62,11 @@ class AuthController extends GetxController {
   Future<void> _initAuth() async {
     _statusSubscription = authRepository.statusStream.listen((newStatus) async {
       status.value = newStatus;
-      user.value = authRepository.currentUser;
+      final newUser = authRepository.currentUser;
+      if (user.value?.id != newUser?.id) {
+        profile.value = null;
+      }
+      user.value = newUser;
       if (newStatus == AuthStatus.authenticated) {
         await fetchProfile();
       } else {
@@ -80,10 +86,29 @@ class AuthController extends GetxController {
 
   /// Fetches the authenticated user profile metadata from backend.
   Future<void> fetchProfile() async {
+    final currentUser = user.value ?? authRepository.currentUser;
+    if (currentUser == null || !isAuthenticated) {
+      profile.value = null;
+      return;
+    }
+    user.value ??= currentUser;
+    if (status.value != AuthStatus.authenticated &&
+        authRepository.currentStatus == AuthStatus.authenticated) {
+      status.value = AuthStatus.authenticated;
+    }
+
+    final targetUserId = currentUser.id;
+
     isLoadingProfile.value = true;
     profileError.value = null;
 
     final result = await accountApiClient.getProfile();
+
+    // Guard against late async responses across user switches or logout
+    if (user.value?.id != targetUserId || !isAuthenticated) {
+      return;
+    }
+
     if (result.isSuccess) {
       profile.value = result.valueOrNull;
     } else {
@@ -174,10 +199,14 @@ class AuthController extends GetxController {
 
   /// Terminates the current session and clears local credentials.
   Future<void> signOut({bool global = false}) async {
+    profile.value = null;
+    user.value = null;
     await authRepository.signOut(global: global);
     status.value = authRepository.currentStatus;
-    user.value = null;
-    profile.value = null;
+    user.value = authRepository.currentUser;
+    if (status.value != AuthStatus.authenticated) {
+      profile.value = null;
+    }
   }
 
   ReportSyncService? get _effectiveSyncService {

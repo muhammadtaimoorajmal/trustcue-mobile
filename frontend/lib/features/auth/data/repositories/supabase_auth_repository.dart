@@ -24,23 +24,27 @@ class SupabaseAuthRepository implements AuthRepository {
 
   AuthStatus _currentStatus = AuthStatus.unauthenticated;
   AuthUser? _currentUser;
-  bool _isInitialized = false;
 
   @override
   Stream<AuthStatus> get statusStream => _statusController.stream;
 
   @override
   AuthStatus get currentStatus {
-    if (_currentStatus == AuthStatus.authenticated) {
-      return _currentStatus;
-    }
     if (_config.isConfigured) {
       try {
         final session = _activeClient.auth.currentSession;
         if (session != null && !session.isExpired) {
-          _currentUser ??= _mapUser(session.user);
+          if (_currentUser?.id != session.user.id) {
+            _currentUser = _mapUser(session.user);
+          }
           _currentStatus = AuthStatus.authenticated;
           return AuthStatus.authenticated;
+        } else {
+          // Session is missing or expired: demote authenticated state
+          if (_currentStatus == AuthStatus.authenticated) {
+            _currentStatus = AuthStatus.unauthenticated;
+            _currentUser = null;
+          }
         }
       } catch (_) {}
     }
@@ -49,17 +53,25 @@ class SupabaseAuthRepository implements AuthRepository {
 
   @override
   AuthUser? get currentUser {
-    if (_currentUser != null) return _currentUser;
     if (_config.isConfigured) {
       try {
         final session = _activeClient.auth.currentSession;
         if (session != null && !session.isExpired) {
-          _currentUser = _mapUser(session.user);
+          if (_currentUser?.id != session.user.id) {
+            _currentUser = _mapUser(session.user);
+          }
           return _currentUser;
+        } else {
+          // Session is missing or expired: clear user
+          _currentUser = null;
+          if (_currentStatus == AuthStatus.authenticated) {
+            _currentStatus = AuthStatus.unauthenticated;
+          }
+          return null;
         }
       } catch (_) {}
     }
-    return null;
+    return _currentUser;
   }
 
   @override
@@ -72,11 +84,8 @@ class SupabaseAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult<void>> initialize() async {
-    if (_isInitialized) return const AuthResult.success(null);
-
     if (!_config.isConfigured) {
       _updateStatus(AuthStatus.unconfigured);
-      _isInitialized = true;
       return const AuthResult.success(null);
     }
 
@@ -108,23 +117,20 @@ class SupabaseAuthRepository implements AuthRepository {
         _updateStatus(AuthStatus.unauthenticated);
       }
 
-      // Listen to auth state transitions
-      _authSubscription = _activeClient.auth.onAuthStateChange.listen(
+      // Deduplicate auth state listener: only subscribe if not already subscribed
+      _authSubscription ??= _activeClient.auth.onAuthStateChange.listen(
         _handleAuthStateChange,
         onError: (Object error) {
           // Log or handle error without crashing or looping
         },
       );
 
-      _isInitialized = true;
       return const AuthResult.success(null);
     } on SocketException {
       _updateStatus(AuthStatus.unauthenticated);
-      _isInitialized = true;
       return AuthResult.failure(AuthFailure.networkError());
     } catch (e) {
       _updateStatus(AuthStatus.unauthenticated);
-      _isInitialized = true;
       return AuthResult.failure(AuthFailure.unknown());
     }
   }
@@ -325,9 +331,10 @@ class SupabaseAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult<void>> signOut({bool global = false}) async {
+    _currentUser = null;
+    _updateStatus(AuthStatus.unauthenticated);
+
     if (!isConfigured) {
-      _currentUser = null;
-      _updateStatus(AuthStatus.unauthenticated);
       return const AuthResult.success(null);
     }
 
@@ -401,10 +408,24 @@ class SupabaseAuthRepository implements AuthRepository {
     if (!_config.isConfigured) return null;
     try {
       final session = _activeClient.auth.currentSession;
-      if (session == null) return null;
+      if (session == null) {
+        if (_currentStatus == AuthStatus.authenticated) {
+          _currentUser = null;
+          _updateStatus(AuthStatus.unauthenticated);
+        }
+        return null;
+      }
       if (session.isExpired) {
         final response = await _activeClient.auth.refreshSession();
-        return response.session?.accessToken;
+        final refreshedSession = response.session;
+        if (refreshedSession == null || refreshedSession.isExpired) {
+          _currentUser = null;
+          _updateStatus(AuthStatus.unauthenticated);
+          return null;
+        }
+        _currentUser = _mapUser(refreshedSession.user);
+        _updateStatus(AuthStatus.authenticated);
+        return refreshedSession.accessToken;
       }
       return session.accessToken;
     } catch (_) {
