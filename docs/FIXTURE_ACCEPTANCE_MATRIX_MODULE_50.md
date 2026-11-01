@@ -139,6 +139,15 @@ All 57 links from `Links.txt` were evaluated through TrustCue's offline `UrlInsp
   - `intent://scan/#Intent;...` -> `isValid: false`, `isLaunchable: false`
 - **External Launch Guard:** The UI requires explicit tap confirmation before delegating any URL to the external browser, accompanied by an inspection preview displaying scheme, host, and risk flags.
 
+### 6.2 Authoritative Module 56 Extended Link & Scheme Inspection Corpus Reconciliation
+
+In **Module 56**, all 57 real URL fixtures in Testing Data/Links.txt were systematically inventoried, audited, and verified against production inspection logic, accompanied by 16 supplementary edge-case categories in extended_link_corpus_test.dart (1,048/1,048 tests passing) and 8 physical UI journeys on the Vivo V2207 (Android 14 API 34).
+
+- **Corpus Summary:** 57 valid web URL fixtures (URL-001 through URL-057).
+- **Inspection Invariant:** Strictly offline, zero network egress, zero DNS lookups, zero automatic browser navigation.
+- **Physical Device Release Build:** SHA-256 3409B8B0913350BD317DE6D2A17F1AFA0CD0502E74A513FD0946F1F210AFE666 verified and installed on Vivo V2207.
+- **Dossier Reference:** See [Module 56 Evidence Dossier](evidence/module_56/LINK_AND_SCHEME_INSPECTION_EVIDENCE.md) for the complete 57-row acceptance table, 16 boundary condition definitions, and 8 device screenshot / XML hierarchy pairs.
+
 ---
 
 ## 7. Historical Screenshot Intake & OCR Matrix (Module 50 Placeholder)

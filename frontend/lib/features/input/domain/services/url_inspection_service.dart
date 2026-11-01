@@ -41,6 +41,34 @@ class UrlInspectionService {
     'link',
   ];
 
+  static final Set<String> _knownShortenerHosts = <String>{
+    'share.google',
+    's4w.in',
+    'bit.ly',
+    'tinyurl.com',
+    't.co',
+    'goo.gl',
+    'is.gd',
+    'ow.ly',
+    'buff.ly',
+    'rb.gy',
+    'cutt.ly',
+    'rebrand.ly',
+    'rotf.lol',
+    'v.gd',
+    'qr.ae',
+  };
+
+  static final Set<String> _knownHostingDomains = <String>{
+    'blogspot.com',
+    'github.io',
+    'vercel.app',
+    'pages.dev',
+    'wasmer.app',
+    'trycloudflare.com',
+    'duckdns.org',
+  };
+
   /// Inspects a raw input string and produces an offline [LinkInspectionResult].
   LinkInspectionResult inspect(String input) {
     final byteLength = utf8.encode(input).length;
@@ -210,8 +238,8 @@ class UrlInspectionService {
       );
     }
 
-    final host = parsed.host;
-    if (host.isEmpty) {
+    final rawHost = parsed.host;
+    if (rawHost.isEmpty) {
       return LinkInspectionResult.rejected(
         rawInput: input,
         scheme: schemeLower,
@@ -219,6 +247,7 @@ class UrlInspectionService {
         code: LinkRejectionCode.malformedHost,
       );
     }
+    final host = rawHost.toLowerCase();
 
     // Check for Unicode code units in host (non-ASCII hostnames)
     for (var i = 0; i < host.length; i++) {
@@ -323,7 +352,18 @@ class UrlInspectionService {
           cleanIpv6 == '::' ||
           cleanIpv6.startsWith('fc') ||
           cleanIpv6.startsWith('fd') ||
-          cleanIpv6.startsWith('fe80');
+          cleanIpv6.startsWith('fe80') ||
+          cleanIpv6.startsWith('::ffff:127.') ||
+          cleanIpv6.startsWith('::ffff:10.') ||
+          cleanIpv6.startsWith('::ffff:192.168.') ||
+          cleanIpv6.startsWith('::ffff:172.16.') ||
+          cleanIpv6.startsWith('::ffff:172.17.') ||
+          cleanIpv6.startsWith('::ffff:172.18.') ||
+          cleanIpv6.startsWith('::ffff:172.19.') ||
+          cleanIpv6.startsWith('::ffff:172.2') ||
+          cleanIpv6.startsWith('::ffff:172.3') ||
+          cleanIpv6.startsWith('::ffff:169.254.') ||
+          cleanIpv6.startsWith('::ffff:0.');
 
       if (isLocalIpv6) {
         return LinkInspectionResult.rejected(
@@ -371,6 +411,48 @@ class UrlInspectionService {
             code: LinkRejectionCode.malformedHost,
           );
         }
+      }
+
+      // Check for user-controlled subdomain on public cloud/hosting platform
+      for (final hosting in _knownHostingDomains) {
+        if (host.endsWith('.$hosting') && host != hosting) {
+          observations.add(
+            'Destination is hosted on a public cloud or hosting platform ("$hosting") under a user-controlled subdomain.',
+          );
+          break;
+        }
+      }
+
+      // Check for embedded domain pattern in subdomains (e.g. paypal.com.evil.example)
+      if (hostLabels.length > 2) {
+        for (var i = 1; i < hostLabels.length - 1; i++) {
+          final label = hostLabels[i].toLowerCase();
+          if (label == 'com' ||
+              label == 'org' ||
+              label == 'net' ||
+              label == 'gov' ||
+              label == 'edu') {
+            final embedded = '${hostLabels[i - 1].toLowerCase()}.$label';
+            final root = hostLabels
+                .sublist(hostLabels.length - 2)
+                .join('.')
+                .toLowerCase();
+            if (embedded != root) {
+              observations.add(
+                'Hostname contains an embedded domain pattern ("$embedded") within its subdomains; the actual destination root is "$root".',
+              );
+              break;
+            }
+          }
+        }
+      }
+
+      // Check for known URL shorteners
+      if (_knownShortenerHosts.contains(host) ||
+          _knownShortenerHosts.any((s) => host.endsWith('.$s'))) {
+        observations.add(
+          'Destination uses a URL shortening or link redirection domain ("$host"). The final destination cannot be determined offline without network redirection.',
+        );
       }
     }
 

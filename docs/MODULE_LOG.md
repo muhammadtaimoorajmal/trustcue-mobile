@@ -1989,7 +1989,49 @@ This log tracks the progress of TrustCue's implementation across approximately 1
   - Updated `docs/MODULE_LOG.md`
 - **Status:** Complete on `frontend`. Four branches strictly preserved; `main` untouched at `a785db8`. Prepared for owner review. Ready for Module 56 (Extended Link & Scheme Inspection Corpus).
 
-
-
-
+## Module 56: Extended Link & Scheme Inspection Corpus
+- **Scope & Objectives:**
+  - Systematically inventory and audit all 57 real fixture entries in Testing Data/Links.txt without forcing or altering the natural corpus count.
+  - Implement extended structural link inspection heuristics in UrlInspectionService:
+    - Case normalization: normalize scheme and hostname to lowercase while preserving path and query casing verbatim.
+    - Surrounding whitespace trimming vs. rejection of internal whitespace.
+    - User-info credential spoofing rejection (user:pass@host and spoof.com@evil.example).
+    - Domain fronting and embedded domain detection in subdomains (e.g. paypal.com.evil.example flagging actual destination root evil.example).
+    - User-controlled subdomain identification on public cloud and hosting platforms (logspot.com, github.io, ercel.app, pages.dev, wasmer.app, 	rycloudflare.com, duckdns.org).
+    - Direct numerical IPv4 and IPv6 detection, differentiating public/documentation IPs from local/private ranges (127.0.0.1, 10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12, 169.254.0.0/16, ::1, e80::, c00::, and IPv4-mapped IPv6 ::ffff:192.168...).
+    - Non-standard port observation (flagging non-80/443 ports) and rejection of invalid ports (:0, :65536+).
+    - Query parameter parsing and destination redirect parameter key identification (
+edirect, url, 	arget, 
+ext, dest, destination, 
+eturn, 
+, u, 	o, link).
+    - Percent-encoding preservation and malformed percent-escape rejection.
+    - Punycode ASCII (xn--) domain acceptance and labeling; raw non-ASCII Unicode domain rejection with clear explanation.
+    - URL shortener identification (share.google, s4w.in, it.ly, 	inyurl.com, 	.co, etc.) with explicit observation that destination is unknown offline.
+    - Dangerous and actionable non-web scheme quarantine (javascript:, data:, ile:, content:, intent:, 	el:, sms:, mailto:).
+    - Strict 4,096-byte input limit and rejection of control characters, invisible/zero-width characters, bidirectional override characters, and backslashes.
+  - Codify 23 automated test suites in rontend/test/fixtures/extended_link_corpus_test.dart verifying all 57 fixtures and 16 boundary condition categories.
+  - Build and install production release APK on Vivo V2207 (10AC9R1ABF0013A, Android 14 API 34).
+  - Execute 8 automated interactive UI test cases on physical hardware, capturing screenshots and UI hierarchy dumps for each case (including an explicit offline air-gap test with cellular & Wi-Fi disabled).
+  - Reconcile the observed quota discrepancy (15->14 in Module 54 vs 15/15 in Module 55) by documenting the technical root cause (Render free tier ephemeral container recycling and in-memory Python RAM state).
+  - Correct superseded physical OCR verification claims in 	rustcue-mobile/README.md.
+- **Branch:** rontend
+- **Checks Performed:**
+  - dart format --output=none --set-exit-if-changed lib test: Formatted 328 files (0 changed), 100% compliant.
+  - lutter analyze lib test: 0 issues found.
+  - lutter test: 1,048/1,048 tests passed (1,025 existing baseline + 23 new Module 56 tests).
+  - Production Android release build (rontend/scripts/build_release.ps1 -Install): SHA-256 3409B8B0913350BD317DE6D2A17F1AFA0CD0502E74A513FD0946F1F210AFE666 (112,223,333 bytes / 107.02 MB).
+  - Streamed installation to Vivo V2207 succeeded.
+  - 8 physical device UI journeys verified on Vivo V2207 (screen_phone_m56_case1_ordinary.png through screen_phone_m56_case8_offline.png).
+- **Deliverables:**
+  - rontend/lib/features/input/domain/services/url_inspection_service.dart
+  - rontend/test/fixtures/extended_link_corpus_test.dart
+  - README.md
+  - docs/evidence/module_56/LINK_AND_SCHEME_INSPECTION_EVIDENCE.md
+  - docs/evidence/module_56/screen_phone_m56_case1_ordinary.png through case8_offline.png (8 PNGs)
+  - docs/evidence/module_56/dump_case1_ordinary.xml through dump_case8_offline.xml (8 XMLs)
+  - Updated docs/COMPLETION_REGISTER.md
+  - Updated docs/MODULE_LOG.md
+  - Updated docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md
+- **Status:** Complete on rontend. Four branches strictly preserved; main untouched at 785db8. Prepared for owner review. Ready for Module 57 (Edge-Case Text Intake & Native Hardware Intake Testing).
 
