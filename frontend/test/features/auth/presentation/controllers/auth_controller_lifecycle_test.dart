@@ -73,65 +73,68 @@ void main() {
       expect(controller.profile.value, isNull);
     });
 
-    test('late fetchProfile response after logout is safely discarded', () async {
-      final user = AuthUser(
-        id: 'user-late-logout',
-        email: 'latelogout@test.com',
-        emailVerified: true,
-        createdAt: DateTime.utc(2026, 1, 1),
-      );
-      fakeAuth.setStatus(AuthStatus.authenticated, user: user);
+    test(
+      'late fetchProfile response after logout is safely discarded',
+      () async {
+        final user = AuthUser(
+          id: 'user-late-logout',
+          email: 'latelogout@test.com',
+          emailVerified: true,
+          createdAt: DateTime.utc(2026, 1, 1),
+        );
+        fakeAuth.setStatus(AuthStatus.authenticated, user: user);
 
-      final completer = Completer<http.Response>();
-      final mockClient = MockClient((request) => completer.future);
+        final completer = Completer<http.Response>();
+        final mockClient = MockClient((request) => completer.future);
 
-      final accountApiClient = AccountApiClient(
-        baseUrl: 'https://test.trustcue.internal',
-        httpClient: mockClient,
-        tokenProvider: () async => 'token-late',
-      );
+        final accountApiClient = AccountApiClient(
+          baseUrl: 'https://test.trustcue.internal',
+          httpClient: mockClient,
+          tokenProvider: () async => 'token-late',
+        );
 
-      final controller = AuthController(
-        authRepository: fakeAuth,
-        accountApiClient: accountApiClient,
-      );
-      controller.onInit();
-      // Allow _initAuth to start fetchProfile
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+        final controller = AuthController(
+          authRepository: fakeAuth,
+          accountApiClient: accountApiClient,
+        );
+        controller.onInit();
+        // Allow _initAuth to start fetchProfile
+        await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      // fetchProfile is now in flight
-      expect(controller.isLoadingProfile.value, isTrue);
-      expect(controller.user.value?.id, equals('user-late-logout'));
+        // fetchProfile is now in flight
+        expect(controller.isLoadingProfile.value, isTrue);
+        expect(controller.user.value?.id, equals('user-late-logout'));
 
-      // User signs out before fetchProfile completes
-      await controller.signOut();
-      expect(controller.user.value, isNull);
-      expect(controller.profile.value, isNull);
+        // User signs out before fetchProfile completes
+        await controller.signOut();
+        expect(controller.user.value, isNull);
+        expect(controller.profile.value, isNull);
 
-      // Now the delayed backend response arrives
-      completer.complete(
-        http.Response(
-          jsonEncode({
-            'userId': 'user-late-logout',
-            'email': 'latelogout@test.com',
-            'displayName': 'Late User',
-            'emailVerified': true,
-            'createdAt': '2026-01-01T00:00:00Z',
-            'syncEnabled': false,
-            'syncGeneration': 1,
-            'quotaRemainingToday': 10,
-          }),
-          200,
-          headers: {'content-type': 'application/json'},
-        ),
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+        // Now the delayed backend response arrives
+        completer.complete(
+          http.Response(
+            jsonEncode({
+              'userId': 'user-late-logout',
+              'email': 'latelogout@test.com',
+              'displayName': 'Late User',
+              'emailVerified': true,
+              'createdAt': '2026-01-01T00:00:00Z',
+              'syncEnabled': false,
+              'syncGeneration': 1,
+              'quotaRemainingToday': 10,
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 50));
 
-      // The late profile must NOT overwrite the logged-out state!
-      expect(controller.profile.value, isNull);
-      expect(controller.user.value, isNull);
-      expect(controller.isAuthenticated, isFalse);
-    });
+        // The late profile must NOT overwrite the logged-out state!
+        expect(controller.profile.value, isNull);
+        expect(controller.user.value, isNull);
+        expect(controller.isAuthenticated, isFalse);
+      },
+    );
 
     test('late fetchProfile response from earlier user after account switch is safely discarded', () async {
       final userA = AuthUser(

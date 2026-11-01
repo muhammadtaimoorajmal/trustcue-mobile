@@ -231,23 +231,19 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
 
       if (aiState == AiAnalysisState.completed) {
         title = 'On-device analysis + Cloud AI evaluation';
-        subtitle =
-            'Local checks completed on-device. Reviewed text was transmitted over TLS with your explicit consent.';
+        subtitle = 'Local checks completed on-device. Reviewed text was transmitted over TLS with your explicit consent.';
         icon = Icons.auto_awesome;
       } else if (aiState == AiAnalysisState.submitting) {
         title = 'Cloud AI request in progress';
-        subtitle =
-            'Local checks completed on-device. Transmitting reviewed text over TLS with your explicit consent...';
+        subtitle = 'Local checks completed on-device. Transmitting reviewed text over TLS with your explicit consent...';
         icon = Icons.cloud_upload_outlined;
       } else if (aiState == AiAnalysisState.failed) {
         title = 'Local on-device analysis';
-        subtitle =
-            'Local checks completed on this device. Cloud AI assistance could not be completed; local results remain valid.';
+        subtitle = 'Local checks completed on this device. Cloud AI assistance could not be completed; local results remain valid.';
         icon = Icons.phonelink_lock_outlined;
       } else if (consentCancelled) {
         title = 'Local on-device analysis';
-        subtitle =
-            'Evaluated on this device using local rules. Cloud consent was declined; nothing was uploaded.';
+        subtitle = 'Evaluated on this device using local rules. Cloud consent was declined; nothing was uploaded.';
         icon = Icons.phonelink_lock_outlined;
       } else {
         title = 'Local on-device analysis';
@@ -266,11 +262,7 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              icon,
-              size: 20,
-              color: theme.colorScheme.primary,
-            ),
+            Icon(icon, size: 20, color: theme.colorScheme.primary),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -284,10 +276,7 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall,
-                  ),
+                  Text(subtitle, style: theme.textTheme.bodySmall),
                 ],
               ),
             ),
@@ -455,23 +444,19 @@ class AnalysisResultsScreen extends GetView<AnalysisResultsController> {
               aiIcon = Icons.auto_awesome;
             } else if (aiState == AiAnalysisState.submitting) {
               aiTitle = 'Cloud AI assistance: In progress';
-              aiSubtitle =
-                  'Transmitting reviewed text over TLS with your explicit consent.';
+              aiSubtitle = 'Transmitting reviewed text over TLS with your explicit consent.';
               aiIcon = Icons.cloud_sync_outlined;
             } else if (aiState == AiAnalysisState.failed) {
               aiTitle = 'Cloud AI assistance: Unavailable';
-              aiSubtitle =
-                  'Cloud AI check could not be completed. Your local on-device results remain valid.';
+              aiSubtitle = 'Cloud AI check could not be completed. Your local on-device results remain valid.';
               aiIcon = Icons.info_outline;
             } else if (consentCancelled) {
               aiTitle = 'Cloud AI assistance: Consent declined';
-              aiSubtitle =
-                  'Cloud upload consent was declined. No text was uploaded to cloud AI.';
+              aiSubtitle = 'Cloud upload consent was declined. No text was uploaded to cloud AI.';
               aiIcon = Icons.cloud_off_outlined;
             } else {
               aiTitle = 'Cloud AI assistance: Not requested';
-              aiSubtitle =
-                  'Local on-device analysis only. No text was uploaded to cloud AI.';
+              aiSubtitle = 'Local on-device analysis only. No text was uploaded to cloud AI.';
               aiIcon = Icons.cloud_off_outlined;
             }
             return _buildCheckItem(

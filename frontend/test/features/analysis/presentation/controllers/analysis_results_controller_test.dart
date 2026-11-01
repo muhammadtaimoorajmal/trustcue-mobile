@@ -606,21 +606,24 @@ void main() {
       expect(controller.consentCancelled.value, isFalse);
     });
 
-    test('startAnalysis resets consentCancelled and invalidates previous AI state', () async {
-      final controller = AnalysisResultsController(
-        pipeline: dummyPipeline,
-        args: AnalysisResultsArgs(reviewResult: reviewResult),
-      );
-      controller.consentCancelled.value = true;
-      controller.aiState.value = AiAnalysisState.completed;
+    test(
+      'startAnalysis resets consentCancelled and invalidates previous AI state',
+      () async {
+        final controller = AnalysisResultsController(
+          pipeline: dummyPipeline,
+          args: AnalysisResultsArgs(reviewResult: reviewResult),
+        );
+        controller.consentCancelled.value = true;
+        controller.aiState.value = AiAnalysisState.completed;
 
-      await controller.startAnalysis();
+        await controller.startAnalysis();
 
-      expect(controller.consentCancelled.value, isFalse);
-      expect(controller.aiState.value, equals(AiAnalysisState.idle));
-      expect(controller.currentConsent.value, isNull);
-      expect(controller.aiReport.value, isNull);
-    });
+        expect(controller.consentCancelled.value, isFalse);
+        expect(controller.aiState.value, equals(AiAnalysisState.idle));
+        expect(controller.currentConsent.value, isNull);
+        expect(controller.aiReport.value, isNull);
+      },
+    );
 
     testWidgets(
       'invalidates AI results and clears consent when auth status/account changes',

@@ -181,7 +181,10 @@ void main() {
       );
 
       // B. Outcome Summary
-      expect(find.text('1 potential warning sign found by on-device checks'), findsOneWidget);
+      expect(
+        find.text('1 potential warning sign found by on-device checks'),
+        findsOneWidget,
+      );
       expect(
         find.text(
           'Local checks identified 1 potential warning indicator: Requests for credentials.',
@@ -714,7 +717,9 @@ void main() {
           groupedIndicators: const [],
           coverageInfo: AssessmentCoverageInfo(
             executedRuleIds: const ['rule-1'],
-            evaluatedCategories: const [IndicatorCategory.requestsForCredentials],
+            evaluatedCategories: const [
+              IndicatorCategory.requestsForCredentials,
+            ],
           ),
           uncertaintyNotes: const [],
           actionableSteps: const [],
@@ -738,12 +743,16 @@ void main() {
         // 1. Idle state (local only)
         expect(find.text('Local on-device analysis'), findsOneWidget);
         expect(
-          find.text('Evaluated on this device using local rules. Nothing was uploaded.'),
+          find.text(
+            'Evaluated on this device using local rules. Nothing was uploaded.',
+          ),
           findsOneWidget,
         );
         expect(find.text('Cloud AI assistance: Not requested'), findsOneWidget);
         expect(
-          find.text('Local on-device analysis only. No text was uploaded to cloud AI.'),
+          find.text(
+            'Local on-device analysis only. No text was uploaded to cloud AI.',
+          ),
           findsOneWidget,
         );
 
@@ -753,12 +762,19 @@ void main() {
 
         expect(find.text('Local on-device analysis'), findsOneWidget);
         expect(
-          find.text('Evaluated on this device using local rules. Cloud consent was declined; nothing was uploaded.'),
+          find.text(
+            'Evaluated on this device using local rules. Cloud consent was declined; nothing was uploaded.',
+          ),
           findsOneWidget,
         );
-        expect(find.text('Cloud AI assistance: Consent declined'), findsOneWidget);
         expect(
-          find.text('Cloud upload consent was declined. No text was uploaded to cloud AI.'),
+          find.text('Cloud AI assistance: Consent declined'),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Cloud upload consent was declined. No text was uploaded to cloud AI.',
+          ),
           findsOneWidget,
         );
 
@@ -770,12 +786,16 @@ void main() {
 
         expect(find.text('Cloud AI request in progress'), findsOneWidget);
         expect(
-          find.text('Local checks completed on-device. Transmitting reviewed text over TLS with your explicit consent...'),
+          find.text(
+            'Local checks completed on-device. Transmitting reviewed text over TLS with your explicit consent...',
+          ),
           findsOneWidget,
         );
         expect(find.text('Cloud AI assistance: In progress'), findsOneWidget);
         expect(
-          find.text('Transmitting reviewed text over TLS with your explicit consent.'),
+          find.text(
+            'Transmitting reviewed text over TLS with your explicit consent.',
+          ),
           findsOneWidget,
         );
 
@@ -783,9 +803,14 @@ void main() {
         controller.aiState.value = AiAnalysisState.completed;
         await tester.pumpAndSettle();
 
-        expect(find.text('On-device analysis + Cloud AI evaluation'), findsOneWidget);
         expect(
-          find.text('Local checks completed on-device. Reviewed text was transmitted over TLS with your explicit consent.'),
+          find.text('On-device analysis + Cloud AI evaluation'),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Local checks completed on-device. Reviewed text was transmitted over TLS with your explicit consent.',
+          ),
           findsOneWidget,
         );
         expect(find.text('Cloud AI assistance: Completed'), findsOneWidget);
@@ -796,12 +821,16 @@ void main() {
 
         expect(find.text('Local on-device analysis'), findsOneWidget);
         expect(
-          find.text('Local checks completed on this device. Cloud AI assistance could not be completed; local results remain valid.'),
+          find.text(
+            'Local checks completed on this device. Cloud AI assistance could not be completed; local results remain valid.',
+          ),
           findsOneWidget,
         );
         expect(find.text('Cloud AI assistance: Unavailable'), findsOneWidget);
         expect(
-          find.text('Cloud AI check could not be completed. Your local on-device results remain valid.'),
+          find.text(
+            'Cloud AI check could not be completed. Your local on-device results remain valid.',
+          ),
           findsOneWidget,
         );
       },
