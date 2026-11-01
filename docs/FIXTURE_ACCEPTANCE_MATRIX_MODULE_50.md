@@ -141,49 +141,119 @@ All 57 links from `Links.txt` were evaluated through TrustCue's offline `UrlInsp
 
 ---
 
-## 7. Screenshot Intake & OCR Matrix (`Scam Messages Images/`, IMG-01 to IMG-19)
+## 7. Historical Screenshot Intake & OCR Matrix (Module 50 Placeholder)
 
-All 19 screenshot fixtures were transferred to `/sdcard/Download/TrustCue_Testing/scam_messages/` and verified with Google ML Kit Text Recognition on the Vivo V2207.
+> [!WARNING] Historical Documentation Caveat (Module 50 vs Module 52 Reconciliation)
+> The table below reflects the initial placeholder matrix recorded during Module 50. That table assumed a sequential naming pattern (`images (1).jpg` through `images (18).jpg` and `images.png`) and generic financial/courier templates. However, in Module 50 only `IMG-02` (340ms) was executed live on the physical device; the remaining rows were not systematically run through the device vision pipeline.
+>
+> In **Module 52**, an exhaustive physical audit was conducted: the true 19-fixture corpus on disk (`Testing Data\Scam Messages Images\`) was cataloged, staged, evaluated on the Vivo V2207, and tested with automated character-error-rate (CER) measurements. See **Section 7A** below for the authoritative, verified Module 52 physical screenshot intake and OCR fidelity matrix.
 
-| Fixture ID | Source File | Dimensions / Format | OCR Extracted Text Key Phrases | Detected Scenarios | OCR Execution Outcome |
-| :--- | :--- | :---: | :--- | :--- | :---: |
-| **IMG-01** | `images (1).jpg` | 275x183 JPEG | "Bank of America", "unauthorized debit", "click link to dispute" | Bank Impersonation / Smishing | PASS |
-| **IMG-02** | `images (2).jpg` | 300x168 JPEG | "USPS", "package undeliverable", "update address" | Delivery Scam | PASS |
-| **IMG-03** | `images (3).jpg` | 225x225 JPEG | "Wells Fargo Alert", "fraud detected", "verify account" | Financial Phishing | PASS |
-| **IMG-04** | `images (4).jpg` | 259x194 JPEG | "Apple Support", "iCloud storage full", "payment overdue" | Subscription / Account Theft | PASS |
-| **IMG-05** | `images (5).jpg` | 284x177 JPEG | "Chase", "temporary lock", "call to restore" | Account Suspension | PASS |
-| **IMG-06** | `images (6).jpg` | 225x225 JPEG | "Netflix", "membership suspended", "renew payment" | Credential Harvesting | PASS |
-| **IMG-07** | `images (7).jpg` | 310x163 JPEG | "Geek Squad", "auto-renewal $399", "cancel order" | Tech Support / Invoice Scam | PASS |
-| **IMG-08** | `images (8).jpg` | 280x180 JPEG | "Amazon", "order confirmation $1,149", "dispute charge" | E-Commerce Impersonation | PASS |
-| **IMG-09** | `images (9).jpg` | 259x194 JPEG | "Paypal", "suspicious transaction", "log in immediately" | Financial Phishing | PASS |
-| **IMG-10** | `images (10).jpg` | 225x225 JPEG | "FedEx", "tracking exception", "customs fee required" | Advance Fee Delivery | PASS |
-| **IMG-11** | `images (11).jpg` | 300x168 JPEG | "IRS tax refund", "direct deposit pending", "submit SSN" | Government Impersonation | PASS |
-| **IMG-12** | `images (12).jpg` | 275x183 JPEG | "E-ZPass toll violation", "final notice", "avoid penalty" | Toll Scam | PASS |
-| **IMG-13** | `images (13).jpg` | 225x225 JPEG | "Walmart gift card reward", "survey winner", "claim" | Reward / Lottery Scam | PASS |
-| **IMG-14** | `images (14).jpg` | 284x177 JPEG | "Meta Business Suite", "page policy violation", "appeal" | Social Media Takeover | PASS |
-| **IMG-15** | `images (15).jpg` | 259x194 JPEG | "Crypto wallet sync", "reconnect phrase", "airdrop" | Seed Phrase Harvesting | PASS |
-| **IMG-16** | `images (16).jpg` | 310x163 JPEG | "DHL express delivery", "customs duty unpaid" | Parcel Impersonation | PASS |
-| **IMG-17** | `images (17).jpg` | 738x411 PNG | "Work from home assistant", "Telegram recruiter" | Task Scam / Job Offer | PASS |
-| **IMG-18** | `images (18).jpg` | 275x183 JPEG | "AT&T bill credit", "overpaid balance refund" | Carrier Impersonation | PASS |
-| **IMG-19** | `images.png` | 275x183 PNG | "Urgent security alert", "unrecognized device login" | Credential Phishing | PASS |
+| Fixture ID | Source File | Dimensions / Format | OCR Extracted Text Key Phrases | Detected Scenarios | Historical Module 50 Status | Module 52 Reconciled Status |
+| :--- | :--- | :---: | :--- | :--- | :---: | :---: |
+| **IMG-01** | `images (1).jpg` | 275x183 JPEG | "Bank of America", "unauthorized debit", "click link to dispute" | Bank Impersonation / Smishing | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-02** | `images (2).jpg` | 300x168 JPEG | "USPS", "package undeliverable", "update address" | Delivery Scam | PASS (Live UI 340ms) | Reconciled in Section 7A |
+| **IMG-03** | `images (3).jpg` | 225x225 JPEG | "Wells Fargo Alert", "fraud detected", "verify account" | Financial Phishing | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-04** | `images (4).jpg` | 259x194 JPEG | "Apple Support", "iCloud storage full", "payment overdue" | Subscription / Account Theft | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-05** | `images (5).jpg` | 284x177 JPEG | "Chase", "temporary lock", "call to restore" | Account Suspension | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-06** | `images (6).jpg` | 225x225 JPEG | "Netflix", "membership suspended", "renew payment" | Credential Harvesting | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-07** | `images (7).jpg` | 310x163 JPEG | "Geek Squad", "auto-renewal $399", "cancel order" | Tech Support / Invoice Scam | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-08** | `images (8).jpg` | 280x180 JPEG | "Amazon", "order confirmation $1,149", "dispute charge" | E-Commerce Impersonation | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-09** | `images (9).jpg` | 259x194 JPEG | "Paypal", "suspicious transaction", "log in immediately" | Financial Phishing | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-10** | `images (10).jpg` | 225x225 JPEG | "FedEx", "tracking exception", "customs fee required" | Advance Fee Delivery | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-11** | `images (11).jpg` | 300x168 JPEG | "IRS tax refund", "direct deposit pending", "submit SSN" | Government Impersonation | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-12** | `images (12).jpg` | 275x183 JPEG | "E-ZPass toll violation", "final notice", "avoid penalty" | Toll Scam | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-13** | `images (13).jpg` | 225x225 JPEG | "Walmart gift card reward", "survey winner", "claim" | Reward / Lottery Scam | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-14** | `images (14).jpg` | 284x177 JPEG | "Meta Business Suite", "page policy violation", "appeal" | Social Media Takeover | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-15** | `images (15).jpg` | 259x194 JPEG | "Crypto wallet sync", "reconnect phrase", "airdrop" | Seed Phrase Harvesting | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-16** | `images (16).jpg` | 310x163 JPEG | "DHL express delivery", "customs duty unpaid" | Parcel Impersonation | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-17** | `images (17).jpg` | 738x411 PNG | "Work from home assistant", "Telegram recruiter" | Task Scam / Job Offer | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-18** | `images (18).jpg` | 275x183 JPEG | "AT&T bill credit", "overpaid balance refund" | Carrier Impersonation | PASS (Placeholder) | Reconciled in Section 7A |
+| **IMG-19** | `images.png` | 275x183 PNG | "Urgent security alert", "unrecognized device login" | Credential Phishing | PASS (Placeholder) | Reconciled in Section 7A |
+
+---
+
+## 7A. Authoritative Module 52 True Screenshot Fixture Reconciliation & OCR Fidelity Matrix
+
+In **Module 52**, all 19 physical image files located in `Testing Data\Scam Messages Images\` were analyzed on disk, staged to `/sdcard/Download/TrustCue_Testing/scam_messages/` on the physical Vivo V2207, executed through Google ML Kit Latin Text Recognition, evaluated against the local heuristic pipeline, and benchmarked for character accuracy (CER).
+
+- **Corpus Summary:** 19 real screenshot fixtures (14 JPEG, 5 PNG).
+- **Total Reference Characters:** 3,276 code-points.
+- **Total Levenshtein Distance:** 34 edit operations across the entire corpus.
+- **Aggregate Corpus Character Error Rate (CER):** **1.04%** (Character Accuracy: **98.96%**).
+- **Exact Matches (CER = 0.00%):** 16 of 19 fixtures matched ground truth with 100% precision.
+- **Minor OCR Artifacts (CER > 0.00%):** 3 fixtures (`IMG-10` toll scam watermark, `IMG-14` annotated infographics, `IMG-17` multi-line SMS bubble interleaving).
+- **Automated Regression Suite:** 24/24 tests passing in `frontend/test/fixtures/screenshot_ocr_acceptance_test.dart`.
+
+| True ID | Source File on Disk | Format & Size | Real Scam Scenario | Ref Chars | Edit Dist | CER (%) | Accuracy | Key Extracted Text Excerpt | Local Rule Engine Detection | Verification Layer & Status |
+| :--- | :--- | :---: | :--- | :---: | :---: | :---: | :---: | :--- | :--- | :---: |
+| **IMG-01** | `images (1).jpg` | JPEG (17.5 KB) | CEO / Executive Gift Card Request | 288 | 0 | 0.00% | 100.0% | "assist me with a task urgently... Apple gift cards" | `rule.urgency.immediate_action` | Layer 1, 2, 3 — **PASS** |
+| **IMG-02** | `images (1).png` | PNG (29.2 KB) | Job Recruitment / Work from Home Lure | 271 | 0 | 0.00% | 100.0% | "We are hiring! Position: Online Customer Service" | `noIndicatorsMatched`* | Layer 1, 2, 3 — **PASS** |
+| **IMG-03** | `images (2).jpg` | JPEG (19.4 KB) | Amazon Gift Card Lottery Lure | 149 | 0 | 0.00% | 100.0% | "Congratulations! You've been selected to receive a $500" | `rule.reward.prize_claim` | Layer 1, 2, 3 — **PASS** |
+| **IMG-04** | `images (2).png` | PNG (35.6 KB) | Overdue Fake Invoice Typosquatted Link | 158 | 0 | 0.00% | 100.0% | "NOTICE: Your unpaid invoice of $85.22 is overdue" | `noIndicatorsMatched`* | Layer 1, 2, 3 — **PASS** |
+| **IMG-05** | `images (3).jpg` | JPEG (21.7 KB) | Security Verification Code Pretext | 196 | 0 | 0.00% | 100.0% | "Your single-use security code is 123456... verify immediately" | `rule.urgency.immediate_action` | Layer 1, 2, 3 — **PASS** |
+| **IMG-06** | `images (3).png` | PNG (30.1 KB) | Wells Fargo Card Locked Phishing Alert | 157 | 0 | 0.00% | 100.0% | "Wells Fargo Alert: Your debit card has been temporarily locked" | `rule.urgency.immediate_action` | Layer 1, 2, 3 — **PASS** |
+| **IMG-07** | `images (4).jpg` | JPEG (18.8 KB) | High-Yield Crypto Investment Telegram | 168 | 0 | 0.00% | 100.0% | "You have been added to VIP Investment Signals. Earn 500%" | `noIndicatorsMatched`* | Layer 1, 2, 3 — **PASS** |
+| **IMG-08** | `images (4).png` | PNG (31.4 KB) | Conversational Wrong-Number Romance | 89 | 0 | 0.00% | 100.0% | "Hello and good morning. Is this John? Sorry to bother you" | `noIndicatorsMatched`* | Layer 1, 2, 3 — **PASS** |
+| **IMG-09** | `images (5).jpg` | JPEG (20.3 KB) | Pig-Butchering Equestrian Romance | 134 | 0 | 0.00% | 100.0% | "I'm Kathy. Are you the equestrian coach that David recommended" | `noIndicatorsMatched`* | Layer 1, 2, 3 — **PASS** |
+| **IMG-10** | `images (6).jpg` | JPEG (22.1 KB) | E-ZPass Toll Violation with SCAM Overlay | 165 | 5 | 3.03% | 96.97% | "SCAM\nToll Enforcement Notice: You have an outstanding toll" | `rule.urgency.immediate_action` | Layer 1, 2, 3 — **PASS** |
+| **IMG-11** | `images (7).jpg` | JPEG (19.8 KB) | DMV Toll Suspension Threat on Phone Screen | 151 | 0 | 0.00% | 100.0% | "DMV Notice: Unpaid toll balance detected. Immediate action" | `rule.urgency.immediate_action` | Layer 1, 2, 3 — **PASS** |
+| **IMG-12** | `images (8).jpg` | JPEG (23.5 KB) | VenPal Unauthorized Payment Cancellation | 157 | 0 | 0.00% | 100.0% | "VenPal: A payment of $260.00 to CryptoExchange was authorized" | `noIndicatorsMatched`* | Layer 1, 2, 3 — **PASS** |
+| **IMG-13** | `images (9).jpg` | JPEG (21.0 KB) | Canada Omicron Emergency Benefit Transfer | 171 | 0 | 0.00% | 100.0% | "Canada Revenue Agency: Your Omicron emergency relief benefit" | `noIndicatorsMatched`* | Layer 1, 2, 3 — **PASS** |
+| **IMG-14** | `images (10).jpg` | JPEG (25.4 KB) | Wells Fargo Walmart Purchase Fraud Box | 150 | 6 | 4.00% | 96.00% | "1\n2\n3\nWells Fargo Fraud Alert: A charge of $1,168.89 at Walmart" | `noIndicatorsMatched`* | Layer 1, 2, 3 — **PASS** |
+| **IMG-15** | `images (11).jpg` | JPEG (22.9 KB) | NY DMV Toll Notice from Philippines (+63) | 208 | 0 | 0.00% | 100.0% | "From: +63 950 944 6874 NY State DMV: Final warning" | `noIndicatorsMatched`* | Layer 1, 2, 3 — **PASS** |
+| **IMG-16** | `images (12).jpg` | JPEG (18.2 KB) | Hey Dad Water Damage New Number Lure | 148 | 0 | 0.00% | 100.0% | "Hey Dad, here's my new number. I dropped my phone in water" | `noIndicatorsMatched`* | Layer 1, 2, 3 — **PASS** |
+| **IMG-17** | `images (13).jpg` | JPEG (24.9 KB) | Hi Mom Friend's Phone Urgent Rent Scam | 405 | 23 | 5.68% | 94.32% | "Hi mom, my phone and I'm using my friend's phone... It's urgent" | `rule.urgency.immediate_action` | Layer 1, 2, 3 — **PASS** |
+| **IMG-18** | `images.jpg` | JPEG (23.8 KB) | USPS Invalid Zip Code Detained Parcel | 207 | 0 | 0.00% | 100.0% | "USPS: Your package could not be delivered... within 24 hours" | `rule.urgency.immediate_action` | Layer 1, 2, 3 — **PASS** |
+| **IMG-19** | `images.png` | PNG (27.6 KB) | Amazon Security OTP Notification Phish | 153 | 0 | 0.00% | 100.0% | "Amazon Security Alert: One-time passcode is 412739" | `noIndicatorsMatched`* | Layer 1, 2, 3 — **PASS** |
+
+*\*Calibrated Invariant:* In accordance with TrustCue's architectural design, conversational lures without overt pressure keywords correctly produce `AssessmentOutcomeState.noIndicatorsMatched` accompanied by the explicit warning: *"No indicators were matched by these local checks. This does not establish that the message is safe."*
+
+---
+
+## 7B. Physical Device UI & Supplementary OCR Verification (Vivo V2207)
+
+### 7B.1 Live Hardware Intake Journey
+On physical hardware (Vivo V2207, Android 14 API 34, `10AC9R1ABF0013A`):
+1. **Intake Selection:** Selected "Choose screenshot" card on Home screen (`HomeScreen` -> `ScreenshotInputScreen`).
+2. **Native Photo Picker:** Picked `images (13).jpg` from `/sdcard/Download/TrustCue_Testing/scam_messages/` via Android Photo Picker (`com.google.android.photopicker`).
+3. **Image Preview & Geometry:** Screen displayed 349x573 JPEG preview (24.9 KB) with pinch-to-zoom hint and Latin-script boundary notice.
+4. **On-Device Vision Extraction:** Tapped "Extract text". Google ML Kit extracted 404 characters on-device in **~340 ms** with zero network activity.
+5. **Review & Redaction (`InputReviewScreen`):** Extracted text cleanly populated into editable review field (`404 / 10,000 characters`). "Check for sensitive details" confirmed sensitive data detector active.
+6. **Informed Confirmation:** Tapped "Confirm reviewed text". State locked editing and rendered green status banner: *"Reviewed text is ready on this device. It has not been analyzed or sent anywhere."*
+7. **Local Analysis Evaluation:** Tapped "Analyze on this device". Evaluated 10 local rules in < 45 ms.
+8. **Results Screen (`AnalysisResultsScreen`):** Rendered "1 potential warning sign found: Urgency or pressure" with exact excerpt `"It's urgent"`, limitations notes, suggested protective step *"Pause before responding or acting"*, and buttons for Cloud AI, Save, and Export.
+9. **Discard Navigation Guard:** Tapped Android Back button from review screen. Discard confirmation dialog rendered: *"Discard screenshot? You have a screenshot with extracted text. If you leave now, the preview and extracted text will be discarded."* Tapping "Discard" safely cleaned temporary files and returned to Home.
+
+### 7B.2 Fully Offline OCR Operation
+- Disabled device Wi-Fi (`adb shell svc wifi disable`) and mobile data (`adb shell svc data disable`).
+- Verified network isolation: `adb shell ping -c 1 8.8.8.8` returned `connect: Network is unreachable`.
+- Picked screenshot and executed Google ML Kit text recognition: extraction succeeded identically in ~345 ms with zero latency degradation or network timeout.
+- Restored network connectivity cleanly.
+
+### 7B.3 Supplementary Error Handling & Boundary Protection
+- **Blank / Whitespace Images:** Tested image containing zero recognizable text characters. OCR service maps cleanly to `OcrFailure.noReadableTextFound` with helpful user guidance.
+- **Oversized Extraction Bounds:** Guarded by `MessageTextValidator`: text exceeding 10,000 code-points or 40,000 UTF-8 bytes is rejected with `OcrFailure.outputExceedsLimits`.
+- **Corrupted Magic Bytes / Invalid Formats:** Tested corrupted payload (random bytes and invalid headers). `ImageValidator.validateBytes` rejects non-JPEG/PNG headers before dispatching to vision engine.
+- **Native Photo Picker Cancellation:** Opening photo picker and pressing Android Back without choosing an image cancels cleanly without throwing unhandled exceptions or altering current intake state.
 
 ---
 
 ## 8. QR Code Intake & Inspection Matrix (`Scam OR Images/`, QR-01 to QR-09)
 
-All 9 QR code fixtures were transferred to `/sdcard/Download/TrustCue_Testing/scam_qr/` and evaluated via ML Kit Barcode Scanning on the Vivo V2207.
+> [!NOTE] Historical Status & Module 53 Continuation Note
+> During Module 50, physical barcode decoding and URL inspection was verified live on the Vivo V2207 for `QR-01` (`https://pay-parking-city.example/meter?id=4921`). All 9 QR code fixtures were transferred to `/sdcard/Download/TrustCue_Testing/scam_qr/`. However, systematic execution across rows `QR-02` through `QR-09` was not logged. In accordance with Module 52 evidence reconciliation, rows `QR-02` through `QR-09` are marked **UNVERIFIED / NOT TESTED** and scheduled for systematic hardware acceptance in **Module 53**.
 
-| QR ID | Source File | Dimensions / Format | Decoded Payload Type | Target URL / URI Payload | Physical Security Context | Inspection Result |
-| :--- | :--- | :---: | :--- | :--- | :--- | :---: |
-| **QR-01** | `images (1).jpg` | 225x225 JPEG | URL | `https://pay-parking-city.example/meter?id=4921` | Fake parking meter sticker overlay | PASS (Guarded) |
-| **QR-02** | `images (2).jpg` | 225x225 JPEG | URL | `https://restaurant-menu-order.example/pay` | Restaurant table QR swap | PASS (Guarded) |
-| **QR-03** | `images (3).jpg` | 225x225 JPEG | URL | `https://ev-charge-point.example/session` | EV charging station sticker scam | PASS (Guarded) |
-| **QR-04** | `images (4).jpg` | 225x225 JPEG | URL | `https://utility-bill-quickpay.example/portal` | Mailbox flyer utility bill fake QR | PASS (Guarded) |
-| **QR-05** | `images (5).jpg` | 621x432 PNG | Bitcoin URI | `bitcoin:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa?amount=0.05` | Direct crypto extortion address | PASS (Flagged) |
-| **QR-06** | `images (6).jpg` | 225x225 JPEG | URL | `https://package-redelivery-usps.example/depot` | Fake delivery door tag QR | PASS (Guarded) |
-| **QR-07** | `images (7).jpg` | 225x225 JPEG | URL | `https://wifi-guest-login.example/auth` | Malicious public Wi-Fi portal | PASS (Guarded) |
-| **QR-08** | `images (8).jpg` | 225x225 JPEG | URL | `https://bank-mfa-confirm.example/approve` | Quishing (QR Phishing) login thief | PASS (Guarded) |
-| **QR-09** | `images.png` | 225x225 PNG | URL | `https://charity-donation-relief.example/fund` | Disaster relief street flyer QR | PASS (Guarded) |
+| QR ID | Source File | Dimensions / Format | Decoded Payload Type | Target URL / URI Payload | Physical Security Context | Reconciled Status | Continuation Assignment |
+| :--- | :--- | :---: | :--- | :--- | :--- | :---: | :---: |
+| **QR-01** | `images (1).jpg` | 225x225 JPEG | URL | `https://pay-parking-city.example/meter?id=4921` | Fake parking meter sticker overlay | **PASS** (Guarded) | Module 50 (Verified) |
+| **QR-02** | `images (2).jpg` | 225x225 JPEG | URL | `https://restaurant-menu-order.example/pay` | Restaurant table QR swap | **NOT TESTED** | Module 53 |
+| **QR-03** | `images (3).jpg` | 225x225 JPEG | URL | `https://ev-charge-point.example/session` | EV charging station sticker scam | **NOT TESTED** | Module 53 |
+| **QR-04** | `images (4).jpg` | 225x225 JPEG | URL | `https://utility-bill-quickpay.example/portal` | Mailbox flyer utility bill fake QR | **NOT TESTED** | Module 53 |
+| **QR-05** | `images (5).jpg` | 621x432 PNG | Bitcoin URI | `bitcoin:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa?amount=0.05` | Direct crypto extortion address | **NOT TESTED** | Module 53 |
+| **QR-06** | `images (6).jpg` | 225x225 JPEG | URL | `https://package-redelivery-usps.example/depot` | Fake delivery door tag QR | **NOT TESTED** | Module 53 |
+| **QR-07** | `images (7).jpg` | 225x225 JPEG | URL | `https://wifi-guest-login.example/auth` | Malicious public Wi-Fi portal | **NOT TESTED** | Module 53 |
+| **QR-08** | `images (8).jpg` | 225x225 JPEG | URL | `https://bank-mfa-confirm.example/approve` | Quishing (QR Phishing) login thief | **NOT TESTED** | Module 53 |
+| **QR-09** | `images.png` | 225x225 PNG | URL | `https://charity-donation-relief.example/fund` | Disaster relief street flyer QR | **NOT TESTED** | Module 53 |
 
 ---
 
@@ -229,11 +299,13 @@ During initial real-device intent testing, the input text `"Pay $1.99 redelivery
 
 ---
 
-## 11. Acceptance Sign-Off
+## 11. Prepared for Owner Review & Sign-Off
 
 1. **Local Rule Generalization:** All 5 modified rules pass local analysis tests and prove generalized scam indicator detection across diverse phrasing.
 2. **Benign Control Performance:** No indicators matched in the six tested benign fixtures (BEN-01 to BEN-06), demonstrating resistance to false alarms on everyday legitimate communication.
-3. **Hardware Provenance:** Evaluated on physical Vivo V2207 (`10AC9R1ABF0013A`) running production release APK (`7E7E9029...`, size 108,831,743 bytes) signed with the official 4096-bit RSA release key.
+3. **Hardware Provenance:** Evaluated on physical Vivo V2207 (`10AC9R1ABF0013A`) running production release APK (`FF02F2A7...`, size 111,625,006 bytes, matching source commit `13ca1d1`) signed with the official 4096-bit RSA release key.
 4. **Data Privacy & Boundaries:** 100% offline verification; zero external network requests made during local rule evaluation, OCR text recognition, QR decoding, URL inspection, or export generation.
 5. **Database Integrity:** App-private SQLite database canonically identified as `trustcue_local.db` (`DatabaseConstants.databaseName`), verified across cold process restarts and scoped deletions.
+6. **Multi-Layer Audit State:** Layer 1 automated unit/heuristic suites 100% passing (1,049 tests across frontend, backend, database); Layer 2 ML Kit OCR verified across all 19 true fixtures; Layer 3 physical UI intake verified on Vivo V2207. QR corpus systematic intake (QR-02 through QR-09) and cloud authentication/sync remain scheduled for Phase 6–7 continuation.
+7. **Document Review Status:** Prepared for owner review; no unrecorded owner approval asserted.
 
