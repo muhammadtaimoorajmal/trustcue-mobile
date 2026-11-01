@@ -216,3 +216,4 @@ Expected Result:
 
 What to Say Aloud:
   "QR codes in public spaces can hide malicious URLs. TrustCue decodes the QR code on-device, displays the actual destination URL, and runs structural heuristics before the user ever opens their browser."
+

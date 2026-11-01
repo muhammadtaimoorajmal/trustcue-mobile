@@ -716,3 +716,4 @@ WHERE tablename = 'synced_reports';
 **Faculty:** Faculty of Computing & Applied Sciences, Riphah International University  
 **Date of Document:** October 20, 2026  
 **Status:** READY FOR DEFENSE  
+

@@ -158,3 +158,4 @@
 
 10. **How did you use AI coding tools in this project?**
     * *"I used AI assistance as an advanced pair programmer to scaffold tests, explore regex patterns, and help write documentation. However, every architectural decision, security constraint, hardware test on my Vivo phone, and line of code was verified, debugged, and understood by me."*
+
