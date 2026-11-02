@@ -112,3 +112,6 @@ jobs:
 
       - name: Run SQL Regression Test 09 - Avatar Storage RLS
         run: psql -v ON_ERROR_STOP=1 -f database/tests/sql/09_test_avatar_storage_rls.sql
+
+      - name: Run SQL Regression Test 10 - Durable Quota Reservations
+        run: psql -v ON_ERROR_STOP=1 -f database/tests/sql/10_test_durable_quota_reservations.sql

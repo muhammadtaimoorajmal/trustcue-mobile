@@ -29,6 +29,7 @@ class TestDatabaseMigrations(unittest.TestCase):
             "00007_enforce_sync_opt_in.sql",
             "00008_harden_sync_purge_and_allowlist.sql",
             "00009_create_avatar_storage_and_profile_field.sql",
+            "00010_create_durable_quota_reservations.sql",
         ]
         actual_files = sorted([f.name for f in MIGRATIONS_DIR.glob("*.sql")])
         self.assertEqual(actual_files, expected_migrations)
@@ -197,6 +198,34 @@ class TestDatabaseMigrations(unittest.TestCase):
         self.assertIn("avatars_update_own", content)
         self.assertIn("avatars_delete_own", content)
 
+    def test_durable_quota_reservations_invariants(self):
+        """Validates migration 10 durable quota reservations, privacy, and RPC functions."""
+        content = (MIGRATIONS_DIR / "00010_create_durable_quota_reservations.sql").read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE IF NOT EXISTS public.ai_quota_reservations", content)
+        self.assertIn("status IN ('reserved', 'committed', 'released')", content)
+        self.assertIn("ALTER TABLE public.ai_quota_reservations ENABLE ROW LEVEL SECURITY;", content)
+        self.assertIn("ALTER TABLE public.ai_quota_reservations FORCE ROW LEVEL SECURITY;", content)
+        self.assertIn("FUNCTION public.reserve_ai_quota_v2", content)
+        self.assertIn("FUNCTION public.commit_ai_quota_v2", content)
+        self.assertIn("FUNCTION public.release_ai_quota_v2", content)
+        self.assertIn("FUNCTION public.get_remaining_ai_quota", content)
+        self.assertIn("FUNCTION public.reap_abandoned_reservations", content)
+        self.assertIn("REVOKE ALL ON FUNCTION public.reserve_ai_quota_v2(UUID, UUID, INT) FROM PUBLIC, anon, authenticated;", content)
+        self.assertIn("GRANT EXECUTE ON FUNCTION public.reserve_ai_quota_v2(UUID, UUID, INT) TO service_role, postgres;", content)
+
+        # Privacy Audit: Ensure zero prompt, excerpt, content, or hash columns exist
+        uncommented = re.sub(r"--.*$", "", content, flags=re.MULTILINE)
+        forbidden_columns = [
+            "prompt", "input_text", "query", "body", "content",
+            "excerpt", "message", "hash", "raw_text", "transcription"
+        ]
+        for col in forbidden_columns:
+            pattern = rf"\b{col}\b\s+(TEXT|VARCHAR|BYTEA|JSON|JSONB)"
+            self.assertIsNone(
+                re.search(pattern, uncommented, re.IGNORECASE),
+                f"Privacy violation in 00010: forbidden column '{col}' detected!",
+            )
+
 
 
 
@@ -226,6 +255,7 @@ class TestSQLRegressionSuites(unittest.TestCase):
             "07_test_sync_purge_and_allowlist.sql",
             "08_test_concurrent_upload_purge.sql",
             "09_test_avatar_storage_rls.sql",
+            "10_test_durable_quota_reservations.sql",
         ]
         actual_files = sorted([f.name for f in TESTS_SQL_DIR.glob("*.sql")])
         self.assertEqual(actual_files, expected_tests)
