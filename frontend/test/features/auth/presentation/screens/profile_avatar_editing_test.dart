@@ -48,7 +48,10 @@ class _FakeAvatarImageService extends AvatarImageService {
   }
 
   @override
-  Future<String?> getSignedUrl(String avatarPath, {int expiresInSeconds = 3600}) async {
+  Future<String?> getSignedUrl(
+    String avatarPath, {
+    int expiresInSeconds = 3600,
+  }) async {
     return 'https://storage.trustcue.test/avatars/$avatarPath?token=signed';
   }
 }
@@ -184,110 +187,142 @@ void main() {
       expect(find.text('Edit Profile'), findsOneWidget);
     });
 
-    testWidgets('tapping Edit Profile opens edit modal with current name and privacy note', (
-      tester,
-    ) async {
-      fakeAuth.setStatus(AuthStatus.authenticated, user: testUser);
-      await authController.fetchProfile();
+    testWidgets(
+      'tapping Edit Profile opens edit modal with current name and privacy note',
+      (tester) async {
+        fakeAuth.setStatus(AuthStatus.authenticated, user: testUser);
+        await authController.fetchProfile();
 
-      await tester.pumpWidget(createTestApp());
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(createTestApp());
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Edit Profile'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Edit Profile'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Edit Profile'), findsNWidgets(2)); // Button and Title
-      expect(find.byType(TextFormField), findsOneWidget);
-      expect(find.text('Choose Photo'), findsOneWidget);
-      expect(find.textContaining('Privacy Note: Your avatar is stored'), findsOneWidget);
+        expect(find.text('Edit Profile'), findsNWidgets(2)); // Button and Title
+        expect(find.byType(TextFormField), findsOneWidget);
+        expect(find.text('Choose Photo'), findsOneWidget);
+        expect(
+          find.textContaining('Privacy Note: Your avatar is stored'),
+          findsOneWidget,
+        );
 
-      // Cancel closes dialog
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(find.text('Choose Photo'), findsNothing);
-    });
+        // Cancel closes dialog
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(find.text('Choose Photo'), findsNothing);
+      },
+    );
 
-    testWidgets('saving new display name via Edit Profile persists and updates UI', (
-      tester,
-    ) async {
-      fakeAuth.setStatus(AuthStatus.authenticated, user: testUser);
-      await authController.fetchProfile();
+    testWidgets(
+      'saving new display name via Edit Profile persists and updates UI',
+      (tester) async {
+        fakeAuth.setStatus(AuthStatus.authenticated, user: testUser);
+        await authController.fetchProfile();
 
-      await tester.pumpWidget(createTestApp());
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(createTestApp());
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Edit Profile'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Edit Profile'));
+        await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextFormField), 'Super Sleuth');
-      await tester.tap(find.text('Save'));
-      await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextFormField), 'Super Sleuth');
+        await tester.tap(find.text('Save'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Super Sleuth'), findsOneWidget);
-      expect(currentDisplayName, equals('Super Sleuth'));
-      // Initials updated to 'SS'
-      expect(find.text('SS'), findsOneWidget);
+        expect(find.text('Super Sleuth'), findsOneWidget);
+        expect(currentDisplayName, equals('Super Sleuth'));
+        // Initials updated to 'SS'
+        expect(find.text('SS'), findsOneWidget);
 
-      // Drain snackbar timer and dismiss animation
-      await tester.pump(const Duration(seconds: 6));
-      await tester.pumpAndSettle();
-    });
+        // Drain snackbar timer and dismiss animation
+        await tester.pump(const Duration(seconds: 6));
+        await tester.pumpAndSettle();
+      },
+    );
 
-    testWidgets('send password reset email button triggers dispatch and surfaces confirmation banner', (
-      tester,
-    ) async {
-      fakeAuth.setStatus(AuthStatus.authenticated, user: testUser);
-      await authController.fetchProfile();
+    testWidgets(
+      'send password reset email button triggers dispatch and surfaces confirmation banner',
+      (tester) async {
+        fakeAuth.setStatus(AuthStatus.authenticated, user: testUser);
+        await authController.fetchProfile();
 
-      await tester.pumpWidget(createTestApp());
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(createTestApp());
+        await tester.pumpAndSettle();
 
-      final resetBtn = find.text('Send Password Reset Email');
-      await tester.ensureVisible(resetBtn);
-      await tester.tap(resetBtn);
-      await tester.pumpAndSettle();
+        final resetBtn = find.text('Send Password Reset Email');
+        await tester.ensureVisible(resetBtn);
+        await tester.tap(resetBtn);
+        await tester.pumpAndSettle();
 
-      expect(fakeAuth.sendPasswordResetCallCount, equals(1));
-      expect(fakeAuth.lastPasswordResetEmail, equals('gadget@trustcue.test'));
+        expect(fakeAuth.sendPasswordResetCallCount, equals(1));
+        expect(fakeAuth.lastPasswordResetEmail, equals('gadget@trustcue.test'));
 
-      // Drain snackbar timer and dismiss animation
-      await tester.pump(const Duration(seconds: 6));
-      await tester.pumpAndSettle();
-    });
+        // Drain snackbar timer and dismiss animation
+        await tester.pump(const Duration(seconds: 6));
+        await tester.pumpAndSettle();
+      },
+    );
 
-    test('updateProfileData handles avatar upload and sets signedUrl on profile', () async {
-      fakeAuth.setStatus(AuthStatus.authenticated, user: testUser);
-      await authController.fetchProfile();
+    test(
+      'updateProfileData handles avatar upload and sets signedUrl on profile',
+      () async {
+        fakeAuth.setStatus(AuthStatus.authenticated, user: testUser);
+        await authController.fetchProfile();
 
-      final validPng = Uint8List.fromList([
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-      ]);
+        final validPng = Uint8List.fromList([
+          0x89,
+          0x50,
+          0x4E,
+          0x47,
+          0x0D,
+          0x0A,
+          0x1A,
+          0x0A,
+          0x00,
+          0x00,
+          0x00,
+          0x0D,
+        ]);
 
-      final success = await authController.updateProfileData(
-        displayName: 'Avatar Hero',
-        newAvatarBytes: validPng,
-      );
+        final success = await authController.updateProfileData(
+          displayName: 'Avatar Hero',
+          newAvatarBytes: validPng,
+        );
 
-      expect(success, isTrue);
-      expect(fakeAvatarService.lastUploadedPath, equals('user-uuid-9999/avatar_mock.png'));
-      expect(authController.profile.value?.avatarPath, equals('user-uuid-9999/avatar_mock.png'));
-      expect(authController.profile.value?.avatarUrl, contains('signed'));
-    });
+        expect(success, isTrue);
+        expect(
+          fakeAvatarService.lastUploadedPath,
+          equals('user-uuid-9999/avatar_mock.png'),
+        );
+        expect(
+          authController.profile.value?.avatarPath,
+          equals('user-uuid-9999/avatar_mock.png'),
+        );
+        expect(authController.profile.value?.avatarUrl, contains('signed'));
+      },
+    );
 
-    test('updateProfileData handles avatar removal and cleans up storage', () async {
-      currentAvatarPath = 'user-uuid-9999/old_avatar.png';
-      fakeAuth.setStatus(AuthStatus.authenticated, user: testUser);
-      await authController.fetchProfile();
+    test(
+      'updateProfileData handles avatar removal and cleans up storage',
+      () async {
+        currentAvatarPath = 'user-uuid-9999/old_avatar.png';
+        fakeAuth.setStatus(AuthStatus.authenticated, user: testUser);
+        await authController.fetchProfile();
 
-      final success = await authController.updateProfileData(
-        displayName: 'Avatar Hero',
-        clearAvatar: true,
-      );
+        final success = await authController.updateProfileData(
+          displayName: 'Avatar Hero',
+          clearAvatar: true,
+        );
 
-      expect(success, isTrue);
-      expect(fakeAvatarService.lastDeletedPath, equals('user-uuid-9999/old_avatar.png'));
-      expect(authController.profile.value?.avatarPath, isNull);
-      expect(authController.profile.value?.avatarUrl, isNull);
-    });
+        expect(success, isTrue);
+        expect(
+          fakeAvatarService.lastDeletedPath,
+          equals('user-uuid-9999/old_avatar.png'),
+        );
+        expect(authController.profile.value?.avatarPath, isNull);
+        expect(authController.profile.value?.avatarUrl, isNull);
+      },
+    );
   });
 }

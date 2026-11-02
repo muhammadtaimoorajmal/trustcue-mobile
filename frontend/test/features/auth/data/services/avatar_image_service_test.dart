@@ -16,20 +16,62 @@ void main() {
     setUp(() {
       // Minimal valid JPEG header: FF D8 FF E0 00 10 4A 46 49 46 00 01
       validJpeg = Uint8List.fromList([
-        0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01,
-        0x01, 0x01, 0x00, 0x48,
+        0xFF,
+        0xD8,
+        0xFF,
+        0xE0,
+        0x00,
+        0x10,
+        0x4A,
+        0x46,
+        0x49,
+        0x46,
+        0x00,
+        0x01,
+        0x01,
+        0x01,
+        0x00,
+        0x48,
       ]);
 
       // Minimal valid PNG header: 89 50 4E 47 0D 0A 1A 0A 00 00 00 0D
       validPng = Uint8List.fromList([
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-        0x49, 0x48, 0x44, 0x52,
+        0x89,
+        0x50,
+        0x4E,
+        0x47,
+        0x0D,
+        0x0A,
+        0x1A,
+        0x0A,
+        0x00,
+        0x00,
+        0x00,
+        0x0D,
+        0x49,
+        0x48,
+        0x44,
+        0x52,
       ]);
 
       // Minimal valid WebP header: 'RIFF' size 'WEBP'
       validWebp = Uint8List.fromList([
-        0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50,
-        0x56, 0x50, 0x38, 0x20,
+        0x52,
+        0x49,
+        0x46,
+        0x46,
+        0x24,
+        0x00,
+        0x00,
+        0x00,
+        0x57,
+        0x45,
+        0x42,
+        0x50,
+        0x56,
+        0x50,
+        0x38,
+        0x20,
       ]);
 
       textFileBytes = Uint8List.fromList(
@@ -116,16 +158,18 @@ void main() {
       expect(path, endsWith('.png'));
     });
 
-    test('uploadAvatar fails early on invalid format without network call', () async {
-      final service = AvatarImageService();
-      final res = await service.uploadAvatar(
-        userId: 'user-uuid-1234',
-        imageBytes: exeBytes,
-      );
+    test(
+      'uploadAvatar fails early on invalid format without network call',
+      () async {
+        final service = AvatarImageService();
+        final res = await service.uploadAvatar(
+          userId: 'user-uuid-1234',
+          imageBytes: exeBytes,
+        );
 
-      expect(res.isFailure, isTrue);
-      expect(res.failureOrNull?.message, contains('Allowed formats'));
-    });
+        expect(res.isFailure, isTrue);
+        expect(res.failureOrNull?.message, contains('Allowed formats'));
+      },
+    );
   });
 }
-

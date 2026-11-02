@@ -669,7 +669,11 @@ class AccountScreen extends GetView<AuthController> {
     );
   }
 
-  Widget _buildAvatarWidget(ThemeData theme, UserProfile? profile, dynamic user) {
+  Widget _buildAvatarWidget(
+    ThemeData theme,
+    UserProfile? profile,
+    dynamic user,
+  ) {
     const double size = 52;
     final avatarUrl = profile?.avatarUrl;
     if (avatarUrl != null && avatarUrl.isNotEmpty) {
@@ -738,7 +742,9 @@ class AccountScreen extends GetView<AuthController> {
 
   void _showEditProfileDialog(BuildContext context) {
     final profile = controller.profile.value;
-    final textController = TextEditingController(text: profile?.displayName ?? '');
+    final textController = TextEditingController(
+      text: profile?.displayName ?? '',
+    );
     final formKey = GlobalKey<FormState>();
     final pickedBytes = Rxn<Uint8List>();
     final clearAvatarRx = false.obs;
@@ -769,7 +775,9 @@ class AccountScreen extends GetView<AuthController> {
                         height: 90,
                         fit: BoxFit.cover,
                       );
-                    } else if (currentUrl != null && !isCleared && currentUrl.isNotEmpty) {
+                    } else if (currentUrl != null &&
+                        !isCleared &&
+                        currentUrl.isNotEmpty) {
                       imageWidget = Image.network(
                         currentUrl,
                         width: 90,
@@ -813,7 +821,9 @@ class AccountScreen extends GetView<AuthController> {
                           );
                           if (xFile != null) {
                             final bytes = await xFile.readAsBytes();
-                            final validation = AvatarImageService.validate(bytes);
+                            final validation = AvatarImageService.validate(
+                              bytes,
+                            );
                             if (validation.isFailure) {
                               avatarErrorRx.value =
                                   validation.failureOrNull?.message;
@@ -831,7 +841,8 @@ class AccountScreen extends GetView<AuthController> {
                       label: const Text('Choose Photo'),
                     ),
                     Obx(() {
-                      final hasAvatar = pickedBytes.value != null ||
+                      final hasAvatar =
+                          pickedBytes.value != null ||
                           (profile?.avatarPath != null && !clearAvatarRx.value);
                       if (!hasAvatar) return const SizedBox.shrink();
                       return TextButton.icon(
@@ -893,10 +904,7 @@ class AccountScreen extends GetView<AuthController> {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           Obx(() {
             final isSaving = isSavingRx.value;
             return FilledButton(

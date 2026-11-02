@@ -73,7 +73,8 @@ class AvatarImageService {
         bytes[8] == 0x57 && // W
         bytes[9] == 0x45 && // E
         bytes[10] == 0x42 && // B
-        bytes[11] == 0x50) { // P
+        bytes[11] == 0x50) {
+      // P
       return AvatarFormat.webp;
     }
 
@@ -163,29 +164,25 @@ class AvatarImageService {
       await storage.uploadBinary(
         objectPath,
         sanitized,
-        fileOptions: const FileOptions(
-          contentType: 'image/png',
-          upsert: true,
-        ),
+        fileOptions: const FileOptions(contentType: 'image/png', upsert: true),
       );
       return Result.success(objectPath);
     } on StorageException catch (e) {
       return Result.failure(
-        AnalysisFailure.unavailable(
-          'Storage upload failed: ${e.message}',
-        ),
+        AnalysisFailure.unavailable('Storage upload failed: ${e.message}'),
       );
     } catch (e) {
       return Result.failure(
-        AnalysisFailure.unavailable(
-          'Failed to upload avatar image: $e',
-        ),
+        AnalysisFailure.unavailable('Failed to upload avatar image: $e'),
       );
     }
   }
 
   /// Retrieves a temporary signed URL for viewing a private avatar.
-  Future<String?> getSignedUrl(String avatarPath, {int expiresInSeconds = 3600}) async {
+  Future<String?> getSignedUrl(
+    String avatarPath, {
+    int expiresInSeconds = 3600,
+  }) async {
     final client = _activeClient;
     if (client == null) return null;
 
@@ -211,4 +208,3 @@ class AvatarImageService {
     }
   }
 }
-

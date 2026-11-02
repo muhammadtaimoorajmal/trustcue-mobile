@@ -74,7 +74,8 @@ class AuthCallbackCoordinator {
 
     // Prevent duplicate code-exchange races
     final now = DateTime.now();
-    final signature = '${uri.scheme}://${uri.host}${uri.path}?${uri.queryParameters.keys.join(',')}&#${Uri.splitQueryString(uri.fragment).keys.join(',')}';
+    final signature =
+        '${uri.scheme}://${uri.host}${uri.path}?${uri.queryParameters.keys.join(',')}&#${Uri.splitQueryString(uri.fragment).keys.join(',')}';
     if (_isHandling) return;
     if (_lastHandledSignature == signature &&
         _lastHandledAt != null &&
@@ -136,7 +137,8 @@ class AuthCallbackCoordinator {
       if (authRepository.currentStatus == AuthStatus.recoverySession ||
           (type == 'recovery' &&
               (authRepository.currentStatus == AuthStatus.authenticated ||
-                  authRepository.currentStatus == AuthStatus.recoverySession))) {
+                  authRepository.currentStatus ==
+                      AuthStatus.recoverySession))) {
         _onNavigate(AppRoutes.authResetPassword);
         return;
       }

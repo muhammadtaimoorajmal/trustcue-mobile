@@ -32,15 +32,33 @@ class UserProfile {
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
       userId: json['userId'] as String? ?? json['user_id'] as String? ?? '',
-      displayName: json['displayName'] as String? ?? json['display_name'] as String?,
-      avatarPath: json['avatarPath'] as String? ?? json['avatar_path'] as String?,
+      displayName:
+          json['displayName'] as String? ?? json['display_name'] as String?,
+      avatarPath:
+          json['avatarPath'] as String? ?? json['avatar_path'] as String?,
       avatarUrl: json['avatarUrl'] as String? ?? json['avatar_url'] as String?,
       email: json['email'] as String? ?? '',
-      emailVerified: json['emailVerified'] as bool? ?? json['email_verified'] as bool? ?? false,
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? json['created_at'] as String? ?? '') ?? DateTime.now(),
-      syncEnabled: json['syncEnabled'] as bool? ?? json['sync_enabled'] as bool? ?? false,
-      syncGeneration: json['syncGeneration'] as int? ?? json['sync_generation'] as int? ?? 1,
-      quotaRemainingToday: json['quotaRemainingToday'] as int? ?? json['quota_remaining_today'] as int? ?? 15,
+      emailVerified:
+          json['emailVerified'] as bool? ??
+          json['email_verified'] as bool? ??
+          false,
+      createdAt:
+          DateTime.tryParse(
+            json['createdAt'] as String? ?? json['created_at'] as String? ?? '',
+          ) ??
+          DateTime.now(),
+      syncEnabled:
+          json['syncEnabled'] as bool? ??
+          json['sync_enabled'] as bool? ??
+          false,
+      syncGeneration:
+          json['syncGeneration'] as int? ??
+          json['sync_generation'] as int? ??
+          1,
+      quotaRemainingToday:
+          json['quotaRemainingToday'] as int? ??
+          json['quota_remaining_today'] as int? ??
+          15,
     );
   }
 

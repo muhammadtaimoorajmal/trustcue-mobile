@@ -65,13 +65,16 @@ void main() {
     expect(lastNavigatedRoute, isNull);
   });
 
-  test('rejects loose path containing auth-callback with untrusted host', () async {
-    final uri = Uri.parse('https://malicious.org/auth-callback?token=bad');
-    await coordinator.handleCallbackUri(uri);
+  test(
+    'rejects loose path containing auth-callback with untrusted host',
+    () async {
+      final uri = Uri.parse('https://malicious.org/auth-callback?token=bad');
+      await coordinator.handleCallbackUri(uri);
 
-    expect(fakeRepo.handleCallbackCallCount, 0);
-    expect(lastNavigatedRoute, isNull);
-  });
+      expect(fakeRepo.handleCallbackCallCount, 0);
+      expect(lastNavigatedRoute, isNull);
+    },
+  );
 
   test(
     'routes explicit error in callback to login with error banner',
@@ -116,7 +119,10 @@ void main() {
     expect(fakeRepo.handleCallbackCallCount, 1);
     expect(lastNavigatedRoute, AppRoutes.authLogin);
     expect(lastNavigatedArgs['isError'], isTrue);
-    expect(lastNavigatedArgs['bannerMessage'], isNot(contains('Email confirmed!')));
+    expect(
+      lastNavigatedArgs['bannerMessage'],
+      isNot(contains('Email confirmed!')),
+    );
   });
 
   test(
@@ -190,9 +196,7 @@ void main() {
   );
 
   test('routes successful unauthenticated signup confirmation to login screen with confirmation banner', () async {
-    final uri = Uri.parse(
-      'trustcue://auth-callback?code=valid_signup_code',
-    );
+    final uri = Uri.parse('trustcue://auth-callback?code=valid_signup_code');
 
     fakeRepo.nextCallbackResult = const AuthResult.success(null);
     fakeRepo.setStatus(AuthStatus.unauthenticated);
@@ -206,9 +210,7 @@ void main() {
   });
 
   test('deduplicates rapid consecutive callback events', () async {
-    final uri = Uri.parse(
-      'trustcue://auth-callback?code=dedup_test',
-    );
+    final uri = Uri.parse('trustcue://auth-callback?code=dedup_test');
     fakeRepo.nextCallbackResult = const AuthResult.success(null);
 
     await coordinator.handleCallbackUri(uri);

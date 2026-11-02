@@ -159,7 +159,8 @@ class AuthController extends GetxController {
       );
       if (uploadRes.isFailure) {
         profileError.value =
-            uploadRes.failureOrNull?.message ?? 'Failed to upload avatar image.';
+            uploadRes.failureOrNull?.message ??
+            'Failed to upload avatar image.';
         isUpdatingProfile.value = false;
         return false;
       }
