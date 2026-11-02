@@ -620,6 +620,18 @@ class AccountScreen extends GetView<AuthController> {
                   onPressed: () async {
                     final success = await controller.sendPasswordResetEmail();
                     if (success) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'A secure password recovery link has been sent to ${user.email}. Check your inbox to update your password.',
+                            ),
+                            backgroundColor: theme.colorScheme.primary,
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 5),
+                          ),
+                        );
+                      }
                       Get.snackbar(
                         'Reset Email Dispatched',
                         'A secure password recovery link has been sent to ${user.email}. Check your inbox to update your password.',
@@ -627,6 +639,17 @@ class AccountScreen extends GetView<AuthController> {
                         duration: const Duration(seconds: 5),
                       );
                     } else {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text(
+                              'Failed to send password reset email. Please try again.',
+                            ),
+                            backgroundColor: theme.colorScheme.error,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
                       Get.snackbar(
                         'Error',
                         'Failed to send password reset email. Please try again.',
