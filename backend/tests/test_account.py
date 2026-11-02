@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 import pytest
 from starlette.testclient import TestClient
@@ -333,7 +334,13 @@ async def test_account_service_supabase_integration() -> None:
         if "rest/v1/profiles" in url_str and request.method == "GET":
             return httpx.Response(
                 200,
-                json=[{"id": "11111111-1111-1111-1111-111111111111", "display_name": "Supabase User", "sync_enabled": False}],
+                json=[
+                    {
+                        "id": "11111111-1111-1111-1111-111111111111",
+                        "display_name": "Supabase User",
+                        "sync_enabled": False,
+                    }
+                ],
             )
         if "rest/v1/profiles" in url_str and request.method == "PATCH":
             return httpx.Response(204)
@@ -349,7 +356,9 @@ async def test_account_service_supabase_integration() -> None:
     )
     app_state = AppState()
     quota_store = InMemoryQuotaStore()
-    svc = AccountService(settings=settings, app_state=app_state, quota_store=quota_store, http_client=mock_client)
+    svc = AccountService(
+        settings=settings, app_state=app_state, quota_store=quota_store, http_client=mock_client
+    )
 
     profile = await svc.get_profile(
         user_id="11111111-1111-1111-1111-111111111111",
@@ -376,8 +385,6 @@ async def test_account_service_supabase_integration() -> None:
     endpoints = [call[1] for call in recorded_calls]
     assert any("rest/v1/profiles" in ep for ep in endpoints)
     assert any("auth/v1/admin/users/11111111-1111-1111-1111-111111111111" in ep for ep in endpoints)
-
-
 
 
 def test_patch_profile_avatar_path_lifecycle(auth_client: TestClient) -> None:
@@ -441,3 +448,162 @@ def test_patch_profile_rejects_malformed_avatar_path(auth_client: TestClient) ->
         json={"avatarPath": "invalid path with spaces.exe"},
     )
     assert res.status_code == 422
+
+
+def test_patch_profile_rejects_cross_user_avatar_path(auth_client: TestClient) -> None:
+    """Ensure PATCH rejects avatar paths pointing to another user's prefix with 403."""
+    user_uuid = str(uuid.uuid4())
+    other_user_uuid = str(uuid.uuid4())
+    token = create_test_jwt(user_id=user_uuid, secret=TEST_SECRET)
+
+    res = auth_client.patch(
+        "/api/v1/account/profile",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"avatarPath": f"{other_user_uuid}/avatar.png"},
+    )
+    assert res.status_code == 403
+    data = res.json()
+    assert data["error"]["code"] == "forbidden"
+    assert "user namespace" in data["error"]["message"].lower()
+
+
+def test_patch_profile_rejects_directory_traversal(auth_client: TestClient) -> None:
+    """Ensure PATCH rejects avatar paths attempting directory traversal with 422."""
+    user_uuid = str(uuid.uuid4())
+    token = create_test_jwt(user_id=user_uuid, secret=TEST_SECRET)
+
+    for invalid_path in [
+        f"{user_uuid}/../other.png",
+        f"{user_uuid}/...png",
+        f"{user_uuid}//double_slash.png",
+        f"{user_uuid}\\backslash.png",
+        f"{user_uuid}/.hidden.png",
+    ]:
+        res = auth_client.patch(
+            "/api/v1/account/profile",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"avatarPath": invalid_path},
+        )
+        assert res.status_code == 422, f"Expected 422 for path: {invalid_path}"
+
+
+def test_patch_profile_rejects_conflicting_clear_avatar_and_avatar_path(
+    auth_client: TestClient,
+) -> None:
+    """Ensure PATCH rejects payloads providing both clearAvatar=True and an avatarPath with 422."""
+    user_uuid = str(uuid.uuid4())
+    token = create_test_jwt(user_id=user_uuid, secret=TEST_SECRET)
+
+    res = auth_client.patch(
+        "/api/v1/account/profile",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"clearAvatar": True, "avatarPath": f"{user_uuid}/avatar.png"},
+    )
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_account_service_profile_update_failure_does_not_pollute_cache() -> None:
+    """Ensure that if PostgREST profile write fails, an error is raised and in-memory cache is NOT mutated."""
+    from datetime import UTC
+
+    import httpx
+
+    from trustcue_backend.core.errors import TrustCueError
+    from trustcue_backend.core.quota import InMemoryQuotaStore
+    from trustcue_backend.core.state import AppState
+    from trustcue_backend.services.account_service import AccountService
+
+    def mock_failure_handler(request: httpx.Request) -> httpx.Response:
+        url_str = str(request.url)
+        if "rpc/ensure_profile_exists" in url_str:
+            return httpx.Response(200, json=None)
+        if "rest/v1/profiles" in url_str and request.method == "PATCH":
+            # Simulate column missing (400) or DB error (500)
+            return httpx.Response(
+                400, json={"code": "42703", "message": "column profiles.avatar_path does not exist"}
+            )
+        return httpx.Response(404)
+
+    mock_client = httpx.AsyncClient(transport=httpx.MockTransport(mock_failure_handler))
+    settings = Settings(
+        SUPABASE_URL="https://example.supabase.co",
+        SUPABASE_SERVICE_ROLE_KEY="test-service-key",
+        ENVIRONMENT="test",
+    )
+    app_state = AppState()
+    quota_store = InMemoryQuotaStore()
+    svc = AccountService(
+        settings=settings, app_state=app_state, quota_store=quota_store, http_client=mock_client
+    )
+
+    test_uid = "22222222-2222-2222-2222-222222222222"
+
+    with pytest.raises(TrustCueError) as exc_info:
+        await svc.update_profile(
+            user_id=test_uid,
+            display_name="Never Persisted",
+            email="test@example.com",
+            email_verified=True,
+            fallback_created_at=datetime.now(UTC),
+            avatar_path=f"{test_uid}/photo.jpg",
+        )
+    assert exc_info.value.status_code == 503
+
+    # Assert local AppState was NOT corrupted with the failed update
+    assert app_state.get_display_name(test_uid) is None
+    assert app_state.get_avatar_path(test_uid) is None
+
+
+@pytest.mark.asyncio
+async def test_account_deletion_cleans_up_avatar_storage() -> None:
+    """Ensure account deletion cleans up files from the avatars bucket."""
+    import httpx
+
+    from trustcue_backend.core.quota import InMemoryQuotaStore
+    from trustcue_backend.core.state import AppState
+    from trustcue_backend.services.account_service import AccountService
+
+    recorded_actions: list[tuple[str, str, Any]] = []
+    test_uid = "33333333-3333-3333-3333-333333333333"
+
+    def mock_storage_handler(request: httpx.Request) -> httpx.Response:
+        url_str = str(request.url)
+        import json
+
+        body = json.loads(request.content.decode("utf-8")) if request.content else None
+        recorded_actions.append((request.method, url_str, body))
+
+        if "storage/v1/object/list/avatars" in url_str:
+            return httpx.Response(200, json=[{"name": "profile_1.jpg"}, {"name": "profile_2.jpg"}])
+        if "storage/v1/object/avatars" in url_str and request.method == "DELETE":
+            return httpx.Response(200, json=[{"message": "Deleted"}])
+        if "auth/v1/admin/users" in url_str and request.method == "DELETE":
+            return httpx.Response(200, json={})
+        return httpx.Response(404)
+
+    mock_client = httpx.AsyncClient(transport=httpx.MockTransport(mock_storage_handler))
+    settings = Settings(
+        SUPABASE_URL="https://example.supabase.co",
+        SUPABASE_SERVICE_ROLE_KEY="test-service-key",
+        ENVIRONMENT="test",
+    )
+    app_state = AppState()
+    quota_store = InMemoryQuotaStore()
+    svc = AccountService(
+        settings=settings, app_state=app_state, quota_store=quota_store, http_client=mock_client
+    )
+
+    del_resp = await svc.delete_account(user_id=test_uid)
+    assert del_resp.status == "deleted"
+
+    # Verify list call prefix
+    list_call = next(call for call in recorded_actions if "object/list/avatars" in call[1])
+    assert list_call[2]["prefix"] == f"{test_uid}/"
+
+    # Verify delete call prefixes
+    delete_call = next(
+        call for call in recorded_actions if "object/avatars" in call[1] and call[0] == "DELETE"
+    )
+    assert f"{test_uid}/profile_1.jpg" in delete_call[2]["prefixes"]
+    assert f"{test_uid}/profile_2.jpg" in delete_call[2]["prefixes"]

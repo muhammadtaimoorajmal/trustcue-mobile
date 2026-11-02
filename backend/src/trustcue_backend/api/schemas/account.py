@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class UserProfileResponse(BaseModel):
@@ -111,9 +111,24 @@ class UpdateUserProfileRequest(BaseModel):
             return None
         if len(v_trimmed) > 255:
             raise ValueError("Avatar path cannot exceed 255 characters.")
+        if ".." in v_trimmed or "//" in v_trimmed or "\\" in v_trimmed:
+            raise ValueError(
+                "Invalid avatar path. Directory traversal and redundant separators are not permitted."
+            )
         if not re.match(r"^[0-9a-fA-F-]+/[a-zA-Z0-9_\.-]+$", v_trimmed):
             raise ValueError("Invalid avatar path format. Must be <user_id>/<filename>.")
+        parts = v_trimmed.split("/", 1)
+        if len(parts) == 2:
+            filename = parts[1]
+            if filename.startswith(".") or not filename:
+                raise ValueError("Invalid avatar filename.")
         return v_trimmed
+
+    @model_validator(mode="after")
+    def validate_avatar_fields(self) -> "UpdateUserProfileRequest":
+        if self.clear_avatar and self.avatar_path is not None:
+            raise ValueError("Cannot specify both clearAvatar=True and an avatarPath.")
+        return self
 
 
 class AccountDeletionResponse(BaseModel):

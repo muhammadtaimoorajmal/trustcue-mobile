@@ -4,7 +4,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from trustcue_backend.api.dependencies import (
     get_account_service,
@@ -90,6 +90,14 @@ async def update_account_profile(
     account_service: Annotated[AccountService, Depends(get_account_service)],
 ) -> UserProfileResponse:
     """Update profile display name and avatar path for the authenticated user."""
+    if payload.avatar_path is not None:
+        expected_prefix = f"{current_user.user_id}/"
+        if not payload.avatar_path.startswith(expected_prefix):
+            raise HTTPException(
+                status_code=403,
+                detail="Avatar path does not belong to authenticated user namespace.",
+            )
+
     created_at = datetime.now(UTC)
     if "iat" in current_user.claims:
         try:

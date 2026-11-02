@@ -77,6 +77,20 @@ def test_readiness_probe_with_configured_ai() -> None:
         assert data["dependencies"]["aiProvider"] == "ok"
 
 
+def test_readiness_probe_with_configured_database() -> None:
+    """Test /ready reports database as 'ok' when SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are configured."""
+    settings = Settings(
+        SUPABASE_URL="https://example.supabase.co",
+        SUPABASE_SERVICE_ROLE_KEY="test-service-key-long-enough",
+    )
+    app = create_app(settings=settings)
+    with TestClient(app) as test_client:
+        response = test_client.get("/ready")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ready"
+        assert data["dependencies"]["database"] == "ok"
+
 
 def test_readiness_probe_draining_degraded_state(default_settings: Settings) -> None:
     """Test /ready returns 503 when the application transitions to draining/shutdown state."""

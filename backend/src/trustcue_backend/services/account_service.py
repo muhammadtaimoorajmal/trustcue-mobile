@@ -94,14 +94,18 @@ class AccountService:
                                 pass
                     elif isinstance(data, list) and len(data) == 0:
                         # Profile record missing; trigger recovery via ensure_profile_exists RPC
-                        logger.info("Profile not found for user %s; calling ensure_profile_exists", user_id)
+                        logger.info(
+                            "Profile not found for user %s; calling ensure_profile_exists", user_id
+                        )
                         await client.post(
                             f"{base_url}/rest/v1/rpc/ensure_profile_exists",
                             headers=self._get_auth_headers(),
                             json={"p_user_id": user_id},
                         )
             except Exception as exc:
-                logger.warning("PostgREST profile retrieval failed for user %s: %s", user_id, str(exc))
+                logger.warning(
+                    "PostgREST profile retrieval failed for user %s: %s", user_id, str(exc)
+                )
             finally:
                 if close_client:
                     await client.aclose()
@@ -132,19 +136,8 @@ class AccountService:
     ) -> UserProfileResponse:
         """
         Update user profile display name, avatar path, and sync settings with PostgREST persistence.
+        Cached state is updated ONLY after confirmed database persistence.
         """
-        if display_name is not None:
-            self.app_state.set_display_name(user_id, display_name)
-        if sync_enabled is not None:
-            self.app_state.set_sync_enabled(user_id, sync_enabled)
-        if clear_avatar:
-            self.app_state.set_avatar_path(user_id, None)
-        elif avatar_path is not None:
-            self.app_state.set_avatar_path(user_id, avatar_path)
-
-        effective_display_name = self.app_state.get_display_name(user_id)
-        effective_sync_enabled = self.app_state.get_sync_enabled(user_id)
-        effective_avatar_path = self.app_state.get_avatar_path(user_id)
         user_email = email or f"{user_id}@trustcue.local"
         remaining_quota = await self.quota_store.get_remaining_quota(user_id)
         created_at: datetime = fallback_created_at
@@ -172,18 +165,87 @@ class AccountService:
                 elif avatar_path is not None:
                     patch_payload["avatar_path"] = avatar_path
 
+                patch_headers = self._get_auth_headers()
+                patch_headers["Prefer"] = "return=representation"
+
                 resp = await client.patch(
                     f"{base_url}/rest/v1/profiles?id=eq.{user_id}",
-                    headers=self._get_auth_headers(),
+                    headers=patch_headers,
                     json=patch_payload,
                 )
                 if resp.status_code not in (200, 204):
-                    logger.warning("PostgREST profile update returned status %s for user %s", resp.status_code, user_id)
+                    logger.error(
+                        "PostgREST profile update returned %s for user %s: %s",
+                        resp.status_code,
+                        user_id,
+                        resp.text,
+                    )
+                    raise TrustCueError(
+                        code="database_error",
+                        message="Failed to persist user profile update.",
+                        status_code=503,
+                    )
+
+                # Confirm intended row was updated
+                if resp.status_code == 200:
+                    try:
+                        rows = resp.json()
+                        if isinstance(rows, list):
+                            if len(rows) == 0:
+                                raise TrustCueError(
+                                    code="not_found",
+                                    message="User profile record not found.",
+                                    status_code=404,
+                                )
+                            updated_row = rows[0]
+                            if "display_name" in updated_row:
+                                display_name = updated_row.get("display_name")
+                            if "sync_enabled" in updated_row:
+                                sync_enabled = bool(updated_row.get("sync_enabled", False))
+                            if "avatar_path" in updated_row:
+                                avatar_path = updated_row.get("avatar_path")
+                    except TrustCueError:
+                        raise
+                    except Exception as exc:
+                        logger.warning("Could not parse PostgREST response representation: %s", exc)
+
+                # Cache in local state ONLY after successful PostgREST update
+                if display_name is not None:
+                    self.app_state.set_display_name(user_id, display_name)
+                if sync_enabled is not None:
+                    self.app_state.set_sync_enabled(user_id, sync_enabled)
+                if clear_avatar:
+                    self.app_state.set_avatar_path(user_id, None)
+                elif avatar_path is not None:
+                    self.app_state.set_avatar_path(user_id, avatar_path)
+            except TrustCueError:
+                raise
             except Exception as exc:
-                logger.warning("PostgREST profile update failed for user %s: %s", user_id, str(exc))
+                logger.error(
+                    "Exception during PostgREST profile update for user %s: %s", user_id, str(exc)
+                )
+                raise TrustCueError(
+                    code="database_error",
+                    message="An unexpected error occurred while updating profile.",
+                    status_code=503,
+                ) from exc
             finally:
                 if close_client:
                     await client.aclose()
+        else:
+            # In-memory test / offline fallback mode
+            if display_name is not None:
+                self.app_state.set_display_name(user_id, display_name)
+            if sync_enabled is not None:
+                self.app_state.set_sync_enabled(user_id, sync_enabled)
+            if clear_avatar:
+                self.app_state.set_avatar_path(user_id, None)
+            elif avatar_path is not None:
+                self.app_state.set_avatar_path(user_id, avatar_path)
+
+        effective_display_name = self.app_state.get_display_name(user_id)
+        effective_sync_enabled = self.app_state.get_sync_enabled(user_id)
+        effective_avatar_path = self.app_state.get_avatar_path(user_id)
 
         return UserProfileResponse(
             userId=user_id,
@@ -201,6 +263,7 @@ class AccountService:
     async def delete_account(self, user_id: str) -> AccountDeletionResponse:
         """
         Permanently delete user account via Supabase Auth Admin API and invalidate active session.
+        Purges avatar storage objects under the user prefix.
         """
         logger.info("Executing permanent account deletion for user UUID: %s", user_id)
 
@@ -208,12 +271,40 @@ class AccountService:
         self.app_state.mark_user_deleted(user_id)
         self.app_state.set_avatar_path(user_id, None)
 
-        # 2. Invoke Supabase Admin deletion if configured
+        # 2. Invoke Supabase Admin deletion and Storage cleanup if configured
         if self.settings.SUPABASE_URL and self.settings.SUPABASE_SERVICE_ROLE_KEY:
             client = self._http_client or httpx.AsyncClient(timeout=8.0)
             close_client = self._http_client is None
             try:
                 base_url = self.settings.SUPABASE_URL.rstrip("/")
+
+                # Clean up private avatar storage objects for user
+                try:
+                    list_resp = await client.post(
+                        f"{base_url}/storage/v1/object/list/avatars",
+                        headers=self._get_auth_headers(),
+                        json={"prefix": f"{user_id}/", "limit": 100},
+                    )
+                    if list_resp.status_code == 200:
+                        objects = list_resp.json()
+                        if isinstance(objects, list) and objects:
+                            prefixes = [
+                                f"{user_id}/{obj['name']}"
+                                for obj in objects
+                                if isinstance(obj, dict) and obj.get("name")
+                            ]
+                            if prefixes:
+                                await client.request(
+                                    "DELETE",
+                                    f"{base_url}/storage/v1/object/avatars",
+                                    headers=self._get_auth_headers(),
+                                    json={"prefixes": prefixes},
+                                )
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to clean up avatar storage for user %s: %s", user_id, str(exc)
+                    )
+
                 admin_delete_url = f"{base_url}/auth/v1/admin/users/{user_id}"
                 resp = await client.delete(
                     admin_delete_url,
@@ -235,7 +326,11 @@ class AccountService:
             except TrustCueError:
                 raise
             except Exception as exc:
-                logger.error("Exception during Supabase Admin account deletion for user %s: %s", user_id, str(exc))
+                logger.error(
+                    "Exception during Supabase Admin account deletion for user %s: %s",
+                    user_id,
+                    str(exc),
+                )
                 raise TrustCueError(
                     code="internal_error",
                     message="An unexpected error occurred during administrative account deletion.",

@@ -190,7 +190,6 @@ class AppState:
         self.profile_sync_enabled[str(user_id).strip()] = False
         return len(to_delete)
 
-
     @property
     def uptime_seconds(self) -> int:
         """Calculate elapsed process uptime in whole seconds."""
@@ -236,6 +235,11 @@ class AppState:
                 if (settings and (settings.SUPABASE_JWT_SECRET or settings.SUPABASE_JWKS_URL))
                 else "unconfigured"
             )
+            database_status = (
+                "ok"
+                if (settings and settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY)
+                else "unconfigured"
+            )
             ai_status = "unconfigured"
             if settings:
                 if not settings.ENABLE_CLOUD_AI:
@@ -248,7 +252,7 @@ class AppState:
             return "ready", {
                 "foundation": "ok",
                 "authProvider": auth_status,
-                "database": "unconfigured",
+                "database": database_status,
                 "aiProvider": ai_status,
             }
 
