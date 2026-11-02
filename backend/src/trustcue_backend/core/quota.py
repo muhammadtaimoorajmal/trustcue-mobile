@@ -5,7 +5,7 @@ import logging
 import uuid
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import httpx
 
@@ -39,12 +39,12 @@ class QuotaStore(ABC):
         pass
 
     @abstractmethod
-    async def release_quota(self, user_id: str, reservation_id: str) -> None:
+    async def release_quota(self, user_id: str, reservation_id: str) -> bool:
         """Release an unused quota reservation back to the user's daily balance."""
         pass
 
     @abstractmethod
-    async def commit_quota(self, user_id: str, reservation_id: str) -> None:
+    async def commit_quota(self, user_id: str, reservation_id: str) -> bool:
         """Permanently commit a consumed quota reservation."""
         pass
 
@@ -117,15 +117,18 @@ class InMemoryQuotaStore(QuotaStore):
             remaining = self.default_daily_quota - self._usage[key]
             return True, remaining, res_id
 
-    async def release_quota(self, user_id: str, reservation_id: str) -> None:
+    async def release_quota(self, user_id: str, reservation_id: str) -> bool:
         async with self._lock:
             key = self._active_reservations.pop(reservation_id, None)
             if key and key in self._usage:
                 self._usage[key] = max(0, self._usage[key] - 1)
+                return True
+            return False
 
-    async def commit_quota(self, user_id: str, reservation_id: str) -> None:
+    async def commit_quota(self, user_id: str, reservation_id: str) -> bool:
         async with self._lock:
-            self._active_reservations.pop(reservation_id, None)
+            key = self._active_reservations.pop(reservation_id, None)
+            return key is not None
 
     async def get_remaining_quota(self, user_id: str) -> int:
         today = self._get_today_utc()
@@ -142,10 +145,15 @@ class SupabaseQuotaStore(QuotaStore):
     Invariants:
     1. Directs all quota queries and state mutations to PostgreSQL / PostgREST.
     2. Zero in-memory caching of counts: prevents stale counts and survives process restarts/redeploys.
-    3. Uses reserve_ai_quota_v2 (with fallback to reserve_ai_quota) for atomic row-level reservation.
-    4. Durable reservation tracking ensures idempotency, retry safety, and midnight rollover refunds.
-    5. Fails closed: database errors raise TrustCueError (503), preventing unmetered inference.
-    6. Never stores prompts, text excerpts, or tokens in reservation records.
+    3. Uses reserve_ai_quota_v2 (with explicit fallback to reserve_ai_quota) for atomic row-level reservation.
+    4. Explicitly tracks durability mode: is_durable is True when PostgreSQL v2 durable reservations are active;
+       False when operating in legacy v1 aggregate-counter mode.
+    5. In legacy v1 mode, reservation IDs are explicitly marked with prefix 'v1-legacy-' to avoid false durability claims.
+    6. commit_quota validates RPC response bodies; returns True only on genuine commit; distinguishes v1 vs v2;
+       never treats 404 as durable commit; raises TrustCueError(503) on database errors.
+    7. release_quota refunds against the original reservation date (in v2) or today's count (in v1 fallback).
+    8. Fails closed: database errors raise TrustCueError (503), preventing unmetered inference.
+    9. Never stores prompts, text excerpts, or tokens in reservation records.
     """
 
     def __init__(
@@ -156,6 +164,8 @@ class SupabaseQuotaStore(QuotaStore):
         self.settings = settings
         self.default_daily_quota = settings.DEFAULT_DAILY_AI_QUOTA
         self._http_client = http_client
+        self.schema_version: Literal["v1", "v2", "unknown"] = "unknown"
+        self.is_durable: bool = False
 
         if not self.settings.SUPABASE_URL or not self.settings.SUPABASE_SERVICE_ROLE_KEY:
             raise TrustCueError(
@@ -198,19 +208,33 @@ class SupabaseQuotaStore(QuotaStore):
             )
 
             if resp.status_code == 200:
+                self.schema_version = "v2"
+                self.is_durable = True
                 rows = resp.json()
                 if isinstance(rows, list) and len(rows) > 0:
                     r = rows[0]
                     allowed = bool(r.get("allowed", False))
+                    remaining = int(r.get("requests_remaining", 0))
+                    confirmed_id = str(r.get("reservation_id") or res_id)
                     return (
                         allowed,
-                        int(r.get("requests_remaining", 0)),
-                        res_id if allowed else None,
+                        remaining,
+                        confirmed_id if allowed else None,
                     )
-                return False, 0, None
+                logger.error("reserve_ai_quota_v2 returned empty rowset: %s", rows)
+                raise TrustCueError(
+                    code="database_error",
+                    message="Malformed quota reservation response from database.",
+                    status_code=503,
+                )
 
             # 2. Fallback to v1 reservation RPC if v2 migration is not yet applied
             if resp.status_code == 404:
+                self.schema_version = "v1"
+                self.is_durable = False
+                logger.info(
+                    "reserve_ai_quota_v2 returned 404; operating in explicit legacy v1 mode."
+                )
                 v1_payload = {
                     "p_user_id": user_id,
                     "p_max_daily_requests": self.default_daily_quota,
@@ -226,12 +250,19 @@ class SupabaseQuotaStore(QuotaStore):
                     if isinstance(rows, list) and len(rows) > 0:
                         r = rows[0]
                         allowed = bool(r.get("allowed", False))
+                        remaining = int(r.get("requests_remaining", 0))
+                        legacy_id = f"v1-legacy-{res_id}" if allowed else None
                         return (
                             allowed,
-                            int(r.get("requests_remaining", 0)),
-                            res_id if allowed else None,
+                            remaining,
+                            legacy_id,
                         )
-                    return False, 0, None
+                    logger.error("reserve_ai_quota fallback returned empty rowset: %s", rows)
+                    raise TrustCueError(
+                        code="database_error",
+                        message="Malformed quota reservation response from database.",
+                        status_code=503,
+                    )
 
                 logger.error(
                     "reserve_ai_quota fallback returned status %s: %s",
@@ -266,10 +297,22 @@ class SupabaseQuotaStore(QuotaStore):
             if close_client:
                 await client.aclose()
 
-    async def commit_quota(self, user_id: str, reservation_id: str) -> None:
+    async def commit_quota(self, user_id: str, reservation_id: str) -> bool:
         """
         Permanently commit a consumed quota reservation.
+        Returns True if committed or already committed.
+        Returns False if reservation was not found or was already released.
+        Raises TrustCueError(503) on database network/outage errors.
         """
+        if not reservation_id:
+            return False
+
+        if reservation_id.startswith("v1-legacy-"):
+            logger.debug(
+                "commit_quota: acknowledging legacy v1 non-durable reservation %s", reservation_id
+            )
+            return True
+
         base_url = (self.settings.SUPABASE_URL or "").rstrip("/")
         client = self._http_client or httpx.AsyncClient(timeout=5.0)
         close_client = self._http_client is None
@@ -280,29 +323,91 @@ class SupabaseQuotaStore(QuotaStore):
                 headers=self._get_headers(),
                 json={"p_user_id": user_id, "p_reservation_id": reservation_id},
             )
-            # 404 denotes v1 schema where commit is a durable no-op
-            if resp.status_code not in (200, 204, 404):
-                logger.warning(
-                    "commit_ai_quota_v2 returned status %s for user %s: %s",
-                    resp.status_code,
-                    user_id,
-                    resp.text,
+
+            if resp.status_code in (200, 204):
+                if resp.status_code == 204:
+                    return True
+                result = resp.json()
+                if isinstance(result, bool):
+                    if not result:
+                        logger.warning(
+                            "commit_ai_quota_v2 returned False for user %s, reservation %s (already released or missing)",
+                            user_id,
+                            reservation_id,
+                        )
+                    return result
+                return True
+
+            if resp.status_code == 404:
+                if self.schema_version != "v2":
+                    self.schema_version = "v1"
+                    self.is_durable = False
+                    return True
+                logger.error("commit_ai_quota_v2 returned 404 while operating in v2 mode.")
+                raise TrustCueError(
+                    code="database_error",
+                    message="Quota commit RPC endpoint missing.",
+                    status_code=503,
                 )
-        except Exception as exc:
-            logger.warning(
-                "Exception during commit_quota for user %s: %s", user_id, str(exc)
+
+            logger.error(
+                "commit_ai_quota_v2 returned status %s for user %s: %s",
+                resp.status_code,
+                user_id,
+                resp.text,
             )
+            raise TrustCueError(
+                code="database_error",
+                message="Failed to commit quota reservation in database.",
+                status_code=503,
+            )
+
+        except TrustCueError:
+            raise
+        except Exception as exc:
+            logger.error("Exception during commit_quota for user %s: %s", user_id, str(exc))
+            raise TrustCueError(
+                code="database_error",
+                message="Persistent quota storage is unreachable or failed during commit.",
+                status_code=503,
+            ) from exc
         finally:
             if close_client:
                 await client.aclose()
 
-    async def release_quota(self, user_id: str, reservation_id: str) -> None:
+    async def release_quota(self, user_id: str, reservation_id: str) -> bool:
         """
         Release an unused quota reservation back to the user's balance.
+        Returns True if refunded or already released.
+        Returns False if already committed or missing.
+        Raises TrustCueError(503) on database network/outage errors.
         """
+        if not reservation_id:
+            return False
+
         base_url = (self.settings.SUPABASE_URL or "").rstrip("/")
         client = self._http_client or httpx.AsyncClient(timeout=5.0)
         close_client = self._http_client is None
+
+        # Check for legacy v1 reservation token
+        if reservation_id.startswith("v1-legacy-"):
+            try:
+                v1_resp = await client.post(
+                    f"{base_url}/rest/v1/rpc/release_ai_quota",
+                    headers=self._get_headers(),
+                    json={"p_user_id": user_id, "p_tokens_to_refund": 0},
+                )
+                return v1_resp.status_code in (200, 204)
+            except Exception as exc:
+                logger.error("Exception during v1 release_quota for user %s: %s", user_id, str(exc))
+                raise TrustCueError(
+                    code="database_error",
+                    message="Failed to release quota in legacy database.",
+                    status_code=503,
+                ) from exc
+            finally:
+                if close_client:
+                    await client.aclose()
 
         try:
             resp = await client.post(
@@ -310,29 +415,59 @@ class SupabaseQuotaStore(QuotaStore):
                 headers=self._get_headers(),
                 json={"p_user_id": user_id, "p_reservation_id": reservation_id},
             )
+
+            if resp.status_code in (200, 204):
+                if resp.status_code == 204:
+                    return True
+                result = resp.json()
+                if isinstance(result, bool):
+                    if not result:
+                        logger.warning(
+                            "release_ai_quota_v2 returned False for user %s, reservation %s (already committed or missing)",
+                            user_id,
+                            reservation_id,
+                        )
+                    return result
+                return True
+
             if resp.status_code == 404:
-                # Fallback to v1 release
-                v1_resp = await client.post(
-                    f"{base_url}/rest/v1/rpc/release_ai_quota",
-                    headers=self._get_headers(),
-                    json={"p_user_id": user_id, "p_tokens_to_refund": 0},
-                )
-                if v1_resp.status_code not in (200, 204):
-                    logger.warning(
-                        "release_ai_quota v1 fallback returned status %s: %s",
-                        v1_resp.status_code,
-                        v1_resp.text,
+                if self.schema_version != "v2":
+                    self.schema_version = "v1"
+                    self.is_durable = False
+                    v1_resp = await client.post(
+                        f"{base_url}/rest/v1/rpc/release_ai_quota",
+                        headers=self._get_headers(),
+                        json={"p_user_id": user_id, "p_tokens_to_refund": 0},
                     )
-            elif resp.status_code not in (200, 204):
-                logger.warning(
-                    "release_ai_quota_v2 returned status %s: %s",
-                    resp.status_code,
-                    resp.text,
+                    return v1_resp.status_code in (200, 204)
+                logger.error("release_ai_quota_v2 returned 404 while operating in v2 mode.")
+                raise TrustCueError(
+                    code="database_error",
+                    message="Quota release RPC endpoint missing.",
+                    status_code=503,
                 )
-        except Exception as exc:
-            logger.warning(
-                "Exception during release_quota for user %s: %s", user_id, str(exc)
+
+            logger.error(
+                "release_ai_quota_v2 returned status %s for user %s: %s",
+                resp.status_code,
+                user_id,
+                resp.text,
             )
+            raise TrustCueError(
+                code="database_error",
+                message="Failed to release quota reservation in database.",
+                status_code=503,
+            )
+
+        except TrustCueError:
+            raise
+        except Exception as exc:
+            logger.error("Exception during release_quota for user %s: %s", user_id, str(exc))
+            raise TrustCueError(
+                code="database_error",
+                message="Persistent quota storage is unreachable or failed during release.",
+                status_code=503,
+            ) from exc
         finally:
             if close_client:
                 await client.aclose()
@@ -359,11 +494,7 @@ class SupabaseQuotaStore(QuotaStore):
                 data = resp.json()
                 if isinstance(data, int):
                     return max(0, data)
-                if (
-                    isinstance(data, list)
-                    and len(data) > 0
-                    and isinstance(data[0], int)
-                ):
+                if isinstance(data, list) and len(data) > 0 and isinstance(data[0], int):
                     return max(0, data[0])
 
             # 2. Fallback to direct query on ai_usage_quotas
@@ -392,9 +523,7 @@ class SupabaseQuotaStore(QuotaStore):
         except TrustCueError:
             raise
         except Exception as exc:
-            logger.error(
-                "Exception reading persistent quota for user %s: %s", user_id, str(exc)
-            )
+            logger.error("Exception reading persistent quota for user %s: %s", user_id, str(exc))
             raise TrustCueError(
                 code="database_error",
                 message="Persistent quota storage is unreachable.",

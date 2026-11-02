@@ -149,18 +149,21 @@ async def analyze_text_with_ai(
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-    # 4. Atomic daily quota reservation
-    allowed, remaining, reservation_id = await quota_store.reserve_quota(str(current_user.user_id))
-    if not allowed:
-        raise RateLimitExceeded(
-            code="daily_quota_exceeded",
-            message="Daily AI analysis request quota exceeded. Resets at 00:00 UTC.",
-            retry_after=_seconds_until_midnight_utc(),
-        )
-
-    # 5. Concurrency limit (max in-flight operations per user)
+    # 4. Concurrency limit (max in-flight operations per user)
+    # Acquired BEFORE reserving quota to avoid burning allowance on rejected concurrent requests
     request_id = str(uuid.uuid4())
     async with concurrency_limiter.acquire(user_key):
+        # 5. Atomic daily quota reservation
+        allowed, remaining, reservation_id = await quota_store.reserve_quota(
+            str(current_user.user_id)
+        )
+        if not allowed:
+            raise RateLimitExceeded(
+                code="daily_quota_exceeded",
+                message="Daily AI analysis request quota exceeded. Resets at 00:00 UTC.",
+                retry_after=_seconds_until_midnight_utc(),
+            )
+
         return await ai_service.execute_analysis(
             payload=payload,
             current_user=current_user,

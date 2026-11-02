@@ -38,9 +38,9 @@ class ProtectedAiService:
        - Upstream connection, network, or provider auth errors -> refund reserved quota.
        - Connect timeouts -> refund reserved quota.
        - Ambiguous read timeouts -> retain quota (inference may have begun on provider LPUs).
-       - Completed inference that fails validation or evidence grounding -> commit quota (provider compute/tokens were consumed; prevents abuse loops).
-       - Successful analysis and grounding -> commit quota.
-    4. Releases concurrency locks reliably on every exit path.
+       - Inference completed -> permanently commit quota; commit failure must NEVER refund.
+       - Validation or grounding failure after inference -> retain quota (tokens were consumed;
+         prevents adversarial free inference loops).
     """
 
     def __init__(
@@ -61,22 +61,26 @@ class ProtectedAiService:
         reservation_id: str | None = None,
     ) -> AnalysisAiResponse:
         """
-        Orchestrate internal provider analysis with strict output validation, evidence grounding,
-        and documented quota settlement.
-
-        Raises ProviderError, OutputValidationError, EvidenceGroundingError, or TrustCueError.
+        Execute protected AI analysis against the configured provider with strict output validation.
         """
         user_id = str(current_user.user_id)
 
+        # 1. Enforce feature flag and provider readiness
         if not self.settings.ENABLE_CLOUD_AI:
             if reservation_id:
-                await self.quota_store.release_quota(user_id, reservation_id)
-            raise ProviderConfigurationError("Server-assisted AI analysis is not enabled in this environment.")
+                try:
+                    await self.quota_store.release_quota(user_id, reservation_id)
+                except Exception as rel_err:
+                    logger.warning("Failed to release quota on disabled cloud AI: %s", rel_err)
+            raise ProviderConfigurationError("Cloud AI analysis feature is not enabled.")
 
         if self.provider is None:
             if reservation_id:
-                await self.quota_store.release_quota(user_id, reservation_id)
-            raise ProviderConfigurationError("AI provider adapter is not configured.")
+                try:
+                    await self.quota_store.release_quota(user_id, reservation_id)
+                except Exception as rel_err:
+                    logger.warning("Failed to release quota on missing provider: %s", rel_err)
+            raise ProviderConfigurationError("Cloud AI provider is unconfigured or unavailable.")
 
         # Construct bounded internal provider request preserving exact reviewed text
         provider_request = ProviderAnalysisRequest(
@@ -85,20 +89,22 @@ class ProtectedAiService:
             request_id=request_id,
         )
 
+        # 2. Execute upstream provider inference
         try:
             result = await self.provider.analyze(provider_request)
-
-            # Upstream provider successfully completed inference: tokens and compute were consumed.
-            # Settle quota reservation before validation.
-            if reservation_id:
-                await self.quota_store.commit_quota(user_id, reservation_id)
-
         except ProviderTimeoutError as exc:
             if exc.is_connect_timeout:
                 # Connection was not established; safe to refund quota
                 if reservation_id:
-                    await self.quota_store.release_quota(user_id, reservation_id)
-                logger.info("Refunded quota reservation %s after connect timeout for user %s", reservation_id, user_id)
+                    try:
+                        await self.quota_store.release_quota(user_id, reservation_id)
+                        logger.info(
+                            "Refunded quota reservation %s after connect timeout for user %s",
+                            reservation_id,
+                            user_id,
+                        )
+                    except Exception as rel_err:
+                        logger.warning("Failed to release quota after connect timeout: %s", rel_err)
             else:
                 # Ambiguous read timeout: provider may have consumed inference resources.
                 # Per documented accounting policy, ambiguous read timeouts are NOT refunded.
@@ -109,14 +115,20 @@ class ProtectedAiService:
                 )
             raise
 
-        except (OutputValidationError, EvidenceGroundingError) as exc:
-            # The provider completed inference, but the generated output failed validation or grounding.
-            # Per documented accounting policy, quota is committed because upstream provider resources
-            # were expended. This prevents free inference loops via adversarial inputs.
+        except OutputValidationError as exc:
+            # The provider completed inference, but generated output failed schema parsing.
+            # Upstream compute was expended, so quota remains committed.
             if reservation_id:
-                await self.quota_store.commit_quota(user_id, reservation_id)
+                try:
+                    await self.quota_store.commit_quota(user_id, reservation_id)
+                except Exception as commit_err:
+                    logger.error(
+                        "Quota commit failed after OutputValidationError for reservation %s: %s",
+                        reservation_id,
+                        commit_err,
+                    )
             logger.warning(
-                "AI output validation/grounding failed during/after inference for user %s (quota retained): %s",
+                "AI output schema validation failed after inference for user %s (quota retained): %s",
                 user_id,
                 type(exc).__name__,
             )
@@ -126,16 +138,38 @@ class ProtectedAiService:
             # Deterministic upstream failures (e.g. 401 auth, 429 rate limit, 503 unavailable, network drop):
             # Safe to release quota reservation.
             if reservation_id:
-                await self.quota_store.release_quota(user_id, reservation_id)
-            logger.info(
-                "Released quota reservation %s after provider failure for user %s: %s",
-                reservation_id,
-                user_id,
-                type(exc).__name__,
-            )
+                try:
+                    await self.quota_store.release_quota(user_id, reservation_id)
+                    logger.info(
+                        "Released quota reservation %s after provider failure for user %s: %s",
+                        reservation_id,
+                        user_id,
+                        type(exc).__name__,
+                    )
+                except Exception as rel_err:
+                    logger.warning("Failed to release quota after provider failure: %s", rel_err)
             raise
 
-        # Now ground the validated raw output against the exact submitted text
+        # 3. Provider inference completed successfully: compute was expended!
+        # Settle quota reservation permanently. Commit failure must NEVER trigger quota refund.
+        if reservation_id:
+            try:
+                commit_ok = await self.quota_store.commit_quota(user_id, reservation_id)
+                if not commit_ok:
+                    logger.warning(
+                        "Quota reservation %s commit returned False for user %s (already settled or missing)",
+                        reservation_id,
+                        user_id,
+                    )
+            except Exception as commit_err:
+                logger.error(
+                    "Quota commit failed for reservation %s for user %s: %s",
+                    reservation_id,
+                    user_id,
+                    commit_err,
+                )
+
+        # 4. Now ground the validated raw output against the exact submitted text
         try:
             validated_output = ValidatedRawOutput(
                 factual_summary=result.factual_summary,

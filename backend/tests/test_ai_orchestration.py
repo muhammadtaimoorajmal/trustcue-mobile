@@ -8,7 +8,7 @@ import pytest
 from trustcue_backend.api.schemas.analysis import AnalysisAiRequest, InputSource
 from trustcue_backend.core.auth import AuthenticatedUser
 from trustcue_backend.core.config import Settings
-from trustcue_backend.core.quota import InMemoryQuotaStore
+from trustcue_backend.core.quota import InMemoryQuotaStore, QuotaStore
 from trustcue_backend.providers.base import AiProvider
 from trustcue_backend.providers.exceptions import (
     ProviderAuthenticationError,
@@ -249,3 +249,41 @@ async def test_orchestration_upstream_failure_refunds_quota() -> None:
         )
 
     assert await quota_store.get_remaining_quota(user_id) == 15
+
+
+@pytest.mark.asyncio
+async def test_orchestration_commit_failure_never_refunds() -> None:
+    """Verify that when inference succeeds but commit_quota encounters an error, quota is NEVER refunded."""
+    settings = Settings(ENABLE_CLOUD_AI=True, GROQ_API_KEY="gsk_test")
+    user = _create_test_user()
+
+    mock_quota_store = AsyncMock(spec=QuotaStore)
+    mock_quota_store.commit_quota.side_effect = RuntimeError("Database transient failure during commit")
+
+    mock_provider = AsyncMock(spec=AiProvider)
+    mock_provider.analyze.return_value = ProviderAnalysisResult(
+        provider="groq",
+        model="llama-3.3-70b-versatile",
+        factual_summary="Urgent transfer requested.",
+        findings=[],
+        uncertainty_notes=[],
+        suggested_actions=[],
+    )
+
+    service = ProtectedAiService(
+        settings=settings,
+        provider=mock_provider,
+        quota_store=mock_quota_store,
+    )
+
+    req = _create_test_request()
+    res = await service.execute_analysis(
+        payload=req,
+        current_user=user,
+        request_id="req-orch-7",
+        reservation_id="res-123",
+    )
+
+    assert res.provider == "groq"
+    # release_quota must NEVER have been called
+    mock_quota_store.release_quota.assert_not_called()

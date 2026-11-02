@@ -264,3 +264,65 @@ async def test_in_memory_quota_store_midnight_rollover() -> None:
     # Release after commit is a safe no-op
     await store.release_quota(user_id, res_id)
     assert await store.get_remaining_quota(user_id) == 2
+
+
+@pytest.mark.asyncio
+async def test_quota_store_commit_false_logged(mock_settings: Settings) -> None:
+    """When commit_ai_quota_v2 returns False (e.g. already reaped), commit_quota returns False."""
+    user_id = str(uuid.uuid4())
+    res_id = str(uuid.uuid4())
+
+    async def mock_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=False)
+
+    transport = httpx.MockTransport(mock_handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        store = SupabaseQuotaStore(settings=mock_settings, http_client=client)
+        result = await store.commit_quota(user_id, res_id)
+        assert result is False
+
+
+@pytest.mark.asyncio
+async def test_quota_store_commit_500_fails_closed(mock_settings: Settings) -> None:
+    """Database outage during commit raises 503."""
+    user_id = str(uuid.uuid4())
+    res_id = str(uuid.uuid4())
+
+    async def mock_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, text="Internal Server Error")
+
+    transport = httpx.MockTransport(mock_handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        store = SupabaseQuotaStore(settings=mock_settings, http_client=client)
+        with pytest.raises(TrustCueError) as exc_info:
+            await store.commit_quota(user_id, res_id)
+        assert exc_info.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_quota_store_v1_legacy_commit_and_release(mock_settings: Settings) -> None:
+    """Reservations prefixed with v1-legacy- execute clean v1 behavior."""
+    user_id = str(uuid.uuid4())
+    legacy_id = f"v1-legacy-{uuid.uuid4()}"
+
+    called_endpoints: list[str] = []
+
+    async def mock_handler(request: httpx.Request) -> httpx.Response:
+        url_str = str(request.url)
+        called_endpoints.append(url_str)
+        return httpx.Response(204)
+
+    transport = httpx.MockTransport(mock_handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        store = SupabaseQuotaStore(settings=mock_settings, http_client=client)
+        # Commit on legacy token is a clean no-op
+        commit_ok = await store.commit_quota(user_id, legacy_id)
+        assert commit_ok is True
+        assert len(called_endpoints) == 0
+
+        # Release on legacy token calls v1 endpoint
+        release_ok = await store.release_quota(user_id, legacy_id)
+        assert release_ok is True
+        assert any("release_ai_quota" in ep for ep in called_endpoints)
+        assert not any("release_ai_quota_v2" in ep for ep in called_endpoints)
+
