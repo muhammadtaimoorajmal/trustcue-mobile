@@ -1,11 +1,16 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/core/theme/app_spacing.dart';
 import 'package:trustcue_mobile/core/widgets/app_button.dart';
 import 'package:trustcue_mobile/core/widgets/app_card.dart';
 import 'package:trustcue_mobile/core/widgets/app_page_body.dart';
+import 'package:trustcue_mobile/features/auth/data/services/avatar_image_service.dart';
 import 'package:trustcue_mobile/features/auth/domain/models/auth_state.dart';
+import 'package:trustcue_mobile/features/auth/domain/models/user_profile.dart';
 import 'package:trustcue_mobile/features/auth/presentation/controllers/auth_controller.dart';
 
 class AccountScreen extends GetView<AuthController> {
@@ -190,12 +195,8 @@ class AccountScreen extends GetView<AuthController> {
               children: [
                 Row(
                   children: [
-                    Icon(
-                      Icons.account_circle,
-                      size: 44,
-                      color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(width: 12),
+                    _buildAvatarWidget(theme, profile, user),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,6 +235,11 @@ class AccountScreen extends GetView<AuthController> {
                           ),
                         ],
                       ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _showEditProfileDialog(context),
+                      icon: const Icon(Icons.edit_outlined, size: 16),
+                      label: const Text('Edit Profile'),
                     ),
                   ],
                 ),
@@ -609,6 +615,28 @@ class AccountScreen extends GetView<AuthController> {
                   'Update your account password with fresh authentication verification.',
                   style: theme.textTheme.bodySmall,
                 ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final success = await controller.sendPasswordResetEmail();
+                    if (success) {
+                      Get.snackbar(
+                        'Reset Email Dispatched',
+                        'A secure password recovery link has been sent to ${user.email}. Check your inbox to update your password.',
+                        snackPosition: SnackPosition.BOTTOM,
+                        duration: const Duration(seconds: 5),
+                      );
+                    } else {
+                      Get.snackbar(
+                        'Error',
+                        'Failed to send password reset email. Please try again.',
+                        snackPosition: SnackPosition.BOTTOM,
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.mark_email_read_outlined, size: 16),
+                  label: const Text('Send Password Reset Email'),
+                ),
               ],
             ),
           ),
@@ -636,6 +664,279 @@ class AccountScreen extends GetView<AuthController> {
             onPressed: () => _showAccountDeletionDialog(context),
           ),
           const SizedBox(height: AppSpacing.pagePaddingLarge),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvatarWidget(ThemeData theme, UserProfile? profile, dynamic user) {
+    const double size = 52;
+    final avatarUrl = profile?.avatarUrl;
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(size / 2),
+        child: Image.network(
+          avatarUrl,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) =>
+              _buildFallbackAvatar(theme, profile, user, size),
+        ),
+      );
+    }
+    return _buildFallbackAvatar(theme, profile, user, size);
+  }
+
+  Widget _buildFallbackAvatar(
+    ThemeData theme,
+    UserProfile? profile,
+    dynamic user,
+    double size,
+  ) {
+    final name = profile?.displayName?.trim();
+    String initials = '';
+    if (name != null && name.isNotEmpty) {
+      final parts = name.split(' ');
+      if (parts.length > 1 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
+        initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      } else if (name.isNotEmpty) {
+        initials = name[0].toUpperCase();
+      }
+    } else if (user?.email != null && (user.email as String).isNotEmpty) {
+      initials = (user.email as String)[0].toUpperCase();
+    }
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: initials.isNotEmpty
+          ? Text(
+              initials,
+              style: TextStyle(
+                fontSize: size * 0.4,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            )
+          : Icon(
+              Icons.person,
+              size: size * 0.55,
+              color: theme.colorScheme.primary,
+            ),
+    );
+  }
+
+  void _showEditProfileDialog(BuildContext context) {
+    final profile = controller.profile.value;
+    final textController = TextEditingController(text: profile?.displayName ?? '');
+    final formKey = GlobalKey<FormState>();
+    final pickedBytes = Rxn<Uint8List>();
+    final clearAvatarRx = false.obs;
+    final avatarErrorRx = RxnString();
+    final isSavingRx = false.obs;
+
+    Get.dialog<void>(
+      AlertDialog(
+        title: const Text('Edit Profile'),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Obx(() {
+                    final bytes = pickedBytes.value;
+                    final isCleared = clearAvatarRx.value;
+                    final currentUrl = profile?.avatarUrl;
+
+                    Widget imageWidget;
+                    if (bytes != null) {
+                      imageWidget = Image.memory(
+                        bytes,
+                        width: 90,
+                        height: 90,
+                        fit: BoxFit.cover,
+                      );
+                    } else if (currentUrl != null && !isCleared && currentUrl.isNotEmpty) {
+                      imageWidget = Image.network(
+                        currentUrl,
+                        width: 90,
+                        height: 90,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _buildFallbackAvatar(
+                          Theme.of(context),
+                          profile,
+                          controller.user.value,
+                          90,
+                        ),
+                      );
+                    } else {
+                      imageWidget = _buildFallbackAvatar(
+                        Theme.of(context),
+                        profile,
+                        controller.user.value,
+                        90,
+                      );
+                    }
+
+                    return ClipOval(
+                      child: SizedBox(
+                        width: 90,
+                        height: 90,
+                        child: imageWidget,
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () async {
+                        try {
+                          final picker = ImagePicker();
+                          final xFile = await picker.pickImage(
+                            source: ImageSource.gallery,
+                          );
+                          if (xFile != null) {
+                            final bytes = await xFile.readAsBytes();
+                            final validation = AvatarImageService.validate(bytes);
+                            if (validation.isFailure) {
+                              avatarErrorRx.value =
+                                  validation.failureOrNull?.message;
+                            } else {
+                              avatarErrorRx.value = null;
+                              pickedBytes.value = bytes;
+                              clearAvatarRx.value = false;
+                            }
+                          }
+                        } catch (e) {
+                          avatarErrorRx.value = 'Failed to select image: $e';
+                        }
+                      },
+                      icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                      label: const Text('Choose Photo'),
+                    ),
+                    Obx(() {
+                      final hasAvatar = pickedBytes.value != null ||
+                          (profile?.avatarPath != null && !clearAvatarRx.value);
+                      if (!hasAvatar) return const SizedBox.shrink();
+                      return TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                        onPressed: () {
+                          pickedBytes.value = null;
+                          clearAvatarRx.value = true;
+                          avatarErrorRx.value = null;
+                        },
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('Remove'),
+                      );
+                    }),
+                  ],
+                ),
+                Obx(() {
+                  final err = avatarErrorRx.value;
+                  if (err == null) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      err,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: textController,
+                  maxLength: 64,
+                  decoration: const InputDecoration(
+                    labelText: 'Display Name',
+                    hintText: 'Enter your preferred name',
+                    counterText: '',
+                  ),
+                  validator: (val) {
+                    if (val != null && val.trim().length > 64) {
+                      return 'Cannot exceed 64 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Privacy Note: Your avatar is stored in a private, encrypted storage bucket and is only accessible to your authenticated account.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).hintColor,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancel'),
+          ),
+          Obx(() {
+            final isSaving = isSavingRx.value;
+            return FilledButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      if (formKey.currentState?.validate() ?? false) {
+                        isSavingRx.value = true;
+                        final success = await controller.updateProfileData(
+                          displayName: textController.text,
+                          newAvatarBytes: pickedBytes.value,
+                          clearAvatar: clearAvatarRx.value,
+                        );
+                        isSavingRx.value = false;
+                        if (success) {
+                          Get.back();
+                          Get.snackbar(
+                            'Profile Updated',
+                            'Your profile details have been saved.',
+                            snackPosition: SnackPosition.BOTTOM,
+                          );
+                        } else {
+                          avatarErrorRx.value =
+                              controller.profileError.value ??
+                              'Failed to save profile. Please retry.';
+                        }
+                      }
+                    },
+              child: isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Save'),
+            );
+          }),
         ],
       ),
     );

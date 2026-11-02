@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:get/get.dart';
 import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/features/auth/data/services/account_api_client.dart';
+import 'package:trustcue_mobile/features/auth/data/services/avatar_image_service.dart';
 import 'package:trustcue_mobile/features/auth/domain/contracts/auth_repository.dart';
 import 'package:trustcue_mobile/features/auth/domain/models/auth_state.dart';
 import 'package:trustcue_mobile/features/auth/domain/models/auth_user.dart';
@@ -11,21 +13,24 @@ import 'package:trustcue_mobile/features/reports/data/services/report_sync_servi
 import 'package:trustcue_mobile/features/reports/domain/contracts/local_report_repository.dart';
 
 /// Central application controller managing authentication status, user profile,
-/// permanent account deletion lifecycle, and cloud report synchronization.
+/// avatar lifecycle, permanent account deletion, and cloud report synchronization.
 class AuthController extends GetxController {
   AuthController({
     required this.authRepository,
     AccountApiClient? accountApiClient,
+    AvatarImageService? avatarImageService,
     this.reportRepository,
     this.syncService,
   }) : accountApiClient =
            accountApiClient ??
            AccountApiClient(
              tokenProvider: () => authRepository.getAccessToken(),
-           );
+           ),
+       avatarImageService = avatarImageService ?? AvatarImageService();
 
   final AuthRepository authRepository;
   final AccountApiClient accountApiClient;
+  final AvatarImageService avatarImageService;
   final LocalReportRepository? reportRepository;
   final ReportSyncService? syncService;
 
@@ -116,18 +121,28 @@ class AuthController extends GetxController {
     }
 
     if (result.isSuccess) {
-      profile.value = result.valueOrNull;
+      var p = result.valueOrNull;
+      if (p?.avatarPath != null) {
+        final signedUrl = await avatarImageService.getSignedUrl(p!.avatarPath!);
+        p = p.copyWith(avatarUrl: signedUrl);
+      }
+      profile.value = p;
     } else {
       profileError.value = result.failureOrNull?.message;
     }
     isLoadingProfile.value = false;
   }
 
-  /// Updates the user's display name with client-side trimming and validation.
-  Future<bool> updateDisplayName(String? newDisplayName) async {
-    if (!isAuthenticated) return false;
+  /// Comprehensive profile update handling display name, avatar upload, or avatar removal.
+  Future<bool> updateProfileData({
+    String? displayName,
+    Uint8List? newAvatarBytes,
+    bool clearAvatar = false,
+  }) async {
+    final currentUser = user.value;
+    if (currentUser == null || !isAuthenticated) return false;
 
-    final trimmed = newDisplayName?.trim();
+    final trimmed = displayName?.trim();
     if (trimmed != null && trimmed.length > 64) {
       profileError.value = 'Display name cannot exceed 64 characters.';
       return false;
@@ -136,25 +151,74 @@ class AuthController extends GetxController {
     isUpdatingProfile.value = true;
     profileError.value = null;
 
-    final result = await accountApiClient.updateProfile(displayName: trimmed);
-    isUpdatingProfile.value = false;
+    String? uploadedAvatarPath;
+    if (newAvatarBytes != null) {
+      final uploadRes = await avatarImageService.uploadAvatar(
+        userId: currentUser.id,
+        imageBytes: newAvatarBytes,
+      );
+      if (uploadRes.isFailure) {
+        profileError.value =
+            uploadRes.failureOrNull?.message ?? 'Failed to upload avatar image.';
+        isUpdatingProfile.value = false;
+        return false;
+      }
+      uploadedAvatarPath = uploadRes.valueOrNull;
+    }
 
-    if (result.isSuccess) {
-      profile.value = result.valueOrNull;
-      return true;
-    } else {
+    final oldAvatarPath = profile.value?.avatarPath;
+
+    final result = await accountApiClient.updateProfile(
+      displayName: trimmed,
+      avatarPath: uploadedAvatarPath,
+      clearAvatar: clearAvatar,
+    );
+
+    if (result.isFailure) {
+      // Partial failure rollback: remove uploaded image to prevent orphan files
+      if (uploadedAvatarPath != null) {
+        await avatarImageService.deleteAvatar(uploadedAvatarPath);
+      }
       profileError.value = result.failureOrNull?.message;
+      isUpdatingProfile.value = false;
       return false;
     }
+
+    // Success cleanup: remove superseded avatar from storage if replaced or cleared
+    if ((clearAvatar || uploadedAvatarPath != null) &&
+        oldAvatarPath != null &&
+        oldAvatarPath != uploadedAvatarPath) {
+      await avatarImageService.deleteAvatar(oldAvatarPath);
+    }
+
+    var updatedProfile = result.valueOrNull;
+    if (updatedProfile?.avatarPath != null) {
+      final signedUrl = await avatarImageService.getSignedUrl(
+        updatedProfile!.avatarPath!,
+      );
+      updatedProfile = updatedProfile.copyWith(avatarUrl: signedUrl);
+    }
+    profile.value = updatedProfile;
+    isUpdatingProfile.value = false;
+    return true;
+  }
+
+  /// Updates the user's display name with client-side trimming and validation.
+  Future<bool> updateDisplayName(String? newDisplayName) async {
+    return updateProfileData(displayName: newDisplayName);
+  }
+
+  /// Sends a secure password reset email to the authenticated user's email address.
+  Future<bool> sendPasswordResetEmail() async {
+    final currentUser = user.value;
+    if (currentUser == null || !isAuthenticated) return false;
+    final res = await authRepository.sendPasswordResetEmail(
+      email: currentUser.email,
+    );
+    return res.isSuccess;
   }
 
   /// Executes permanent account deletion.
-  ///
-  /// Flow:
-  /// 1. Re-authenticates with provided [password] to ensure security.
-  /// 2. Invokes administrative deletion on backend via `AccountApiClient.deleteAccount()`.
-  /// 3. Purges all local reports scoped to this user account from device SQLite storage.
-  /// 4. Signs out and returns to guest mode.
   Future<bool> deleteAccount({required String password}) async {
     final currentUser = user.value;
     if (currentUser == null || !isAuthenticated) {
@@ -177,7 +241,15 @@ class AuthController extends GetxController {
       return false;
     }
 
-    // 2. Invoke backend account deletion
+    // 2. Clean up avatar in storage if exists
+    final currentAvatar = profile.value?.avatarPath;
+    if (currentAvatar != null) {
+      try {
+        await avatarImageService.deleteAvatar(currentAvatar);
+      } catch (_) {}
+    }
+
+    // 3. Invoke backend account deletion
     final backendResult = await accountApiClient.deleteAccount();
     if (backendResult.isFailure) {
       deletionError.value =
@@ -187,7 +259,7 @@ class AuthController extends GetxController {
       return false;
     }
 
-    // 3. Purge local account-scoped reports from SQLite
+    // 4. Purge local account-scoped reports from SQLite
     if (reportRepository != null) {
       try {
         await reportRepository!.deleteReportsForAccount(currentUser.id);
@@ -196,7 +268,7 @@ class AuthController extends GetxController {
       }
     }
 
-    // 4. Terminate local session and clear tokens
+    // 5. Terminate local session and clear tokens
     await signOut();
     profile.value = null;
     isDeletingAccount.value = false;
@@ -224,8 +296,6 @@ class AuthController extends GetxController {
   }
 
   /// Toggles cloud report synchronization for the authenticated user.
-  ///
-  /// If disabling and [purgeCloud] is true, purges cloud records without touching local reports.
   Future<bool> toggleCloudSync(bool enabled, {bool purgeCloud = false}) async {
     final currentUser = user.value;
     if (currentUser == null || !isAuthenticated || isSyncing.value) {

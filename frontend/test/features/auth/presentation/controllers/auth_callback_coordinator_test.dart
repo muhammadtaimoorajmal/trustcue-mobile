@@ -65,6 +65,14 @@ void main() {
     expect(lastNavigatedRoute, isNull);
   });
 
+  test('rejects loose path containing auth-callback with untrusted host', () async {
+    final uri = Uri.parse('https://malicious.org/auth-callback?token=bad');
+    await coordinator.handleCallbackUri(uri);
+
+    expect(fakeRepo.handleCallbackCallCount, 0);
+    expect(lastNavigatedRoute, isNull);
+  });
+
   test(
     'routes explicit error in callback to login with error banner',
     () async {
@@ -81,21 +89,34 @@ void main() {
     },
   );
 
-  test('routes password recovery callback to authResetPassword', () async {
+  test('routes password recovery callback to authResetPassword when exchange succeeds', () async {
     final uri = Uri.parse(
       'trustcue://auth-callback#access_token=token123&refresh_token=refresh123&type=recovery',
     );
+    fakeRepo.nextCallbackResult = const AuthResult.success(null);
+    fakeRepo.setStatus(AuthStatus.recoverySession);
+
     await coordinator.handleCallbackUri(uri);
 
     expect(fakeRepo.handleCallbackCallCount, 1);
     expect(lastNavigatedRoute, AppRoutes.authResetPassword);
   });
 
-  test('routes explicit profile setup callback to profileSetup', () async {
-    final uri = Uri.parse('trustcue://auth-callback#type=profile-setup');
+  test('routes failed callback exchange to login with error banner (never false success)', () async {
+    final uri = Uri.parse(
+      'trustcue://auth-callback?code=missing_pkce_verifier',
+    );
+
+    fakeRepo.nextCallbackResult = AuthResult.failure(
+      AuthFailure.invalidCallback(),
+    );
+
     await coordinator.handleCallbackUri(uri);
 
-    expect(lastNavigatedRoute, AppRoutes.profileSetup);
+    expect(fakeRepo.handleCallbackCallCount, 1);
+    expect(lastNavigatedRoute, AppRoutes.authLogin);
+    expect(lastNavigatedArgs['isError'], isTrue);
+    expect(lastNavigatedArgs['bannerMessage'], isNot(contains('Email confirmed!')));
   });
 
   test(
@@ -168,14 +189,13 @@ void main() {
     },
   );
 
-  test('routes callback without established session to login screen with informative confirmation banner', () async {
+  test('routes successful unauthenticated signup confirmation to login screen with confirmation banner', () async {
     final uri = Uri.parse(
-      'trustcue://auth-callback?code=missing_pkce_verifier',
+      'trustcue://auth-callback?code=valid_signup_code',
     );
 
-    fakeRepo.nextCallbackResult = AuthResult.failure(
-      AuthFailure.invalidCallback(),
-    );
+    fakeRepo.nextCallbackResult = const AuthResult.success(null);
+    fakeRepo.setStatus(AuthStatus.unauthenticated);
 
     await coordinator.handleCallbackUri(uri);
 
@@ -183,5 +203,17 @@ void main() {
     expect(lastNavigatedRoute, AppRoutes.authLogin);
     expect(lastNavigatedArgs['isError'], isFalse);
     expect(lastNavigatedArgs['bannerMessage'], contains('Email confirmed!'));
+  });
+
+  test('deduplicates rapid consecutive callback events', () async {
+    final uri = Uri.parse(
+      'trustcue://auth-callback?code=dedup_test',
+    );
+    fakeRepo.nextCallbackResult = const AuthResult.success(null);
+
+    await coordinator.handleCallbackUri(uri);
+    await coordinator.handleCallbackUri(uri);
+
+    expect(fakeRepo.handleCallbackCallCount, 1);
   });
 }

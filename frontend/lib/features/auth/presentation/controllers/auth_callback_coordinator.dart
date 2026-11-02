@@ -35,6 +35,8 @@ class AuthCallbackCoordinator {
 
   StreamSubscription<Uri>? _sub;
   bool _isHandling = false;
+  String? _lastHandledSignature;
+  DateTime? _lastHandledAt;
 
   void init() {
     _sub = _appLinks.uriLinkStream.listen(
@@ -61,15 +63,29 @@ class AuthCallbackCoordinator {
 
   /// Processes an incoming URI callback and routes navigation.
   Future<void> handleCallbackUri(Uri uri) async {
-    debugPrint('AuthCallbackCoordinator: handleCallbackUri: $uri');
-    // Check if URI targets TrustCue auth callback
-    final isCallback =
-        (uri.scheme == 'trustcue' && uri.host == 'auth-callback') ||
-        uri.path.contains('auth-callback');
+    // Sanitize logging: NEVER log query or fragment containing secrets/tokens
+    debugPrint(
+      'AuthCallbackCoordinator: handleCallbackUri: scheme=${uri.scheme}, host=${uri.host}',
+    );
+
+    // Strict callback host and scheme validation
+    final isCallback = uri.scheme == 'trustcue' && uri.host == 'auth-callback';
     if (!isCallback) return;
 
+    // Prevent duplicate code-exchange races
+    final now = DateTime.now();
+    final signature = '${uri.scheme}://${uri.host}${uri.path}?${uri.queryParameters.keys.join(',')}&#${Uri.splitQueryString(uri.fragment).keys.join(',')}';
     if (_isHandling) return;
+    if (_lastHandledSignature == signature &&
+        _lastHandledAt != null &&
+        now.difference(_lastHandledAt!).inSeconds < 3) {
+      debugPrint('AuthCallbackCoordinator: ignoring duplicate callback event');
+      return;
+    }
+
     _isHandling = true;
+    _lastHandledSignature = signature;
+    _lastHandledAt = now;
 
     try {
       final fragmentParams = Uri.splitQueryString(uri.fragment);
@@ -82,7 +98,7 @@ class AuthCallbackCoordinator {
       final error = allParams['error_description'] ?? allParams['error'];
       final errorCode = allParams['error_code'];
 
-      // 1. Explicit error in callback (e.g. expired link, access denied)
+      // 1. Explicit error in callback parameters (e.g. expired link, access denied)
       if (error != null || errorCode != null) {
         final message = (error != null && error.isNotEmpty)
             ? error
@@ -98,23 +114,34 @@ class AuthCallbackCoordinator {
         return;
       }
 
-      // 2. Delegate token/code exchange to repository
-      await authRepository.handleAuthCallback(uri);
+      // 2. Delegate token/code exchange to repository and inspect result
+      final exchangeResult = await authRepository.handleAuthCallback(uri);
 
-      // 3. Password recovery route
-      if (type == 'recovery' ||
-          authRepository.currentStatus == AuthStatus.recoverySession) {
+      if (exchangeResult.isFailure) {
+        final message =
+            exchangeResult.failureOrNull?.message ??
+            'Verification link is invalid or has expired. Please sign in or request a new link.';
+        if (Get.isRegistered<LoginController>()) {
+          final lc = Get.find<LoginController>();
+          lc.errorMessage.value = message;
+        }
+        _onNavigate(
+          AppRoutes.authLogin,
+          arguments: {'bannerMessage': message, 'isError': true},
+        );
+        return;
+      }
+
+      // 3. Password recovery route: require authenticated/recovery state
+      if (authRepository.currentStatus == AuthStatus.recoverySession ||
+          (type == 'recovery' &&
+              (authRepository.currentStatus == AuthStatus.authenticated ||
+                  authRepository.currentStatus == AuthStatus.recoverySession))) {
         _onNavigate(AppRoutes.authResetPassword);
         return;
       }
 
-      // Explicit profile setup route
-      if (type == 'profile-setup' || type == 'setup') {
-        _onNavigate(AppRoutes.profileSetup);
-        return;
-      }
-
-      // 4. Successful authenticated session
+      // 4. Authenticated session
       if (authRepository.currentStatus == AuthStatus.authenticated) {
         final ac =
             authController ??
@@ -134,7 +161,14 @@ class AuthCallbackCoordinator {
         return;
       }
 
-      // 5. Signup confirmation succeeded on server or requires manual password entry
+      // Explicit profile setup route only permitted if authenticated
+      if ((type == 'profile-setup' || type == 'setup') &&
+          authRepository.currentStatus == AuthStatus.authenticated) {
+        _onNavigate(AppRoutes.profileSetup);
+        return;
+      }
+
+      // 5. Signup confirmation succeeded on server but requires manual sign in
       if (Get.isRegistered<LoginController>()) {
         final lc = Get.find<LoginController>();
         lc.infoMessage.value =
@@ -146,6 +180,16 @@ class AuthCallbackCoordinator {
           'bannerMessage':
               'Email confirmed! Please sign in with your credentials.',
           'isError': false,
+        },
+      );
+    } catch (_) {
+      debugPrint('AuthCallbackCoordinator: unexpected error during callback');
+      _onNavigate(
+        AppRoutes.authLogin,
+        arguments: {
+          'bannerMessage':
+              'An error occurred during verification. Please sign in.',
+          'isError': true,
         },
       );
     } finally {

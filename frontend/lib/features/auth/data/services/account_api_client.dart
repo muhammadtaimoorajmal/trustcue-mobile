@@ -105,10 +105,12 @@ class AccountApiClient {
     }
   }
 
-  /// Updates profile display name and/or cloud sync preference for the authenticated session.
+  /// Updates profile display name, avatar path, and/or cloud sync preference for the authenticated session.
   Future<Result<UserProfile>> updateProfile({
     String? displayName,
     bool? syncEnabled,
+    String? avatarPath,
+    bool clearAvatar = false,
   }) async {
     final token = await tokenProvider();
     if (token == null || token.trim().isEmpty) {
@@ -129,6 +131,11 @@ class AccountApiClient {
       }
       if (syncEnabled != null) {
         payload['syncEnabled'] = syncEnabled;
+      }
+      if (clearAvatar) {
+        payload['clearAvatar'] = true;
+      } else if (avatarPath != null) {
+        payload['avatarPath'] = avatarPath;
       }
 
       final response = await _httpClient

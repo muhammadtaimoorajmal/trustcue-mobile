@@ -185,6 +185,14 @@ class FakeAuthRepository implements AuthRepository {
     if (nextCallbackResult != null) {
       return nextCallbackResult!;
     }
+    final fragmentParams = Uri.splitQueryString(uri.fragment);
+    final allParams = <String, String>{
+      ...uri.queryParameters,
+      ...fragmentParams,
+    };
+    if (allParams['type'] == 'recovery') {
+      setStatus(AuthStatus.recoverySession);
+    }
     return const AuthResult.success(null);
   }
 
