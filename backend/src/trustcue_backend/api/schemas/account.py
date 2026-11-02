@@ -1,5 +1,6 @@
 """Account response schemas conforming to OpenAPI 3.1.0 specifications."""
 
+import re
 from datetime import datetime
 from typing import Literal
 
@@ -30,6 +31,16 @@ class UserProfileResponse(BaseModel):
         default=None,
         alias="displayName",
         description="Sanitized user display name (max 64 characters).",
+    )
+    avatar_path: str | None = Field(
+        default=None,
+        alias="avatarPath",
+        description="Relative storage path of user profile avatar image.",
+    )
+    avatar_url: str | None = Field(
+        default=None,
+        alias="avatarUrl",
+        description="Accessible or signed URL to download the profile avatar image.",
     )
     sync_enabled: bool = Field(
         default=False,
@@ -66,6 +77,17 @@ class UpdateUserProfileRequest(BaseModel):
         alias="syncEnabled",
         description="Toggle encrypted cloud report sync.",
     )
+    avatar_path: str | None = Field(
+        default=None,
+        max_length=255,
+        alias="avatarPath",
+        description="Storage path for user avatar (<userId>/filename).",
+    )
+    clear_avatar: bool = Field(
+        default=False,
+        alias="clearAvatar",
+        description="Explicitly clear and remove the current avatar reference.",
+    )
 
     @field_validator("display_name")
     @classmethod
@@ -79,7 +101,19 @@ class UpdateUserProfileRequest(BaseModel):
             raise ValueError("Display name cannot exceed 64 characters.")
         return v_trimmed
 
-
+    @field_validator("avatar_path")
+    @classmethod
+    def validate_avatar_path(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v_trimmed = v.strip()
+        if not v_trimmed:
+            return None
+        if len(v_trimmed) > 255:
+            raise ValueError("Avatar path cannot exceed 255 characters.")
+        if not re.match(r"^[0-9a-fA-F-]+/[a-zA-Z0-9_\.-]+$", v_trimmed):
+            raise ValueError("Invalid avatar path format. Must be <user_id>/<filename>.")
+        return v_trimmed
 
 
 class AccountDeletionResponse(BaseModel):

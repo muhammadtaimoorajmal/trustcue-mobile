@@ -60,6 +60,7 @@ class AccountService:
         user_email = email or f"{user_id}@trustcue.local"
         remaining_quota = await self.quota_store.get_remaining_quota(user_id)
         display_name: str | None = self.app_state.get_display_name(user_id)
+        avatar_path: str | None = self.app_state.get_avatar_path(user_id)
         created_at: datetime = fallback_created_at
         sync_enabled: bool = self.app_state.get_sync_enabled(user_id)
 
@@ -69,7 +70,7 @@ class AccountService:
             try:
                 base_url = self.settings.SUPABASE_URL.rstrip("/")
                 resp = await client.get(
-                    f"{base_url}/rest/v1/profiles?id=eq.{user_id}&select=id,display_name,terms_version,sync_enabled,sync_generation,created_at,updated_at",
+                    f"{base_url}/rest/v1/profiles?id=eq.{user_id}&select=id,display_name,terms_version,sync_enabled,sync_generation,avatar_path,created_at,updated_at",
                     headers=self._get_auth_headers(),
                 )
                 if resp.status_code == 200:
@@ -79,8 +80,10 @@ class AccountService:
                         display_name = row.get("display_name")
                         sync_enabled = bool(row.get("sync_enabled", False))
                         sync_generation = int(row.get("sync_generation", 1))
+                        avatar_path = row.get("avatar_path")
                         self.app_state.set_sync_enabled(user_id, sync_enabled)
                         self.app_state.set_sync_generation(user_id, sync_generation)
+                        self.app_state.set_avatar_path(user_id, avatar_path)
                         if display_name is not None:
                             self.app_state.set_display_name(user_id, display_name)
                         raw_created = row.get("created_at")
@@ -106,6 +109,8 @@ class AccountService:
         return UserProfileResponse(
             userId=user_id,
             displayName=display_name,
+            avatarPath=avatar_path,
+            avatarUrl=None,
             email=user_email,
             emailVerified=email_verified,
             createdAt=created_at,
@@ -122,17 +127,24 @@ class AccountService:
         email_verified: bool,
         fallback_created_at: datetime,
         sync_enabled: bool | None = None,
+        avatar_path: str | None = None,
+        clear_avatar: bool = False,
     ) -> UserProfileResponse:
         """
-        Update user profile display name and sync settings with PostgREST persistence.
+        Update user profile display name, avatar path, and sync settings with PostgREST persistence.
         """
         if display_name is not None:
             self.app_state.set_display_name(user_id, display_name)
         if sync_enabled is not None:
             self.app_state.set_sync_enabled(user_id, sync_enabled)
+        if clear_avatar:
+            self.app_state.set_avatar_path(user_id, None)
+        elif avatar_path is not None:
+            self.app_state.set_avatar_path(user_id, avatar_path)
 
         effective_display_name = self.app_state.get_display_name(user_id)
         effective_sync_enabled = self.app_state.get_sync_enabled(user_id)
+        effective_avatar_path = self.app_state.get_avatar_path(user_id)
         user_email = email or f"{user_id}@trustcue.local"
         remaining_quota = await self.quota_store.get_remaining_quota(user_id)
         created_at: datetime = fallback_created_at
@@ -155,6 +167,10 @@ class AccountService:
                     patch_payload["display_name"] = display_name
                 if sync_enabled is not None:
                     patch_payload["sync_enabled"] = sync_enabled
+                if clear_avatar:
+                    patch_payload["avatar_path"] = None
+                elif avatar_path is not None:
+                    patch_payload["avatar_path"] = avatar_path
 
                 resp = await client.patch(
                     f"{base_url}/rest/v1/profiles?id=eq.{user_id}",
@@ -172,6 +188,8 @@ class AccountService:
         return UserProfileResponse(
             userId=user_id,
             displayName=effective_display_name,
+            avatarPath=effective_avatar_path,
+            avatarUrl=None,
             email=user_email,
             emailVerified=email_verified,
             createdAt=created_at,
@@ -186,8 +204,9 @@ class AccountService:
         """
         logger.info("Executing permanent account deletion for user UUID: %s", user_id)
 
-        # 1. Invalidate session in local application state immediately
+        # 1. Invalidate session and clear user data in local application state immediately
         self.app_state.mark_user_deleted(user_id)
+        self.app_state.set_avatar_path(user_id, None)
 
         # 2. Invoke Supabase Admin deletion if configured
         if self.settings.SUPABASE_URL and self.settings.SUPABASE_SERVICE_ROLE_KEY:

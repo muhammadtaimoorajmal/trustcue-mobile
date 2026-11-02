@@ -67,7 +67,7 @@ async def get_account_profile(
     response_model=UserProfileResponse,
     summary="Update User Profile",
     description=(
-        "Updates mutable profile fields (such as displayName) for the authenticated user. "
+        "Updates mutable profile fields (such as displayName and avatarPath) for the authenticated user. "
         "Persists to PostgREST public.profiles with recovery fallback."
     ),
     operation_id="updateAccountProfile",
@@ -89,7 +89,7 @@ async def update_account_profile(
     current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
     account_service: Annotated[AccountService, Depends(get_account_service)],
 ) -> UserProfileResponse:
-    """Update profile display name for the authenticated user."""
+    """Update profile display name and avatar path for the authenticated user."""
     created_at = datetime.now(UTC)
     if "iat" in current_user.claims:
         try:
@@ -104,6 +104,8 @@ async def update_account_profile(
         email_verified=current_user.email_verified,
         fallback_created_at=created_at,
         sync_enabled=payload.sync_enabled,
+        avatar_path=payload.avatar_path,
+        clear_avatar=payload.clear_avatar,
     )
 
 

@@ -378,3 +378,66 @@ async def test_account_service_supabase_integration() -> None:
     assert any("auth/v1/admin/users/11111111-1111-1111-1111-111111111111" in ep for ep in endpoints)
 
 
+
+
+def test_patch_profile_avatar_path_lifecycle(auth_client: TestClient) -> None:
+    """Ensure PATCH /api/v1/account/profile supports avatarPath updates and clearing."""
+    user_uuid = str(uuid.uuid4())
+    token = create_test_jwt(user_id=user_uuid, secret=TEST_SECRET)
+
+    # 1. Initial state has null avatarPath
+    res1 = auth_client.get(
+        "/api/v1/account/profile",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res1.status_code == 200
+    assert res1.json()["avatarPath"] is None
+
+    # 2. Patch with valid avatar path
+    valid_avatar = f"{user_uuid}/avatar_20261102.png"
+    res2 = auth_client.patch(
+        "/api/v1/account/profile",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"avatarPath": valid_avatar},
+    )
+    assert res2.status_code == 200
+    assert res2.json()["avatarPath"] == valid_avatar
+
+    # 3. Subsequent GET returns persisted avatarPath
+    res3 = auth_client.get(
+        "/api/v1/account/profile",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res3.status_code == 200
+    assert res3.json()["avatarPath"] == valid_avatar
+
+    # 4. Clear avatar via clearAvatar=True
+    res4 = auth_client.patch(
+        "/api/v1/account/profile",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"clearAvatar": True},
+    )
+    assert res4.status_code == 200
+    assert res4.json()["avatarPath"] is None
+
+    # 5. Subsequent GET confirms avatarPath is null
+    res5 = auth_client.get(
+        "/api/v1/account/profile",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res5.status_code == 200
+    assert res5.json()["avatarPath"] is None
+
+
+def test_patch_profile_rejects_malformed_avatar_path(auth_client: TestClient) -> None:
+    """Ensure PATCH rejects paths without user prefix or containing invalid characters."""
+    user_uuid = str(uuid.uuid4())
+    token = create_test_jwt(user_id=user_uuid, secret=TEST_SECRET)
+
+    # Path containing spaces / forbidden chars
+    res = auth_client.patch(
+        "/api/v1/account/profile",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"avatarPath": "invalid path with spaces.exe"},
+    )
+    assert res.status_code == 422

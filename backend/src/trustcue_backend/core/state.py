@@ -29,6 +29,7 @@ class AppState:
         self.ai_provider = ai_provider
         self.deleted_users: set[str] = set()
         self.profile_display_names: dict[str, str | None] = {}
+        self.profile_avatar_paths: dict[str, str | None] = {}
         self.profile_sync_enabled: dict[str, bool] = {}
         self.sync_generations: dict[str, int] = {}
         self.sync_purged_at: dict[str, datetime] = {}
@@ -39,6 +40,7 @@ class AppState:
         uid = str(user_id).strip().lower()
         self.deleted_users.add(uid)
         self.profile_display_names.pop(str(user_id).strip(), None)
+        self.profile_avatar_paths.pop(str(user_id).strip(), None)
         self.profile_sync_enabled.pop(str(user_id).strip(), None)
         to_delete = [k for k in self.synced_reports if k.startswith(f"{uid}:")]
         for k in to_delete:
@@ -55,6 +57,14 @@ class AppState:
     def set_display_name(self, user_id: str, display_name: str | None) -> None:
         """Store local in-memory display name."""
         self.profile_display_names[str(user_id).strip()] = display_name
+
+    def get_avatar_path(self, user_id: str) -> str | None:
+        """Retrieve local in-memory avatar path if set."""
+        return self.profile_avatar_paths.get(str(user_id).strip())
+
+    def set_avatar_path(self, user_id: str, avatar_path: str | None) -> None:
+        """Store local in-memory avatar path."""
+        self.profile_avatar_paths[str(user_id).strip()] = avatar_path
 
     def get_sync_enabled(self, user_id: str) -> bool:
         """Retrieve whether cloud sync is enabled for user (defaults to False)."""
