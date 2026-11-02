@@ -170,6 +170,19 @@ POST /rest/v1/rpc/sync_push_reports   -> HTTP 401 Unauthorized (Access Denied: T
 5. **Search Path Hardening:** All 5 functions enforce `SET search_path = public, auth, pg_temp`, preventing malicious schema hijacking attacks.
 6. **Payload Privacy Allowlist:** Constraint `chk_report_payload_privacy` rejects any JSON containing `text`, `rawText`, `excerpt`, `evidence`, `screenshot`, or `hash`. Only aggregate metadata keys (`formatVersion`, `outcomeState`, `hasAiAnalysis`, `indicatorCount`, `categories`, `source`) are permitted.
 
+### 5.3 Evidence Scope Calibration & Boundary Honesty
+To maintain strict empirical precision, the scope of findings from these probes is calibrated as follows:
+1. **PostgREST Metadata Scope vs Internal Logic:**
+   - PostgREST OpenAPI catalog queries confirm that the documented tables, column specifications, constraints, and RPC function signatures exist and are exposed via the REST gateway.
+   - PostgREST metadata reflects interface definitions; it does *not* constitute direct runtime proof of internal function execution branches, exception handler paths, or SQL trigger behavior under concurrent load.
+2. **Anonymous 401 Response Scope:**
+   - The HTTP 401 Unauthorized responses to anonymous probes prove exclusively that fail-closed anonymous access is enforced at the PostgREST layer (unauthenticated callers cannot query endpoints).
+   - They do *not* prove that Row Level Security (RLS) properly isolates tenant data between two distinct authenticated accounts; live cross-account isolation testing is evaluated separately in upcoming sync and multi-user modules.
+3. **Probe Scope Honesty:**
+   - All RPC POST probes performed during this audit were anonymous fail-closed verification requests. They were strictly read-only and did not mutate or delete any production data.
+4. **Provisional Quota Reset Observation:**
+   - The diagnosis that the 15→14→15 quota observation resulted from Render container recycling resetting the Python `InMemoryQuotaStore` is provisional pending formal database adapter implementation and persistent quota wiring in Modules 63–64.
+
 ---
 
 ## 6. Quota Storage Selection & Reset Diagnosis
