@@ -67,6 +67,33 @@ class LoginScreen extends GetView<LoginController> {
               ),
               const SizedBox(height: AppSpacing.pagePaddingMedium),
               Obx(() {
+                final info = controller.infoMessage.value;
+                if (info == null) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: AppCard(
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle_outline,
+                          color: Colors.green,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            info,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.green.shade800,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              Obx(() {
                 final error = controller.errorMessage.value;
                 if (error == null) return const SizedBox.shrink();
                 return Padding(

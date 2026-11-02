@@ -1,0 +1,187 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
+import 'package:trustcue_mobile/app/routes/app_routes.dart';
+import 'package:trustcue_mobile/features/auth/domain/models/auth_failure.dart';
+import 'package:trustcue_mobile/features/auth/domain/models/auth_result.dart';
+import 'package:trustcue_mobile/features/auth/domain/models/auth_state.dart';
+import 'package:trustcue_mobile/features/auth/domain/models/auth_user.dart';
+import 'package:trustcue_mobile/features/auth/domain/models/user_profile.dart';
+import 'package:trustcue_mobile/features/auth/presentation/controllers/auth_callback_coordinator.dart';
+import 'package:trustcue_mobile/features/auth/presentation/controllers/auth_controller.dart';
+
+import '../../mocks/fake_auth_repository.dart';
+
+class _MockAuthController extends AuthController {
+  _MockAuthController({required super.authRepository});
+
+  UserProfile? mockProfile;
+  int fetchProfileCallCount = 0;
+
+  @override
+  Future<void> fetchProfile() async {
+    fetchProfileCallCount++;
+    profile.value = mockProfile;
+  }
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late FakeAuthRepository fakeRepo;
+  late _MockAuthController mockAuthController;
+  late AuthCallbackCoordinator coordinator;
+  String? lastNavigatedRoute;
+  dynamic lastNavigatedArgs;
+
+  setUp(() {
+    Get.reset();
+    Get.testMode = true;
+    lastNavigatedRoute = null;
+    lastNavigatedArgs = null;
+    fakeRepo = FakeAuthRepository();
+    mockAuthController = _MockAuthController(authRepository: fakeRepo);
+    Get.put<AuthController>(mockAuthController);
+    coordinator = AuthCallbackCoordinator(
+      authRepository: fakeRepo,
+      authController: mockAuthController,
+      onNavigate: (route, {arguments}) {
+        lastNavigatedRoute = route;
+        lastNavigatedArgs = arguments;
+        return null;
+      },
+    );
+  });
+
+  tearDown(() {
+    coordinator.dispose();
+    Get.reset();
+  });
+
+  test('ignores non-callback URIs', () async {
+    final uri = Uri.parse('https://example.com/unrelated/path');
+    await coordinator.handleCallbackUri(uri);
+
+    expect(fakeRepo.handleCallbackCallCount, 0);
+    expect(lastNavigatedRoute, isNull);
+  });
+
+  test(
+    'routes explicit error in callback to login with error banner',
+    () async {
+      final uri = Uri.parse(
+        'trustcue://auth-callback#error=access_denied&error_code=403&error_description=Link+expired',
+      );
+      await coordinator.handleCallbackUri(uri);
+
+      expect(fakeRepo.handleCallbackCallCount, 0);
+      expect(lastNavigatedRoute, AppRoutes.authLogin);
+      expect(lastNavigatedArgs, isA<Map<String, dynamic>>());
+      expect(lastNavigatedArgs['isError'], isTrue);
+      expect(lastNavigatedArgs['bannerMessage'], contains('Link expired'));
+    },
+  );
+
+  test('routes password recovery callback to authResetPassword', () async {
+    final uri = Uri.parse(
+      'trustcue://auth-callback#access_token=token123&refresh_token=refresh123&type=recovery',
+    );
+    await coordinator.handleCallbackUri(uri);
+
+    expect(fakeRepo.handleCallbackCallCount, 1);
+    expect(lastNavigatedRoute, AppRoutes.authResetPassword);
+  });
+
+  test('routes explicit profile setup callback to profileSetup', () async {
+    final uri = Uri.parse('trustcue://auth-callback#type=profile-setup');
+    await coordinator.handleCallbackUri(uri);
+
+    expect(lastNavigatedRoute, AppRoutes.profileSetup);
+  });
+
+  test(
+    'routes authenticated signup with incomplete profile to profileSetup',
+    () async {
+      final uri = Uri.parse(
+        'trustcue://auth-callback#access_token=token123&refresh_token=refresh123&type=signup',
+      );
+
+      fakeRepo.nextCallbackResult = const AuthResult.success(null);
+      fakeRepo.setStatus(
+        AuthStatus.authenticated,
+        user: AuthUser(
+          id: 'user-1',
+          email: 'user@example.com',
+          emailVerified: true,
+          createdAt: DateTime.now(),
+        ),
+      );
+      mockAuthController.mockProfile = UserProfile(
+        userId: 'user-1',
+        email: 'user@example.com',
+        displayName: null,
+        emailVerified: true,
+        createdAt: DateTime.now(),
+        syncEnabled: false,
+        quotaRemainingToday: 15,
+      );
+
+      await coordinator.handleCallbackUri(uri);
+
+      expect(fakeRepo.handleCallbackCallCount, 1);
+      expect(mockAuthController.fetchProfileCallCount, greaterThanOrEqualTo(1));
+      expect(lastNavigatedRoute, AppRoutes.profileSetup);
+    },
+  );
+
+  test(
+    'routes authenticated signup with existing display name to account',
+    () async {
+      final uri = Uri.parse(
+        'trustcue://auth-callback#access_token=token123&refresh_token=refresh123&type=signup',
+      );
+
+      fakeRepo.nextCallbackResult = const AuthResult.success(null);
+      fakeRepo.setStatus(
+        AuthStatus.authenticated,
+        user: AuthUser(
+          id: 'user-1',
+          email: 'user@example.com',
+          emailVerified: true,
+          createdAt: DateTime.now(),
+        ),
+      );
+      mockAuthController.mockProfile = UserProfile(
+        userId: 'user-1',
+        email: 'user@example.com',
+        displayName: 'Existing User',
+        emailVerified: true,
+        createdAt: DateTime.now(),
+        syncEnabled: false,
+        quotaRemainingToday: 15,
+      );
+
+      await coordinator.handleCallbackUri(uri);
+
+      expect(fakeRepo.handleCallbackCallCount, 1);
+      expect(mockAuthController.fetchProfileCallCount, greaterThanOrEqualTo(1));
+      expect(lastNavigatedRoute, AppRoutes.account);
+    },
+  );
+
+  test('routes callback without established session to login screen with informative confirmation banner', () async {
+    final uri = Uri.parse(
+      'trustcue://auth-callback?code=missing_pkce_verifier',
+    );
+
+    fakeRepo.nextCallbackResult = AuthResult.failure(
+      AuthFailure.invalidCallback(),
+    );
+
+    await coordinator.handleCallbackUri(uri);
+
+    expect(fakeRepo.handleCallbackCallCount, 1);
+    expect(lastNavigatedRoute, AppRoutes.authLogin);
+    expect(lastNavigatedArgs['isError'], isFalse);
+    expect(lastNavigatedArgs['bannerMessage'], contains('Email confirmed!'));
+  });
+}

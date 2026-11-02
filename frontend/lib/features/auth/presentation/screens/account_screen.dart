@@ -581,6 +581,37 @@ class AccountScreen extends GetView<AuthController> {
               ],
             ),
           ),
+          const SizedBox(height: AppSpacing.pagePaddingMedium),
+
+          // Account Security Card (Password Change)
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Password & Security',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _showChangePasswordDialog(context),
+                      icon: const Icon(Icons.lock_reset, size: 16),
+                      label: const Text('Change'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Update your account password with fresh authentication verification.',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: AppSpacing.pagePaddingLarge),
 
           // Sign out Button
@@ -662,6 +693,179 @@ class AccountScreen extends GetView<AuthController> {
               }
             },
             child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog(BuildContext context) {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final errorRx = RxnString();
+    final isSubmitting = false.obs;
+    final isCurrentVisible = false.obs;
+    final isNewVisible = false.obs;
+
+    Get.dialog<void>(
+      AlertDialog(
+        title: const Text('Change Password'),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Obx(() {
+                  final err = errorRx.value;
+                  if (err == null) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      err,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 13,
+                      ),
+                    ),
+                  );
+                }),
+                Obx(
+                  () => TextFormField(
+                    controller: currentPasswordController,
+                    obscureText: !isCurrentVisible.value,
+                    decoration: InputDecoration(
+                      labelText: 'Current Password',
+                      hintText: 'Enter current password',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          isCurrentVisible.value
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                        onPressed: () =>
+                            isCurrentVisible.value = !isCurrentVisible.value,
+                      ),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return 'Please enter your current password';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Obx(
+                  () => TextFormField(
+                    controller: newPasswordController,
+                    obscureText: !isNewVisible.value,
+                    decoration: InputDecoration(
+                      labelText: 'New Password',
+                      hintText: 'Minimum 6 characters',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          isNewVisible.value
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                        onPressed: () =>
+                            isNewVisible.value = !isNewVisible.value,
+                      ),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: confirmPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirm New Password',
+                    hintText: 'Re-enter new password',
+                  ),
+                  validator: (val) {
+                    if (val != newPasswordController.text) {
+                      return 'Passwords do not match';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          Obx(
+            () => FilledButton(
+              onPressed: isSubmitting.value
+                  ? null
+                  : () async {
+                      if (formKey.currentState?.validate() ?? false) {
+                        isSubmitting.value = true;
+                        errorRx.value = null;
+
+                        final user = controller.user.value;
+                        if (user == null) {
+                          errorRx.value = 'No authenticated user session.';
+                          isSubmitting.value = false;
+                          return;
+                        }
+
+                        // 1. Re-authenticate with current password
+                        final reauth = await controller.authRepository
+                            .signInWithPassword(
+                              email: user.email,
+                              password: currentPasswordController.text,
+                            );
+
+                        if (reauth.isFailure) {
+                          errorRx.value = 'Current password is incorrect.';
+                          isSubmitting.value = false;
+                          return;
+                        }
+
+                        // 2. Update password
+                        final updateResult = await controller.authRepository
+                            .updatePassword(
+                              newPassword: newPasswordController.text,
+                            );
+
+                        isSubmitting.value = false;
+
+                        updateResult.when(
+                          success: (_) {
+                            Get.back();
+                            Get.rawSnackbar(
+                              title: 'Password Updated',
+                              message: 'Your account password has been changed successfully.',
+                              duration: const Duration(seconds: 4),
+                              snackPosition: SnackPosition.BOTTOM,
+                            );
+                          },
+                          failure: (failure) {
+                            errorRx.value = failure.message;
+                          },
+                        );
+                      }
+                    },
+              child: isSubmitting.value
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Update'),
+            ),
           ),
         ],
       ),

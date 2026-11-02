@@ -15,6 +15,28 @@ class LoginController extends GetxController {
   final RxBool isPasswordVisible = false.obs;
   final RxBool isSubmitting = false.obs;
   final RxnString errorMessage = RxnString();
+  final RxnString infoMessage = RxnString();
+
+  @override
+  void onInit() {
+    super.onInit();
+    final args = Get.arguments;
+    if (args is Map) {
+      final banner = args['bannerMessage'] as String?;
+      final isError = args['isError'] as bool? ?? false;
+      final emailArg = args['email'] as String?;
+      if (emailArg != null && emailArg.isNotEmpty) {
+        emailController.text = emailArg;
+      }
+      if (banner != null && banner.isNotEmpty) {
+        if (isError) {
+          errorMessage.value = banner;
+        } else {
+          infoMessage.value = banner;
+        }
+      }
+    }
+  }
 
   void togglePasswordVisibility() {
     isPasswordVisible.value = !isPasswordVisible.value;

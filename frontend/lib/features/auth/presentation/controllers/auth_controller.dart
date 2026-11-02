@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:get/get.dart';
+import 'package:trustcue_mobile/app/routes/app_routes.dart';
 import 'package:trustcue_mobile/features/auth/data/services/account_api_client.dart';
 import 'package:trustcue_mobile/features/auth/domain/contracts/auth_repository.dart';
 import 'package:trustcue_mobile/features/auth/domain/models/auth_state.dart';
@@ -71,6 +72,11 @@ class AuthController extends GetxController {
         await fetchProfile();
       } else {
         profile.value = null;
+      }
+      if (newStatus == AuthStatus.recoverySession) {
+        if (Get.currentRoute != AppRoutes.authResetPassword) {
+          Get.offAllNamed(AppRoutes.authResetPassword);
+        }
       }
     });
 

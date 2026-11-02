@@ -98,35 +98,40 @@ class MainActivity : FlutterActivity() {
             return
         }
 
-        // Standard launcher start is not an incoming share
-        if (intent.action == Intent.ACTION_MAIN) {
-            callback(null)
-            return
+        val kind = ShareIntentClassifier.classify(intent)
+        when (kind) {
+            ShareIntentKind.IGNORE -> {
+                callback(null)
+                return
+            }
+            ShareIntentKind.UNSUPPORTED_MULTIPLE -> {
+                val eventId = UUID.randomUUID().toString()
+                callback(
+                    mapOf(
+                        "eventId" to eventId,
+                        "type" to "unsupported",
+                        "errorMessage" to "Sharing multiple items at once is not supported. Please share one message or one image."
+                    )
+                )
+                return
+            }
+            ShareIntentKind.UNSUPPORTED_ACTION -> {
+                val eventId = UUID.randomUUID().toString()
+                callback(
+                    mapOf(
+                        "eventId" to eventId,
+                        "type" to "unsupported",
+                        "errorMessage" to "Unsupported intent action: ${intent.action}"
+                    )
+                )
+                return
+            }
+            ShareIntentKind.PROCESS_SINGLE -> {
+                // Single incoming share proceed below
+            }
         }
 
         val eventId = UUID.randomUUID().toString()
-
-        if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
-            callback(
-                mapOf(
-                    "eventId" to eventId,
-                    "type" to "unsupported",
-                    "errorMessage" to "Sharing multiple items at once is not supported. Please share one message or one image."
-                )
-            )
-            return
-        }
-
-        if (intent.action != Intent.ACTION_SEND) {
-            callback(
-                mapOf(
-                    "eventId" to eventId,
-                    "type" to "unsupported",
-                    "errorMessage" to "Unsupported intent action: ${intent.action}"
-                )
-            )
-            return
-        }
 
         val rawText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
         val streamUri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

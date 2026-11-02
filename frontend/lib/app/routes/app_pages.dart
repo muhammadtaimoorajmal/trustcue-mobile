@@ -24,6 +24,7 @@ import 'package:trustcue_mobile/features/auth/presentation/bindings/auth_binding
 import 'package:trustcue_mobile/features/auth/presentation/screens/account_screen.dart';
 import 'package:trustcue_mobile/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:trustcue_mobile/features/auth/presentation/screens/login_screen.dart';
+import 'package:trustcue_mobile/features/auth/presentation/screens/profile_setup_screen.dart';
 import 'package:trustcue_mobile/features/auth/presentation/screens/register_screen.dart';
 import 'package:trustcue_mobile/features/auth/presentation/screens/reset_password_screen.dart';
 import 'package:trustcue_mobile/features/auth/presentation/screens/verify_email_screen.dart';
@@ -132,6 +133,11 @@ class AppPages {
       binding: ResetPasswordBinding(),
     ),
     GetPage(
+      name: AppRoutes.profileSetup,
+      page: () => const ProfileSetupScreen(),
+      binding: ProfileSetupBinding(),
+    ),
+    GetPage(
       name: AppRoutes.privacy,
       page: () => const PrivacyScreen(),
       binding: PrivacyBinding(),
@@ -164,7 +170,49 @@ class AppPages {
   Route<dynamic> resolve(RouteSettings settings) {
     final uri = Uri.tryParse(settings.name ?? '');
     var destination = unknownRoute;
+    dynamic arguments = settings.arguments;
+
     if (uri != null &&
+        uri.scheme == 'trustcue' &&
+        (uri.host == 'auth-callback' ||
+            uri.host == 'profile-setup' ||
+            uri.path == '/auth/profile-setup')) {
+      final fragmentParams = Uri.splitQueryString(uri.fragment);
+      final allParams = <String, String>{
+        ...uri.queryParameters,
+        ...fragmentParams,
+      };
+      final type = allParams['type'];
+      final error = allParams['error_description'] ?? allParams['error'];
+      final targetName =
+          (uri.host == 'profile-setup' ||
+              uri.path == '/auth/profile-setup' ||
+              type == 'profile-setup' ||
+              type == 'setup')
+          ? AppRoutes.profileSetup
+          : (type == 'recovery')
+          ? AppRoutes.authResetPassword
+          : AppRoutes.authLogin;
+
+      if (arguments == null && targetName == AppRoutes.authLogin) {
+        if (error != null && error.isNotEmpty) {
+          arguments = {'bannerMessage': error, 'isError': true};
+        } else {
+          arguments = {
+            'bannerMessage':
+                'Email confirmed! Please sign in with your credentials.',
+            'isError': false,
+          };
+        }
+      }
+
+      for (final page in pages) {
+        if (page.name == targetName) {
+          destination = page;
+          break;
+        }
+      }
+    } else if (uri != null &&
         !uri.hasScheme &&
         !uri.hasAuthority &&
         !uri.hasFragment) {
@@ -176,10 +224,7 @@ class AppPages {
       }
     }
     return GetPageRoute<dynamic>(
-      settings: RouteSettings(
-        name: destination.name,
-        arguments: settings.arguments,
-      ),
+      settings: RouteSettings(name: destination.name, arguments: arguments),
       page: destination.page,
       binding: destination.binding,
       transitionDuration: Get.defaultTransitionDuration,

@@ -261,14 +261,15 @@ Phase 6 (Input Intake & Boundary Verification, Modules 52–58) is formally veri
 |---|---|---|---|---|---|
 | **Module 59** | Supabase Production Schema & Security Audit | Supabase Cloud (`yzqkmoqq...`) & FastAPI (`Render`) | PostgREST OpenAPI audit (3 tables, 5 RPCs, 100% match); Anonymous HTTP 401 denial | **PASS / VERIFIED** | PostgREST proves interface existence, not internal SQL logic; 401 proves fail-closed anon access, not cross-user RLS; in-memory quota reset provisional pending Modules 63–64 |
 | **Module 60** | Live Account Registration & Email Confirmation Flow | Vivo V2207 (`10AC9R1ABF0013A`) & Supabase GoTrue | Release APK live registration (`maliktaimoor655+m60@gmail.com`); trigger provisioning; KeyStore persistence across cold restart | **PASS / VERIFIED** | 15 device artifacts in `docs/evidence/module_60/`; 66/66 auth tests passed; empty identities list enumeration defense verified |
+| **Module 61** | Authentication Callback Repair, Password Recovery & Secure Account Continuation | Vivo V2207 (`10AC9R1ABF0013A`) & Supabase GoTrue | Deep link routing repair eliminating ACTION_VIEW share dialog; live reset link dispatch; ResetPasswordScreen & in-app Change Password dialog; ProfileSetupScreen for new accounts; incoming share regression intact | **PASS / VERIFIED** | 16 device artifacts in `docs/evidence/module_61/`; 81/81 auth tests passed (1,106/1,106 full suite); Kotlin unit tests 100% green; zero secrets exposed |
 
 ---
 
 ## 8. Authoritative Acceptance Sign-Off
 
-This Completion Register confirms that TrustCue's **Phase 6** is fully verified and signed off across unit boundaries and connected physical hardware (`Vivo V2207`), and **Phase 7** has completed Modules 59 and 60.
+This Completion Register confirms that TrustCue's **Phase 6** is fully verified and signed off across unit boundaries and connected physical hardware (`Vivo V2207`), and **Phase 7** has completed Modules 59, 60, and 61.
 
-- **Completed Milestones:** Module 59 (Supabase Production Schema Verification) & Module 60 (Live Account Registration & Email Confirmation Flow)
-- **Next Assigned Milestone:** Module 61 (Live Password Reset & Recovery Flow)
+- **Completed Milestones:** Module 59 (Supabase Production Schema Verification), Module 60 (Live Account Registration & Email Confirmation Flow), and Module 61 (Authentication Callback Repair, Password Recovery & Secure Account Continuation)
+- **Next Assigned Milestone:** Module 62 (Profile Editing & Avatar Implementation)
 - **Authoritative Date:** November 2, 2026
 - **Prepared for owner review by:** Muhammad Taimoor Ajmal (Lead Developer / Student)

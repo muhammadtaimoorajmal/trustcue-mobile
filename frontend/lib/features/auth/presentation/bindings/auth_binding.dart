@@ -4,9 +4,11 @@ import 'package:trustcue_mobile/features/auth/domain/contracts/auth_repository.d
 import 'package:trustcue_mobile/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:trustcue_mobile/features/auth/presentation/controllers/forgot_password_controller.dart';
 import 'package:trustcue_mobile/features/auth/presentation/controllers/login_controller.dart';
+import 'package:trustcue_mobile/features/auth/presentation/controllers/profile_setup_controller.dart';
 import 'package:trustcue_mobile/features/auth/presentation/controllers/register_controller.dart';
 import 'package:trustcue_mobile/features/auth/presentation/controllers/reset_password_controller.dart';
 import 'package:trustcue_mobile/features/auth/presentation/controllers/verify_email_controller.dart';
+import 'package:trustcue_mobile/features/auth/presentation/controllers/auth_callback_coordinator.dart';
 import 'package:trustcue_mobile/features/reports/domain/contracts/local_report_repository.dart';
 
 import 'package:trustcue_mobile/features/auth/data/services/account_api_client.dart';
@@ -85,6 +87,17 @@ class AuthBinding extends Bindings {
         fenix: true,
       );
     }
+
+    if (!Get.isRegistered<AuthCallbackCoordinator>()) {
+      final coordinator = AuthCallbackCoordinator(
+        authRepository: Get.find<AuthRepository>(),
+        authController: Get.isRegistered<AuthController>()
+            ? Get.find<AuthController>()
+            : null,
+      );
+      coordinator.init();
+      Get.put<AuthCallbackCoordinator>(coordinator, permanent: true);
+    }
   }
 }
 
@@ -135,6 +148,16 @@ class ResetPasswordBinding extends Bindings {
     AuthBinding.ensureInitialized();
     Get.lazyPut<ResetPasswordController>(
       () => ResetPasswordController(authRepository: Get.find<AuthRepository>()),
+    );
+  }
+}
+
+class ProfileSetupBinding extends Bindings {
+  @override
+  void dependencies() {
+    AuthBinding.ensureInitialized();
+    Get.lazyPut<ProfileSetupController>(
+      () => ProfileSetupController(authController: Get.find<AuthController>()),
     );
   }
 }

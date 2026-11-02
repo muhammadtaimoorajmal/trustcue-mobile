@@ -18,6 +18,7 @@ abstract class AppRoutes {
   static const authVerifyEmail = '/auth/verify-email';
   static const authForgotPassword = '/auth/forgot-password';
   static const authResetPassword = '/auth/reset-password';
+  static const profileSetup = '/auth/profile-setup';
   static const privacy = '/privacy';
   static const education = '/education';
   static const educationTopic = '/education/topic';
