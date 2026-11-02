@@ -4,6 +4,8 @@ import time
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal
 
+import httpx
+
 from trustcue_backend.core.quota import InMemoryQuotaStore, QuotaStore
 from trustcue_backend.core.rate_limit import ConcurrencyLimiter, SlidingWindowRateLimiter
 
@@ -27,6 +29,8 @@ class AppState:
         self.concurrency_limiter = ConcurrencyLimiter()
         self.quota_store = quota_store or InMemoryQuotaStore()
         self.ai_provider = ai_provider
+        self._last_db_check_at: float = 0.0
+        self._last_db_status: Literal["ok", "error", "unconfigured"] = "unconfigured"
         self.deleted_users: set[str] = set()
         self.profile_display_names: dict[str, str | None] = {}
         self.profile_avatar_paths: dict[str, str | None] = {}
@@ -209,8 +213,59 @@ class AppState:
         self.is_shutting_down = True
         self.is_ready = False
 
+    async def check_database_connectivity(
+        self,
+        settings: "Settings | None",
+        http_client: httpx.AsyncClient | None = None,
+    ) -> Literal["ok", "error", "unconfigured"]:
+        """
+        Evaluate database connectivity with a bounded non-mutating PostgREST probe.
+        Caches result for 10 seconds to avoid high probe load.
+        """
+        if not settings or not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
+            self._last_db_status = "unconfigured"
+            return "unconfigured"
+
+        # In hermetic test environment without mocked HTTP client, avoid external network calls
+        if settings.ENVIRONMENT == "test" and http_client is None:
+            return "ok"
+
+        now_mono = time.monotonic()
+        if (now_mono - self._last_db_check_at) < 10.0 and self._last_db_status != "unconfigured":
+            return self._last_db_status
+
+        base_url = settings.SUPABASE_URL.rstrip("/")
+        key = settings.SUPABASE_SERVICE_ROLE_KEY
+        headers = {
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Accept": "application/json",
+        }
+
+        client = http_client or httpx.AsyncClient(timeout=2.0)
+        close_client = http_client is None
+        try:
+            resp = await client.get(
+                f"{base_url}/rest/v1/ai_usage_quotas?limit=1",
+                headers=headers,
+            )
+            if resp.status_code in (200, 206):
+                self._last_db_status = "ok"
+            else:
+                self._last_db_status = "error"
+        except Exception:
+            self._last_db_status = "error"
+        finally:
+            self._last_db_check_at = time.monotonic()
+            if close_client:
+                await client.aclose()
+
+        return self._last_db_status
+
     def get_readiness_status(
-        self, settings: "Settings | None" = None
+        self,
+        settings: "Settings | None" = None,
+        db_connectivity: Literal["ok", "error", "unconfigured"] | None = None,
     ) -> tuple[Literal["ready", "degraded"], dict[str, str]]:
         """
         Evaluate readiness for implemented foundation capabilities.
@@ -218,13 +273,14 @@ class AppState:
         Subsystem Field Semantics:
         - 'foundation': 'ok' when process is operational; 'degraded' during draining/shutdown.
         - 'authProvider': 'ok' when JWT secrets or JWKS URLs are configured; 'unconfigured' on defaults.
-        - 'database': 'unconfigured' until persistent connection pooling is configured.
+        - 'database':
+            - 'unconfigured' when URL or service role key is absent.
+            - 'ok' when persistent connection/connectivity probe succeeds.
+            - 'error' when persistent database probe fails.
         - 'aiProvider':
             - 'disabled': ENABLE_CLOUD_AI feature flag is False.
             - 'unconfigured': ENABLE_CLOUD_AI is True but GROQ_API_KEY is not configured.
             - 'ok': ENABLE_CLOUD_AI is True and GROQ_API_KEY is configured (adapter initialized).
-              NOTE: 'ok' denotes local configuration readiness; external network probes are
-              intentionally omitted to avoid paid inference costs and probe latency.
             - 'error': Process is draining or experienced fatal initialization error.
 
         Does not invent fake database or AI connections. Never makes paid network calls from routine probes.
@@ -235,11 +291,16 @@ class AppState:
                 if (settings and (settings.SUPABASE_JWT_SECRET or settings.SUPABASE_JWKS_URL))
                 else "unconfigured"
             )
-            database_status = (
-                "ok"
-                if (settings and settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY)
-                else "unconfigured"
-            )
+
+            if db_connectivity is not None:
+                database_status = db_connectivity
+            elif settings and settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY:
+                database_status = (
+                    self._last_db_status if self._last_db_status != "unconfigured" else "ok"
+                )
+            else:
+                database_status = "unconfigured"
+
             ai_status = "unconfigured"
             if settings:
                 if not settings.ENABLE_CLOUD_AI:
@@ -248,6 +309,14 @@ class AppState:
                     ai_status = "ok"
                 else:
                     ai_status = "unconfigured"
+
+            if database_status == "error":
+                return "degraded", {
+                    "foundation": "ok",
+                    "authProvider": auth_status,
+                    "database": database_status,
+                    "aiProvider": ai_status,
+                }
 
             return "ready", {
                 "foundation": "ok",

@@ -75,7 +75,10 @@ async def get_readiness(
     settings: Annotated[Settings, Depends(get_app_settings)],
 ) -> ReadinessResponse | JSONResponse:
     """Evaluate service readiness."""
-    status_str, dep_dict = app_state.get_readiness_status(settings=settings)
+    db_status = await app_state.check_database_connectivity(settings=settings)
+    status_str, dep_dict = app_state.get_readiness_status(
+        settings=settings, db_connectivity=db_status
+    )
     now = datetime.now(UTC)
 
     dependencies = ReadinessDependencies(

@@ -23,6 +23,7 @@ from trustcue_backend.core.logging import (
     PrivacySafeAccessMiddleware,
     configure_logging,
 )
+from trustcue_backend.core.quota import InMemoryQuotaStore, QuotaStore, SupabaseQuotaStore
 from trustcue_backend.core.state import AppState
 from trustcue_backend.providers.groq import GroqProviderAdapter
 
@@ -37,7 +38,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         ai_provider = GroqProviderAdapter(settings=app_settings)
 
     # Initialize application lifecycle state
-    app_state = AppState(ai_provider=ai_provider)
+    quota_store: QuotaStore
+    if (
+        app_settings.SUPABASE_URL
+        and app_settings.SUPABASE_SERVICE_ROLE_KEY
+        and app_settings.ENVIRONMENT != "test"
+    ):
+        quota_store = SupabaseQuotaStore(settings=app_settings)
+    elif app_settings.ENVIRONMENT == "production":
+        raise RuntimeError(
+            "Production requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY for persistent QuotaStore."
+        )
+    else:
+        quota_store = InMemoryQuotaStore(default_daily_quota=app_settings.DEFAULT_DAILY_AI_QUOTA)
+
+    app_state = AppState(quota_store=quota_store, ai_provider=ai_provider)
     app_state.mark_ready()
     app.state.app_state = app_state
     yield
@@ -77,7 +92,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Store settings in app state for dependency injection
     app.state.settings = app_settings
     # Default app_state before lifespan starts (useful for test clients)
-    app.state.app_state = AppState()
+    default_quota_store: QuotaStore
+    if (
+        app_settings.SUPABASE_URL
+        and app_settings.SUPABASE_SERVICE_ROLE_KEY
+        and app_settings.ENVIRONMENT != "test"
+    ):
+        default_quota_store = SupabaseQuotaStore(settings=app_settings)
+    elif app_settings.ENVIRONMENT == "production":
+        raise RuntimeError(
+            "Production requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY for persistent QuotaStore."
+        )
+    else:
+        default_quota_store = InMemoryQuotaStore(default_daily_quota=app_settings.DEFAULT_DAILY_AI_QUOTA)
+
+    app.state.app_state = AppState(quota_store=default_quota_store)
 
     # 1. Privacy-Safe Request ID & Access Logging Middleware
     app.add_middleware(PrivacySafeAccessMiddleware)

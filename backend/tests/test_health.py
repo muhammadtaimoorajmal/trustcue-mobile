@@ -1,7 +1,9 @@
 """Tests for health and readiness probes."""
 
 from datetime import datetime
+from unittest.mock import AsyncMock, patch
 
+import httpx
 from starlette.testclient import TestClient
 
 from trustcue_backend.core.config import Settings
@@ -78,18 +80,37 @@ def test_readiness_probe_with_configured_ai() -> None:
 
 
 def test_readiness_probe_with_configured_database() -> None:
-    """Test /ready reports database as 'ok' when SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are configured."""
+    """Test /ready reports database as 'ok' when SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are configured and healthy."""
     settings = Settings(
         SUPABASE_URL="https://example.supabase.co",
         SUPABASE_SERVICE_ROLE_KEY="test-service-key-long-enough",
     )
     app = create_app(settings=settings)
-    with TestClient(app) as test_client:
-        response = test_client.get("/ready")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "ready"
-        assert data["dependencies"]["database"] == "ok"
+    mock_resp = httpx.Response(status_code=200, json=[{"id": "1"}])
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp):
+        with TestClient(app) as test_client:
+            response = test_client.get("/ready")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "ready"
+            assert data["dependencies"]["database"] == "ok"
+
+
+def test_readiness_probe_with_database_outage() -> None:
+    """Test /ready reports database as 'error' and returns 503 degraded during database outage."""
+    settings = Settings(
+        SUPABASE_URL="https://example.supabase.co",
+        SUPABASE_SERVICE_ROLE_KEY="test-service-key-long-enough",
+    )
+    app = create_app(settings=settings)
+    mock_resp = httpx.Response(status_code=500, text="Internal Server Error")
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp):
+        with TestClient(app) as test_client:
+            response = test_client.get("/ready")
+            assert response.status_code == 503
+            data = response.json()
+            assert data["status"] == "degraded"
+            assert data["dependencies"]["database"] == "error"
 
 
 def test_readiness_probe_draining_degraded_state(default_settings: Settings) -> None:
