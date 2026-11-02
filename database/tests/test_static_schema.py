@@ -28,6 +28,7 @@ class TestDatabaseMigrations(unittest.TestCase):
             "00006_create_quota_reservation.sql",
             "00007_enforce_sync_opt_in.sql",
             "00008_harden_sync_purge_and_allowlist.sql",
+            "00009_create_avatar_storage_and_profile_field.sql",
         ]
         actual_files = sorted([f.name for f in MIGRATIONS_DIR.glob("*.sql")])
         self.assertEqual(actual_files, expected_migrations)
@@ -180,6 +181,23 @@ class TestDatabaseMigrations(unittest.TestCase):
         self.assertIn("tr_validate_synced_report_write", content)
         self.assertIn("FUNCTION public.sync_push_reports", content)
 
+    def test_avatar_storage_and_profile_field_invariants(self):
+        """Validates migration 9 avatar_path constraint and private avatars bucket RLS."""
+        content = (MIGRATIONS_DIR / "00009_create_avatar_storage_and_profile_field.sql").read_text(encoding="utf-8")
+        self.assertIn("avatar_path TEXT", content)
+        self.assertIn("chk_profile_avatar_path_len", content)
+        self.assertIn("char_length(avatar_path) <= 255", content)
+        self.assertIn("'avatars'", content)
+        self.assertIn("2097152", content)
+        self.assertIn("image/jpeg", content)
+        self.assertIn("image/png", content)
+        self.assertIn("image/webp", content)
+        self.assertIn("avatars_select_own", content)
+        self.assertIn("avatars_insert_own", content)
+        self.assertIn("avatars_update_own", content)
+        self.assertIn("avatars_delete_own", content)
+
+
 
 
 class TestSQLRegressionSuites(unittest.TestCase):
@@ -207,6 +225,7 @@ class TestSQLRegressionSuites(unittest.TestCase):
             "06_test_sync_opt_in_rls.sql",
             "07_test_sync_purge_and_allowlist.sql",
             "08_test_concurrent_upload_purge.sql",
+            "09_test_avatar_storage_rls.sql",
         ]
         actual_files = sorted([f.name for f in TESTS_SQL_DIR.glob("*.sql")])
         self.assertEqual(actual_files, expected_tests)

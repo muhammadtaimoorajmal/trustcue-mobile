@@ -108,3 +108,7 @@ jobs:
 
       - name: Run SQL Regression Test 08 - Real Concurrent Upload Purge Race Test
         run: bash database/tests/sql/08_test_concurrent_upload_purge.sh
+
+
+      - name: Run SQL Regression Test 09 - Avatar Storage RLS
+        run: psql -v ON_ERROR_STOP=1 -f database/tests/sql/09_test_avatar_storage_rls.sql
