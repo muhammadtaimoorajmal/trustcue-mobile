@@ -27,9 +27,10 @@ class LocalSensitiveDataDetector {
   /// Verification code pattern: 4 to 8 digits bounded by word boundaries.
   static final RegExp _otpCandidateRegExp = RegExp(r'\b\d{4,8}\b');
 
-  /// Phone number pattern: international prefix or formatted numbers with separators.
+  /// Phone number pattern: international prefix or formatted numbers with separators,
+  /// requiring a non-digit left boundary to prevent slicing into longer digit strings.
   static final RegExp _phoneRegExp = RegExp(
-    r'(?:(?:\+|00)\d{1,3}[\s.-]?)?(?:\(?\d{2,5}\)?[\s.-]?)?\d{3,4}[\s.-]?\d{3,4}\b',
+    r'(?<!\d)(?:(?:\+|00)\d{1,3}[\s.-]?)?(?:\(?\d{2,5}\)?[\s.-]?)?(?:\d{2,4}[\s.-]?){1,4}\d{2,4}\b',
   );
 
   /// Context triggers required within ~35 characters of a candidate verification code.
@@ -49,6 +50,10 @@ class LocalSensitiveDataDetector {
     'passcode',
     'pin code',
     'pin',
+    'کوڈ',
+    'تصدیقی کوڈ',
+    'پن',
+    'او ٹی پی',
   ];
 
   /// Scans the provided [text] and returns non-overlapping sensitive data candidates
@@ -187,8 +192,12 @@ class LocalSensitiveDataDetector {
       final digitsOnly = rawMatch.replaceAll(RegExp(r'\D'), '');
       // Valid phone numbers typically have 7 to 15 digits
       if (digitsOnly.length >= 7 && digitsOnly.length <= 15) {
-        // Exclude common false positives: dates (e.g. 2026-10-11, 11/10/2026), prices
-        if (!_isDateOrPrice(text, start, end, rawMatch)) {
+        // Exclude oversized contiguous sequences (e.g. 16+ digit cards or serials)
+        if (_isContiguousOversizedDigitSequence(text, start, end)) {
+          continue;
+        }
+        // Exclude common false positives: dates, prices, and benign identifiers
+        if (!_isBenignNumericContext(text, start, end, rawMatch)) {
           if (!_splitsSurrogate(text, start) && !_splitsSurrogate(text, end)) {
             final lastFour = digitsOnly.length >= 4
                 ? digitsOnly.substring(digitsOnly.length - 4)
@@ -331,25 +340,79 @@ class LocalSensitiveDataDetector {
     return false;
   }
 
-  /// Heuristically identifies common date formats (e.g. YYYY-MM-DD, DD/MM/YYYY)
-  /// or prices to avoid misclassifying them as phone numbers.
-  static bool _isDateOrPrice(String text, int start, int end, String match) {
+  /// Identifies whether a phone candidate is part of a larger contiguous digit
+  /// sequence (e.g. 16+ digit card number or long serial) that should not be partially sliced.
+  static bool _isContiguousOversizedDigitSequence(
+    String text,
+    int start,
+    int end,
+  ) {
+    int s = start;
+    while (s > 0 && RegExp(r'[\d -]').hasMatch(text[s - 1])) {
+      if (text[s - 1] == '\n') break;
+      s--;
+    }
+    int e = end;
+    while (e < text.length && RegExp(r'[\d -]').hasMatch(text[e])) {
+      if (text[e] == '\n') break;
+      e++;
+    }
+    final fullSpan = text.substring(s, e);
+    final totalDigits = fullSpan.replaceAll(RegExp(r'\D'), '').length;
+    return totalDigits > 15;
+  }
+
+  /// Heuristically identifies dates, prices, or benign business identifiers
+  /// (e.g. Order ID, Invoice #, Serial #) to avoid misclassifying them as phone numbers.
+  static bool _isBenignNumericContext(
+    String text,
+    int start,
+    int end,
+    String match,
+  ) {
     // Check for standard date pattern: e.g. 2026-10-11 or 11/10/2026
     if (RegExp(r'^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}$').hasMatch(match) ||
         RegExp(r'^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}$').hasMatch(match)) {
       return true;
     }
 
+    final prefixStart = math.max(0, start - 25);
+    final prefix = text.substring(prefixStart, start).toLowerCase();
+
+    final suffixEnd = math.min(text.length, end + 15);
+    final suffix = text.substring(end, suffixEnd).toLowerCase();
+
     // Check for currency symbols or words nearby
-    final prefixStart = math.max(0, start - 5);
-    final prefix = text.substring(prefixStart, start).trim();
-    if (prefix.endsWith('\$') ||
-        prefix.endsWith('€') ||
-        prefix.endsWith('£') ||
-        prefix.endsWith('¥') ||
-        prefix.toLowerCase().endsWith('rs') ||
-        prefix.toLowerCase().endsWith('pkr') ||
-        prefix.toLowerCase().endsWith('usd')) {
+    if (prefix.trimRight().endsWith('\$') ||
+        prefix.trimRight().endsWith('€') ||
+        prefix.trimRight().endsWith('£') ||
+        prefix.trimRight().endsWith('¥') ||
+        prefix.trimRight().endsWith('rs') ||
+        prefix.trimRight().endsWith('rs.') ||
+        prefix.trimRight().endsWith('pkr') ||
+        prefix.trimRight().endsWith('usd') ||
+        prefix.trimRight().endsWith('eur') ||
+        prefix.trimRight().endsWith('gbp') ||
+        prefix.trimRight().endsWith('cad') ||
+        prefix.trimRight().endsWith('aud')) {
+      return true;
+    }
+
+    if (suffix.trimLeft().startsWith('pkr') ||
+        suffix.trimLeft().startsWith('usd') ||
+        suffix.trimLeft().startsWith('eur') ||
+        suffix.trimLeft().startsWith('gbp') ||
+        suffix.trimLeft().startsWith('dollars') ||
+        suffix.trimLeft().startsWith('rupees') ||
+        suffix.trimLeft().startsWith('cents')) {
+      return true;
+    }
+
+    // Benign business identifiers: Order ID, Invoice #, Item #, Serial #, Tracking #, Ref #, Ticket #
+    final benignIdentifierPattern = RegExp(
+      r'(?:order|invoice|item|serial|tracking|ref|reference|ticket|po|case|account\s+no|sku)\s*(?:id|no|num|number)?\s*[:#.\s]*$',
+    );
+    if (benignIdentifierPattern.hasMatch(prefix)) {
       return true;
     }
 
@@ -359,7 +422,10 @@ class LocalSensitiveDataDetector {
   static bool _isPartOfFormattedNumber(String text, int start, int end) {
     if (start > 0) {
       final prevChar = text[start - 1];
-      if (prevChar == '-' || prevChar == '.' || prevChar == ')') {
+      if (prevChar == '-' ||
+          prevChar == '.' ||
+          prevChar == ')' ||
+          prevChar == ' ') {
         final prefix = text.substring(math.max(0, start - 6), start - 1);
         if (RegExp(r'\d').hasMatch(prefix)) {
           return true;
@@ -368,8 +434,8 @@ class LocalSensitiveDataDetector {
     }
     if (end < text.length) {
       final nextChar = text[end];
-      if (nextChar == '-' || nextChar == '.') {
-        final suffix = text.substring(end + 1, math.min(text.length, end + 6));
+      if (nextChar == '-' || nextChar == '.' || nextChar == ' ') {
+        final suffix = text.substring(end + 1, math.min(text.length, end + 8));
         if (RegExp(r'\d').hasMatch(suffix)) {
           return true;
         }

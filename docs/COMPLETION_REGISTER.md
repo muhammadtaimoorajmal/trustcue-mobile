@@ -92,7 +92,7 @@ The register below categorizes every functional area of TrustCue, tracing origin
 | **F-05** | **Text Intake, Normalization & Limits** | 14, 16, 57 | `lib/features/input/domain/validation/message_text_validator.dart`, `lib/features/input/presentation/controllers/input_text_controller.dart` | Implemented | 18 boundary tests (runes vs bytes, surrogates, BiDi, Urdu), 1,066 tests passing, Module 57 evidence | Layer 1 (Unit), Layer 3 (Hardware UI) | **PASS / VERIFIED** | 10,000 rune / 40,000 UTF-8 byte boundary, whitespace-only rejection, surrogate-split protection, and Urdu/BiDi preservation verified | Module 57 (Done) |
 | **F-06** | **Screenshot Intake & Image Lifecycle** | 17, 57 | `lib/features/input/presentation/controllers/input_screenshot_controller.dart` | Implemented | Dimension bounds (20MP/10MB), Photo Picker integration, temp file pruning, Module 57 evidence | Layer 1 (Unit), Layer 3 (Hardware UI) | **PASS / VERIFIED** | Modern Android Photo Picker (`ImageSource.gallery`), dimensions/size display, zoom preview, clean discard/removal, and temp pruning verified across 18 journeys on Vivo V2207 | Module 57 (Done) |
 | **F-07** | **On-Device Screenshot OCR (ML Kit Vision)** | 18, 50E.2, 52, 57 | `lib/features/input/data/services/default_ocr_service.dart` | Implemented | ML Kit Latin OCR, all 19 true fixtures verified (18 on hardware in M57, IMG-02 in M50/M52), Module 57 evidence | Layer 1 (Unit), Layer 2 (ML Kit Vision), Layer 3 (Hardware UI) | **PASS / VERIFIED** | On-device ML Kit OCR verified live across all fixtures on Vivo V2207 (~340ms latency), offline execution verified with zero network calls | Module 57 (Done) |
-| **F-08** | **PII Redaction & Sensitive Data Detection** | 19 | `lib/features/analysis/domain/services/sensitive_data_detector.dart` | Implemented | Luhn card validation, OTP/phone/email regex, SHA `9d5e73e` | Layer 1 (Unit), Layer 3 (Hardware UI) | **PASS / PARTIALLY VERIFIED** | 100% regex match in fixtures; Layer 3 PAN and phone masking verified on Vivo V2207; custom manual redaction span UI edge cases pending audit | Module 58 |
+| **F-08** | **PII Redaction & Sensitive Data Detection** | 19, 58 | `lib/features/input/domain/services/local_sensitive_data_detector.dart`, `lib/features/input/presentation/controllers/input_review_controller.dart` | Implemented | 18 boundary tests (Luhn, Pakistan/intl phone, benign counterexamples, Urdu triggers, priority overlap), 3 hardware journeys on Vivo V2207, Module 58 evidence | Layer 1 (Unit), Layer 3 (Hardware UI) | **PASS / VERIFIED** | 100% regex match, 16+ digit slicing protection, descending offset multi-redaction, wire payload PII exclusion, and consent decline verified | Module 58 (Done) |
 | **F-09** | **URL Parsing, IP Detection & Scheme Guard** | 20, 20A, 50E.1, 56 | `lib/features/input/domain/services/url_inspection_service.dart`, `lib/features/input/presentation/controllers/input_link_controller.dart` | Implemented | All 57 Links.txt fixtures + 16 boundary suites verified (1,048 tests passing), 8 physical UI journeys on Vivo V2207, offline air-gap verified, SHA `3409b8b` | Layer 1 (Unit), Layer 3 (Hardware UI) | **PASS / VERIFIED** | URL shortener detection, domain fronting heuristics, hosting platform subdomains, numeric IP/port inspection, scheme quarantine, and zero auto-open verified | Module 56 (Done) |
 | **F-10** | **On-Device Barcode & QR Code Scanning** | 20, 50E.3, 53 | `lib/features/input/data/services/default_qr_decoder_service.dart` | Implemented | All 9 real fixtures verified on Vivo V2207 (4 URLs, 1 text, 4 safe rejections), SHA `94c4213` | Layer 1 (Unit), Layer 2 (ML Kit Vision), Layer 3 (Hardware UI) | **PASS / PARTIALLY VERIFIED** | Physical gallery image QR decoding, scheme isolation, and replace flow verified on Vivo V2207; continuous live camera scanning intentionally omitted per privacy guidelines | Module 53 (Done) |
 | **F-11** | **Android Incoming-Share Intent Intake** | 21, 50E.1, 57 | `android/app/src/main/AndroidManifest.xml`, `android/app/src/main/kotlin/.../MainActivity.kt`, `lib/features/incoming_share/` | Implemented | Single text ACTION_SEND verified, multiple ACTION_SEND_MULTIPLE rejected with guidance, camera unincluded by design, Module 57 evidence | Layer 1 (Unit), Layer 3 (Hardware UI) | **PASS / VERIFIED** | Single text share preview and draft population verified; multiple share rejected with explicit guidance; continuous camera capture omitted per privacy rules | Module 57 (Done) |
@@ -157,7 +157,7 @@ flowchart TD
 ### Phase 8: History, Export, Privacy Center & Data Management (Modules 69–75)
 - **Module 69:** Local SQLite Persistence & Stress Testing (Perform 1,000+ report batch insertion, verify index query performance under 25ms, and test schema migration durability in `trustcue_local.db`).
 - **Module 70:** History Full-Text Search, Filtering & Multi-Select Operations (Verify real-time search across categories, dates, and findings; test multi-report deletion mutex).
-- **Module 71:** Privacy-Reviewed Export Multi-App Receiving Verification (Generate `.txt` and `.pdf` reports and test opening in receiving Android apps: Gmail, Google Drive, WhatsApp, and Files on the Vivo V2207).
+- **Module 71:** Scam Rule Precision & Privacy-Reviewed Export Verification (Harden lexical and structural scam rules to address heuristic gaps for `IMG-03`, `IMG-07`, and `IMG-10`; generate `.txt` and `.pdf` reports and test opening in receiving Android apps: Gmail, Google Drive, WhatsApp, and Files on the Vivo V2207).
 - **Module 72:** PDF Generation, Unicode Typography & Rendering Audit (Audit PDF document styling, ensure proper font embedding for non-ASCII characters, and verify sanitized excerpt layout).
 - **Module 73:** Privacy Center Retention Automation (Verify automated background pruning for 30, 60, and 90-day retention policies; verify instant cache purge and guest data wiping).
 - **Module 74:** Permanent Account Deletion End-to-End Cascade Verification (Trigger in-app account deletion via RPC `delete_user_account`; confirm cascading PostgreSQL purge; test web mailto fallback).
@@ -169,7 +169,7 @@ flowchart TD
 - **Module 78:** High-Contrast Theme Polish & Touch Target Audit (Audit all interactive widgets for minimum 48x48 dp touch boundaries and WCAG 2.1 AA 4.5:1 contrast ratios).
 - **Module 79:** Urdu Localization & Bidirectional Layout Fidelity (Switch application language to Urdu; verify RTL layout mirroring, Urdu typography, and proper excerpt LTR isolation).
 - **Module 80:** Scam Education Center Interactive Guide Expansion (Expand educational topics covering modern scam vectors: impersonation, advance-fee, QR code phishing, and job offer fraud).
-- **Module 81:** Responsive Layout Verification across Form Factors (Verify UI layout on tablet viewports, split-screen multi-window mode, and landscape orientation).
+- **Module 81:** Responsive Layout & Native Share Verification (Verify UI layout on tablet viewports, split-screen multi-window mode, and landscape orientation; complete hardware verification of single-image `ACTION_SEND` intent intake).
 - **Module 82:** Usability & Accessibility Acceptance Closeout (Compile accessibility audit matrix; sign off Phase 9).
 
 ### Phase 10: Security, Penetration Testing & Abuse Resistance (Modules 83–88)
@@ -238,11 +238,27 @@ During the Module 51 audit, eight tracked modifications and one untracked direct
 
 ---
 
-## 6. Authoritative Acceptance Sign-Off
+## 6. Phase 6 Closeout & Multi-Module Acceptance Sign-Off
 
-This Completion Register confirms that TrustCue's baseline is fully verified, operational on physical hardware, and ready for systematic progression into **Phase 6 (Module 52)**.
+Phase 6 (Input Intake & Boundary Verification, Modules 52–58) is formally verified and signed off across unit boundaries and connected physical hardware (`Vivo V2207`):
 
-- **Current Verified Milestone:** Module 57 (Edge-Case Text Intake & Native Hardware Intake Verification)
-- **Next Assigned Milestone:** Module 58 (PII Redaction Pipeline Hardening & Phase 6 Sign-Off)
-- **Authoritative Date:** November 1, 2026  
+| Capability Area | Verification Artifacts | Empirical Hardware Provenance | Status | Remaining Gap & Ceiling Assignment |
+|---|---|---|---|---|
+| **Screenshot Intake & OCR Extraction** | Module 52 & 57 evidence dossiers | All 19 true fixtures evaluated on Vivo V2207 | **PASS / VERIFIED** | `IMG-03`, `IMG-07`, `IMG-10` heuristic gaps assigned to **Module 71** |
+| **Barcode & QR Decoding** | Module 53 evidence dossier | 9 genuine fixtures evaluated on Vivo V2207 | **PASS / VERIFIED** | Viewfinder live camera omitted by design |
+| **Link & Scheme Inspection** | Module 56 evidence dossier | 57-fixture corpus + 8 hardware UI cases | **PASS / VERIFIED** | Structural rules active; non-structural shorteners offline limitation documented |
+| **Edge-Case Text Intake** | Module 57 evidence dossier | 18 boundary tests; single-text & multiple-intent sharing on hardware | **PASS / VERIFIED** | Single-image share intent hardware dispatch assigned to **Module 81** |
+| **PII Redaction Pipeline** | Module 58 evidence dossier | 18 boundary tests; 3 hardware journeys (A, B, C) on Vivo V2207 | **PASS / VERIFIED** | Freeform custom span editor |
+| **Offline Air-Gap Boundary** | Modules 56, 57, 58 | Complete journeys executed with cellular & Wi-Fi severed (`svc wifi/data disable`) | **PASS / VERIFIED** | Zero data leaves device during local operations |
+
+---
+
+## 7. Authoritative Acceptance Sign-Off
+
+This Completion Register confirms that TrustCue's **Phase 6** is fully verified, operational on physical hardware, and signed off. The project advances to **Phase 7: Live Cloud Services & Supabase Auth Sync**.
+
+- **Completed & Signed-Off Phase:** Phase 6 (Input Intake & Boundary Verification, Modules 52–58)
+- **Current Verified Milestone:** Module 58 (PII Redaction Pipeline Hardening and Phase 6 Closeout)
+- **Next Assigned Milestone:** Module 59 (User Authentication UI & State Hardening)
+- **Authoritative Date:** November 2, 2026
 - **Prepared for owner review by:** Muhammad Taimoor Ajmal (Lead Developer / Student)

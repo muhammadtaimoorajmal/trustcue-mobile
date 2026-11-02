@@ -2069,3 +2069,47 @@ eturn,
   - Updated `docs/MODULE_LOG.md`
   - Updated `docs/FIXTURE_ACCEPTANCE_MATRIX_MODULE_50.md`
 - **Status:** Complete on `frontend`. Four branches strictly preserved; `main` untouched at `a785db8`. Prepared for owner review. Ready for Module 58 (PII Redaction Pipeline Hardening & Phase 6 Sign-Off).
+
+## Module 58: PII Redaction Pipeline Hardening and Phase 6 Closeout
+- **Scope & Objectives:**
+  - Verify and harden the on-device sensitive data detection and redaction contract (`LocalSensitiveDataDetector`, `InputReviewController`):
+    - Synthetic payment cards: valid/invalid Luhn, spaces/hyphens/continuous, oversized contiguous digit sequence boundary protection (`_isContiguousOversizedDigitSequence`) preventing 16+ digit slicing into phone numbers.
+    - Phone numbers: Pakistan formats (`+92`, `03xx`, `051 UAN`), international formats (`+1`, `+44`, `00`), lookbehind boundary `(?<!\d)` enforcement.
+    - Benign numeric counterexamples: calendar dates (`YYYY-MM-DD`, `DD/MM/YYYY`), currency amounts (`$`, `€`, `£`, `Rs`, `PKR`, `USD`), business identifiers (`Order ID`, `Invoice #`, `Tracking #`, `Ticket #`, `Serial #`, `Ref #`, `PO #`, `Case #`).
+    - Contextual verification codes (OTP): numeric lengths (4–8 digits), context trigger requirements, space delimiters separating area codes from OTPs, and Urdu triggers (`'کوڈ'`, `'تصدیقی کوڈ'`, `'پن'`, `'او ٹی پی'`).
+    - Overlap resolution & priority ordering: Card (4) > OTP (3) > Phone (2) > Email (1).
+    - Multi-span application: Descending offset sorting (`b.start.compareTo(a.start)`) to prevent index drift and text corruption.
+    - Unicode, emojis, combining marks, and Urdu text preservation with surrogate safety.
+    - Stale suggestion invalidation: Immediate invalidation of candidate lists, selections, preview text, and confirmation when text is modified.
+    - Empty text and invalid selection boundaries caught by `MessageTextValidator`.
+  - Verify that downstream destinations receive the correct data:
+    - Local heuristic analysis evaluates only the confirmed redacted snapshot.
+    - Cloud AI consent dialog displays the redacted preview and exact character count.
+    - Wire serialization payload strictly excludes removed sensitive values.
+    - Consent cancellation ("Keep on-device only") terminates request transmission and preserves local results.
+  - Execute 3 representative interactive journeys on physical hardware (Vivo V2207, Android 14 API 34):
+    - Journey A: Multi-PII detection, selective redaction, confirmation, and local analysis.
+    - Journey B: Text modification after confirmation, stale suggestion and confirmation invalidation, re-detection, and re-confirmation.
+    - Journey C: "Ask Cloud AI" on redacted results, inspection of 54-char preview in `UploadConsentDialog`, cancellation via "Keep on-device only", verification of local results preservation.
+  - Phase 6 Evidence Corrections & Tracking:
+    - Track OCR heuristic gaps (`IMG-03`, `IMG-07`, `IMG-10`) as open rule-precision items assigned to Module 71.
+    - Clarify `LinkStructuralRule` role in message analysis.
+    - Track single-image share hardware proof to Module 81.
+    - Preserve quota-reset hypothesis as unresolved pending Modules 63–64.
+  - Phase 6 Closeout: Sign off Phase 6 in `COMPLETION_REGISTER.md` and transition to Phase 7.
+- **Branch:** `frontend`
+- **Checks Performed:**
+  - `dart format --output=none --set-exit-if-changed lib test`: Formatted 330 files (0 changed), 100% compliant.
+  - `flutter analyze --no-pub`: 0 issues found across all files.
+  - `flutter test`: 1,084/1,084 tests passed (1,066 existing baseline + 18 new Module 58 tests).
+  - Production Android release build (`frontend/scripts/build_release.ps1 -Install`): SHA-256 `01343BD9EC9EABB00D0070703848EE85E7C6808C45C9F5E336F7444735559508` (112,239,717 bytes / 107.04 MB).
+  - Streamed installation to Vivo V2207 succeeded.
+  - 3 physical device UI journeys verified on Vivo V2207 (`screen_phone_m58_journey_a_*.png`, `screen_phone_m58_journey_b_*.png`, `screen_phone_m58_journey_c_*.png`, and corresponding XML dumps).
+- **Deliverables:**
+  - `frontend/lib/features/input/domain/services/local_sensitive_data_detector.dart`
+  - `frontend/test/features/input/domain/services/pii_redaction_pipeline_hardening_test.dart`
+  - `docs/evidence/module_58/PII_REDACTION_AND_PHASE_6_CLOSEOUT_EVIDENCE.md`
+  - 18 hardware screenshots and UI hierarchy dumps in `docs/evidence/module_58/`
+  - Updated `docs/COMPLETION_REGISTER.md`
+  - Updated `docs/MODULE_LOG.md`
+- **Status:** Complete on `frontend`. Four branches strictly preserved; `main` untouched at `a785db8`. Phase 6 formally signed off. Ready for Phase 7 (Module 59: User Authentication UI & State Hardening).
