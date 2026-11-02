@@ -1,6 +1,7 @@
 """Protected AI orchestration service coordinating provider execution, validation, and quota accounting."""
 
 import logging
+import time
 
 from trustcue_backend.api.schemas.analysis import (
     AnalysisAiRequest,
@@ -9,6 +10,7 @@ from trustcue_backend.api.schemas.analysis import (
 from trustcue_backend.core.auth import AuthenticatedUser
 from trustcue_backend.core.config import Settings
 from trustcue_backend.core.quota import QuotaStore
+from trustcue_backend.core.telemetry import record_stage_duration
 from trustcue_backend.providers.base import AiProvider
 from trustcue_backend.providers.exceptions import (
     ProviderConfigurationError,
@@ -41,6 +43,7 @@ class ProtectedAiService:
        - Inference completed -> permanently commit quota; commit failure must NEVER refund.
        - Validation or grounding failure after inference -> retain quota (tokens were consumed;
          prevents adversarial free inference loops).
+    4. Measures monotonic durations for each discrete operational stage via telemetry.
     """
 
     def __init__(
@@ -89,12 +92,45 @@ class ProtectedAiService:
             request_id=request_id,
         )
 
-        # 2. Execute upstream provider inference
+        # 2. Mark reservation as dispatched prior to external network call
+        if reservation_id:
+            t_disp = time.perf_counter()
+            try:
+                disp_ok = await self.quota_store.dispatch_quota(user_id, reservation_id)
+                disp_ms = round((time.perf_counter() - t_disp) * 1000, 2)
+                record_stage_duration(
+                    stage="quota_dispatch",
+                    duration_ms=disp_ms,
+                    outcome="success" if disp_ok else "database_error",
+                )
+            except Exception as disp_err:
+                disp_ms = round((time.perf_counter() - t_disp) * 1000, 2)
+                record_stage_duration(
+                    stage="quota_dispatch",
+                    duration_ms=disp_ms,
+                    outcome="database_error",
+                )
+                logger.warning("Failed to dispatch quota reservation %s: %s", reservation_id, disp_err)
+
+        # 3. Execute upstream provider inference
+        t_infer = time.perf_counter()
         try:
             result = await self.provider.analyze(provider_request)
+            infer_ms = round((time.perf_counter() - t_infer) * 1000, 2)
+            record_stage_duration(
+                stage="provider_inference",
+                duration_ms=infer_ms,
+                outcome="success",
+            )
         except ProviderTimeoutError as exc:
+            infer_ms = round((time.perf_counter() - t_infer) * 1000, 2)
             if exc.is_connect_timeout:
                 # Connection was not established; safe to refund quota
+                record_stage_duration(
+                    stage="provider_inference",
+                    duration_ms=infer_ms,
+                    outcome="provider_timeout_connect",
+                )
                 if reservation_id:
                     try:
                         await self.quota_store.release_quota(user_id, reservation_id)
@@ -108,6 +144,11 @@ class ProtectedAiService:
             else:
                 # Ambiguous read timeout: provider may have consumed inference resources.
                 # Per documented accounting policy, ambiguous read timeouts are NOT refunded.
+                record_stage_duration(
+                    stage="provider_inference",
+                    duration_ms=infer_ms,
+                    outcome="provider_timeout_read",
+                )
                 logger.info(
                     "Retained quota reservation %s on ambiguous read timeout for user %s",
                     reservation_id,
@@ -118,6 +159,12 @@ class ProtectedAiService:
         except OutputValidationError as exc:
             # The provider completed inference, but generated output failed schema parsing.
             # Upstream compute was expended, so quota remains committed.
+            infer_ms = round((time.perf_counter() - t_infer) * 1000, 2)
+            record_stage_duration(
+                stage="provider_inference",
+                duration_ms=infer_ms,
+                outcome="malformed_output",
+            )
             if reservation_id:
                 try:
                     await self.quota_store.commit_quota(user_id, reservation_id)
@@ -137,6 +184,12 @@ class ProtectedAiService:
         except Exception as exc:
             # Deterministic upstream failures (e.g. 401 auth, 429 rate limit, 503 unavailable, network drop):
             # Safe to release quota reservation.
+            infer_ms = round((time.perf_counter() - t_infer) * 1000, 2)
+            record_stage_duration(
+                stage="provider_inference",
+                duration_ms=infer_ms,
+                outcome="provider_error",
+            )
             if reservation_id:
                 try:
                     await self.quota_store.release_quota(user_id, reservation_id)
@@ -150,11 +203,18 @@ class ProtectedAiService:
                     logger.warning("Failed to release quota after provider failure: %s", rel_err)
             raise
 
-        # 3. Provider inference completed successfully: compute was expended!
+        # 4. Provider inference completed successfully: compute was expended!
         # Settle quota reservation permanently. Commit failure must NEVER trigger quota refund.
         if reservation_id:
+            t_settle = time.perf_counter()
             try:
                 commit_ok = await self.quota_store.commit_quota(user_id, reservation_id)
+                settle_ms = round((time.perf_counter() - t_settle) * 1000, 2)
+                record_stage_duration(
+                    stage="quota_settle",
+                    duration_ms=settle_ms,
+                    outcome="success" if commit_ok else "database_error",
+                )
                 if not commit_ok:
                     logger.warning(
                         "Quota reservation %s commit returned False for user %s (already settled or missing)",
@@ -162,6 +222,12 @@ class ProtectedAiService:
                         user_id,
                     )
             except Exception as commit_err:
+                settle_ms = round((time.perf_counter() - t_settle) * 1000, 2)
+                record_stage_duration(
+                    stage="quota_settle",
+                    duration_ms=settle_ms,
+                    outcome="database_error",
+                )
                 logger.error(
                     "Quota commit failed for reservation %s for user %s: %s",
                     reservation_id,
@@ -169,7 +235,8 @@ class ProtectedAiService:
                     commit_err,
                 )
 
-        # 4. Now ground the validated raw output against the exact submitted text
+        # 5. Now ground the validated raw output against the exact submitted text
+        t_ground = time.perf_counter()
         try:
             validated_output = ValidatedRawOutput(
                 factual_summary=result.factual_summary,
@@ -185,10 +252,22 @@ class ProtectedAiService:
                 provider=result.provider,
                 model=result.model,
             )
-
+            ground_ms = round((time.perf_counter() - t_ground) * 1000, 2)
+            record_stage_duration(
+                stage="grounding",
+                duration_ms=ground_ms,
+                outcome="success",
+            )
             return grounded_response
 
         except (OutputValidationError, EvidenceGroundingError) as exc:
+            ground_ms = round((time.perf_counter() - t_ground) * 1000, 2)
+            outcome = "grounding_failed" if isinstance(exc, EvidenceGroundingError) else "malformed_output"
+            record_stage_duration(
+                stage="grounding",
+                duration_ms=ground_ms,
+                outcome=outcome,
+            )
             # Per documented accounting policy: provider inference was already executed,
             # so quota remains committed to prevent free inference abuse loops.
             logger.warning(

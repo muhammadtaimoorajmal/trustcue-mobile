@@ -1,6 +1,7 @@
 """Protected server-assisted AI scam-indicator analysis endpoints."""
 
 import logging
+import time
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
@@ -27,6 +28,10 @@ from trustcue_backend.core.rate_limit import (
     ConcurrencyLimiter,
     RateLimitExceeded,
     SlidingWindowRateLimiter,
+)
+from trustcue_backend.core.telemetry import (
+    get_current_correlation_id,
+    record_stage_duration,
 )
 from trustcue_backend.providers.service import ProtectedAiService
 
@@ -151,12 +156,29 @@ async def analyze_text_with_ai(
 
     # 4. Concurrency limit (max in-flight operations per user)
     # Acquired BEFORE reserving quota to avoid burning allowance on rejected concurrent requests
-    request_id = str(uuid.uuid4())
+    request_id = get_current_correlation_id() or str(uuid.uuid4())
     async with concurrency_limiter.acquire(user_key):
         # 5. Atomic daily quota reservation
-        allowed, remaining, reservation_id = await quota_store.reserve_quota(
-            str(current_user.user_id)
-        )
+        t_res = time.perf_counter()
+        try:
+            allowed, remaining, reservation_id = await quota_store.reserve_quota(
+                str(current_user.user_id)
+            )
+            res_ms = round((time.perf_counter() - t_res) * 1000, 2)
+            record_stage_duration(
+                stage="quota_reserve",
+                duration_ms=res_ms,
+                outcome="success" if allowed else "quota_exhausted",
+            )
+        except Exception:
+            res_ms = round((time.perf_counter() - t_res) * 1000, 2)
+            record_stage_duration(
+                stage="quota_reserve",
+                duration_ms=res_ms,
+                outcome="database_error",
+            )
+            raise
+
         if not allowed:
             raise RateLimitExceeded(
                 code="daily_quota_exceeded",

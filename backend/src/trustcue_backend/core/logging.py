@@ -12,6 +12,13 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Match
 
+from trustcue_backend.core.telemetry import (
+    CORRELATION_ID_PATTERN,
+    OutcomeCategory,
+    current_correlation_id,
+    record_stage_duration,
+)
+
 logger = logging.getLogger("trustcue.access")
 
 
@@ -27,6 +34,11 @@ class StructuredJsonFormatter(logging.Formatter):
         }
         if hasattr(record, "request_id"):
             log_entry["request_id"] = record.request_id
+        if hasattr(record, "correlation_id"):
+            log_entry["correlation_id"] = record.correlation_id
+        elif current_correlation_id.get():
+            log_entry["correlation_id"] = current_correlation_id.get()
+
         if record.exc_info:
             log_entry["exception"] = self.formatException(record.exc_info)
         return json.dumps(log_entry)
@@ -77,16 +89,23 @@ def extract_route_template(request: Request) -> str:
 
 class PrivacySafeAccessMiddleware(BaseHTTPMiddleware):
     """
-    Middleware that assigns a random server-generated request ID and records
-    minimal, content-free operational telemetry.
+    Middleware that validates or assigns a server-controlled correlation ID and records
+    minimal, content-free operational telemetry using monotonic clock.
     """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start_time = time.perf_counter()
 
-        # Always generate a fresh, server-controlled random UUID4
-        request_id = str(uuid.uuid4())
-        request.state.request_id = request_id
+        # Validate incoming correlation ID or generate a fresh server-controlled UUID4
+        incoming_id = request.headers.get("X-Correlation-ID") or request.headers.get("X-Request-ID")
+        if incoming_id and CORRELATION_ID_PATTERN.match(incoming_id.strip()):
+            correlation_id = incoming_id.strip()
+        else:
+            correlation_id = str(uuid.uuid4())
+
+        token = current_correlation_id.set(correlation_id)
+        request.state.correlation_id = correlation_id
+        request.state.request_id = correlation_id
 
         response: Response | None = None
         status_code = 500
@@ -98,6 +117,26 @@ class PrivacySafeAccessMiddleware(BaseHTTPMiddleware):
             duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
             path_template = extract_route_template(request)
 
+            # Map status code to bounded outcome category
+            outcome: OutcomeCategory
+            if status_code < 400:
+                outcome = "success"
+            elif status_code in (401, 403):
+                outcome = "auth_error"
+            elif status_code == 429:
+                outcome = "rate_limited"
+            elif 400 <= status_code < 500:
+                outcome = "client_error"
+            else:
+                outcome = "internal_error"
+
+            record_stage_duration(
+                stage="request_total",
+                duration_ms=duration_ms,
+                outcome=outcome,
+                extra_log_fields={"status_code": status_code},
+            )
+
             # Minimal operational logging: strictly NO body, queries, tokens, or content hashes
             logger.info(
                 "Request processed: method=%s path_template=%s status=%d duration_ms=%.2f",
@@ -105,8 +144,13 @@ class PrivacySafeAccessMiddleware(BaseHTTPMiddleware):
                 path_template,
                 status_code,
                 duration_ms,
-                extra={"request_id": request_id},
+                extra={
+                    "request_id": correlation_id,
+                    "correlation_id": correlation_id,
+                },
             )
+            current_correlation_id.reset(token)
 
-        response.headers["X-Request-ID"] = request_id
+        response.headers["X-Request-ID"] = correlation_id
+        response.headers["X-Correlation-ID"] = correlation_id
         return response

@@ -11,6 +11,7 @@ import httpx
 
 from trustcue_backend.core.errors import TrustCueError
 from trustcue_backend.core.rate_limit import RateLimitExceeded
+from trustcue_backend.core.telemetry import record_event
 
 if TYPE_CHECKING:
     from trustcue_backend.core.config import Settings
@@ -36,6 +37,11 @@ class QuotaStore(ABC):
 
         Returns (success: bool, remaining_quota: int, reservation_id: str | None).
         """
+        pass
+
+    @abstractmethod
+    async def dispatch_quota(self, user_id: str, reservation_id: str) -> bool:
+        """Mark a reserved quota slot as in-flight before external provider invocation."""
         pass
 
     @abstractmethod
@@ -87,6 +93,8 @@ class InMemoryQuotaStore(QuotaStore):
         self._usage: dict[tuple[str, str], int] = {}
         # Map: reservation_id -> (user_id, "YYYY-MM-DD")
         self._active_reservations: dict[str, tuple[str, str]] = {}
+        # Set of reservation IDs marked as dispatched
+        self._dispatched_reservations: set[str] = set()
         self._lock = asyncio.Lock()
 
     @staticmethod
@@ -117,8 +125,16 @@ class InMemoryQuotaStore(QuotaStore):
             remaining = self.default_daily_quota - self._usage[key]
             return True, remaining, res_id
 
+    async def dispatch_quota(self, user_id: str, reservation_id: str) -> bool:
+        async with self._lock:
+            if reservation_id in self._active_reservations:
+                self._dispatched_reservations.add(reservation_id)
+                return True
+            return False
+
     async def release_quota(self, user_id: str, reservation_id: str) -> bool:
         async with self._lock:
+            self._dispatched_reservations.discard(reservation_id)
             key = self._active_reservations.pop(reservation_id, None)
             if key and key in self._usage:
                 self._usage[key] = max(0, self._usage[key] - 1)
@@ -127,6 +143,7 @@ class InMemoryQuotaStore(QuotaStore):
 
     async def commit_quota(self, user_id: str, reservation_id: str) -> bool:
         async with self._lock:
+            self._dispatched_reservations.discard(reservation_id)
             key = self._active_reservations.pop(reservation_id, None)
             return key is not None
 
@@ -154,17 +171,19 @@ class SupabaseQuotaStore(QuotaStore):
     7. release_quota refunds against the original reservation date (in v2) or today's count (in v1 fallback).
     8. Fails closed: database errors raise TrustCueError (503), preventing unmetered inference.
     9. Never stores prompts, text excerpts, or tokens in reservation records.
+    10. Prevents silent v2 -> v1 downgrade: operating mode is preserved, RPC returns are validated truthfully.
     """
 
     def __init__(
         self,
         settings: "Settings",
         http_client: httpx.AsyncClient | None = None,
+        default_daily_quota: int = 15,
     ) -> None:
         self.settings = settings
-        self.default_daily_quota = settings.DEFAULT_DAILY_AI_QUOTA
+        self.default_daily_quota = getattr(settings, "DEFAULT_DAILY_AI_QUOTA", default_daily_quota)
         self._http_client = http_client
-        self.schema_version: Literal["v1", "v2", "unknown"] = "unknown"
+        self.schema_version: Literal["unknown", "v1", "v2"] = "unknown"
         self.is_durable: bool = False
 
         if not self.settings.SUPABASE_URL or not self.settings.SUPABASE_SERVICE_ROLE_KEY:
@@ -175,23 +194,25 @@ class SupabaseQuotaStore(QuotaStore):
             )
 
     def _get_headers(self) -> dict[str, str]:
-        key = self.settings.SUPABASE_SERVICE_ROLE_KEY or ""
+        service_role_key = self.settings.SUPABASE_SERVICE_ROLE_KEY or ""
         return {
-            "apikey": key,
-            "Authorization": f"Bearer {key}",
+            "apikey": service_role_key,
+            "Authorization": f"Bearer {service_role_key}",
             "Content-Type": "application/json",
-            "Accept": "application/json",
+            "Prefer": "return=representation",
         }
 
     async def reserve_quota(
         self, user_id: str, reservation_id: str | None = None
     ) -> tuple[bool, int, str | None]:
         """
-        Attempt to reserve 1 quota unit for the given user using atomic row-level reservation.
+        Atomically reserve a daily AI request slot in Supabase via PostgREST.
+        Uses durable reservation identity (reserve_ai_quota_v2) when available;
+        falls back to aggregate counter (reserve_ai_quota) if v2 RPC is absent.
         """
-        res_id = reservation_id or str(uuid.uuid4())
         base_url = (self.settings.SUPABASE_URL or "").rstrip("/")
         client = self._http_client or httpx.AsyncClient(timeout=5.0)
+        res_id = reservation_id or str(uuid.uuid4())
         close_client = self._http_client is None
 
         try:
@@ -216,12 +237,18 @@ class SupabaseQuotaStore(QuotaStore):
                     allowed = bool(r.get("allowed", False))
                     remaining = int(r.get("requests_remaining", 0))
                     confirmed_id = str(r.get("reservation_id") or res_id)
+                    record_event(
+                        "quota_reserved",
+                        "success" if allowed else "quota_exhausted",
+                        {"quota_mode": "v2"},
+                    )
                     return (
                         allowed,
                         remaining,
                         confirmed_id if allowed else None,
                     )
                 logger.error("reserve_ai_quota_v2 returned empty rowset: %s", rows)
+                record_event("quota_reserved", "database_error", {"quota_mode": "v2"})
                 raise TrustCueError(
                     code="database_error",
                     message="Malformed quota reservation response from database.",
@@ -252,12 +279,18 @@ class SupabaseQuotaStore(QuotaStore):
                         allowed = bool(r.get("allowed", False))
                         remaining = int(r.get("requests_remaining", 0))
                         legacy_id = f"v1-legacy-{res_id}" if allowed else None
+                        record_event(
+                            "quota_reserved",
+                            "success" if allowed else "quota_exhausted",
+                            {"quota_mode": "v1"},
+                        )
                         return (
                             allowed,
                             remaining,
                             legacy_id,
                         )
                     logger.error("reserve_ai_quota fallback returned empty rowset: %s", rows)
+                    record_event("quota_reserved", "database_error", {"quota_mode": "v1"})
                     raise TrustCueError(
                         code="database_error",
                         message="Malformed quota reservation response from database.",
@@ -269,6 +302,7 @@ class SupabaseQuotaStore(QuotaStore):
                     v1_resp.status_code,
                     v1_resp.text,
                 )
+                record_event("quota_reserved", "database_error", {"quota_mode": "v1"})
                 raise TrustCueError(
                     code="database_error",
                     message="Failed to reserve quota slot in database.",
@@ -276,6 +310,7 @@ class SupabaseQuotaStore(QuotaStore):
                 )
 
             logger.error("reserve_ai_quota_v2 returned status %s: %s", resp.status_code, resp.text)
+            record_event("quota_reserved", "database_error", {"quota_mode": "unknown"})
             raise TrustCueError(
                 code="database_error",
                 message="Failed to reserve quota slot in database.",
@@ -288,11 +323,66 @@ class SupabaseQuotaStore(QuotaStore):
             logger.error(
                 "Exception during quota reservation for user %s: %s", user_id, str(exc)
             )
+            record_event("quota_reserved", "database_error", {"quota_mode": self.schema_version})
             raise TrustCueError(
                 code="database_error",
                 message="Persistent quota storage is unreachable or failed.",
                 status_code=503,
             ) from exc
+        finally:
+            if close_client:
+                await client.aclose()
+
+    async def dispatch_quota(self, user_id: str, reservation_id: str) -> bool:
+        """
+        Mark a reserved quota slot as in-flight before external provider invocation.
+        Prevents age-based reaper from refunding quota if external inference is in progress.
+        """
+        if not reservation_id:
+            return False
+
+        if reservation_id.startswith("v1-legacy-"):
+            # v1 legacy mode does not track in-flight dispatch state
+            return True
+
+        base_url = (self.settings.SUPABASE_URL or "").rstrip("/")
+        client = self._http_client or httpx.AsyncClient(timeout=5.0)
+        close_client = self._http_client is None
+
+        try:
+            resp = await client.post(
+                f"{base_url}/rest/v1/rpc/dispatch_ai_quota_v2",
+                headers=self._get_headers(),
+                json={"p_user_id": user_id, "p_reservation_id": reservation_id},
+            )
+
+            if resp.status_code in (200, 204):
+                if resp.status_code == 204:
+                    return True
+                result = resp.json()
+                if isinstance(result, bool):
+                    return result
+                return True
+
+            if resp.status_code == 404:
+                logger.warning(
+                    "dispatch_ai_quota_v2 returned 404 for user %s, reservation %s",
+                    user_id,
+                    reservation_id,
+                )
+                return False
+
+            logger.error(
+                "dispatch_ai_quota_v2 returned status %s for user %s: %s",
+                resp.status_code,
+                user_id,
+                resp.text,
+            )
+            return False
+
+        except Exception as exc:
+            logger.error("Exception during dispatch_quota for user %s: %s", user_id, str(exc))
+            return False
         finally:
             if close_client:
                 await client.aclose()
@@ -336,7 +426,12 @@ class SupabaseQuotaStore(QuotaStore):
                             reservation_id,
                         )
                     return result
-                return True
+                logger.error("commit_ai_quota_v2 returned non-boolean JSON: %s", result)
+                raise TrustCueError(
+                    code="database_error",
+                    message="Malformed quota commit response from database.",
+                    status_code=503,
+                )
 
             if resp.status_code == 404:
                 if self.schema_version != "v2":
@@ -379,7 +474,7 @@ class SupabaseQuotaStore(QuotaStore):
         """
         Release an unused quota reservation back to the user's balance.
         Returns True if refunded or already released.
-        Returns False if already committed or missing.
+        Returns False if already committed, unsettled, or missing.
         Raises TrustCueError(503) on database network/outage errors.
         """
         if not reservation_id:
@@ -423,12 +518,17 @@ class SupabaseQuotaStore(QuotaStore):
                 if isinstance(result, bool):
                     if not result:
                         logger.warning(
-                            "release_ai_quota_v2 returned False for user %s, reservation %s (already committed or missing)",
+                            "release_ai_quota_v2 returned False for user %s, reservation %s (already committed, unsettled, or missing)",
                             user_id,
                             reservation_id,
                         )
                     return result
-                return True
+                logger.error("release_ai_quota_v2 returned non-boolean JSON: %s", result)
+                raise TrustCueError(
+                    code="database_error",
+                    message="Malformed quota release response from database.",
+                    status_code=503,
+                )
 
             if resp.status_code == 404:
                 if self.schema_version != "v2":
