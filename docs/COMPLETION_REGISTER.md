@@ -103,7 +103,7 @@ The register below categorizes every functional area of TrustCue, tracing origin
 | **F-16** | **Account Recovery, Reset & Password Flow** | 31, 38 | `lib/features/auth/presentation/screens/` | Implemented | Anti-enumeration responses, reset email modal, SHA `9d5e73e` | Layer 1 (Unit) | **NOT TESTED** | Password reset UI implemented; end-to-end SMTP dispatch verification pending | Module 62 |
 | **F-17** | **FastAPI Backend Core & Abuse Controls** | 27, 28, 32 | `backend/src/trustcue_backend/` | Implemented | 142 pytest suites pass, quota limiter, SHA `b51c638` | Layer 1 (Pytest), Layer 2 (Render) | **PASS** | Probes return 200 OK on Render; live abuse throttling test pending | Module 63, 84 |
 | **F-18** | **Protected Cloud AI Analysis (Groq Cloud)** | 33, 34, 35, 54, 55 | `backend/src/trustcue_backend/providers/groq.py` | Implemented | Consent preview, Groq qwen/qwen3.8-27b live round-trip, reactive 5-state banner, grounded excerpts, quota decrement 15->14 | Layer 1 (Pytest/Unit), Layer 3 (Hardware UI) | **PASS / PARTIALLY VERIFIED** | Live consented synthetic request verified on Vivo V2207 (~6.2s latency, Groq provider badge, grounded excerpts, 5-state reactive disclosure banner verified); rate limiting/429 and prompt injection edge cases on hardware deferred to Module 64/65 | Module 54 (Done), Module 55 (Done), Module 64, 65 |
-| **F-19** | **Metadata-Only Cloud Sync (Supabase RPC)** | 29, 39, 47 | `backend/src/trustcue_backend/services/sync_service.py`, `lib/features/sync/` | Implemented | RPC `sync_push_reports` implemented, SHA `b51c638` | Layer 1 (Pytest), Layer 2 (Supabase) | **NOT TESTED** | Zero text upload invariant verified by design; live device push/pull pending | Module 66, 67 |
+| **F-19** | **Metadata-Only Cloud Sync (Supabase RPC)** | 29, 39, 47, 59 | `backend/src/trustcue_backend/services/sync_service.py`, `lib/features/sync/` | Implemented | RPCs `sync_push_reports` and `purge_synced_reports` verified in Supabase production catalog (Module 59), SHA `b51c638` | Layer 1 (Pytest), Layer 2 (Supabase) | **PASS / PARTIALLY VERIFIED** | Zero text upload invariant verified by design; live device push/pull pending | Module 66, 67 |
 | **F-20** | **Local SQLite Report Persistence** | 36, 37 | `lib/features/reports/data/repositories/sqlite_report_repository.dart` | Implemented | `trustcue_local.db` database, indexed queries, SHA `9d5e73e` | Layer 1 (Unit), Layer 3 (Hardware UI) | **PASS / PARTIALLY VERIFIED** | App-private sandboxed database and cold-start restart retention verified on Vivo V2207; 1,000-report stress insertion pending | Module 69 |
 | **F-21** | **History, Full-Text Search & Report Details** | 37 | `lib/features/reports/presentation/screens/` | Implemented | Live search filtering, report detail cards, SHA `9d5e73e` | Layer 1 (Widget), Layer 3 (Hardware UI) | **PASS / PARTIALLY VERIFIED** | Tested in Module 46 & 50; search filtering and single report deletion verified on Vivo V2207; multi-select deletion workflow verification pending | Module 70 |
 | **F-22** | **Privacy-Reviewed Export (TXT & PDF)** | 42, 50G | `lib/features/export/domain/services/report_export_service.dart` | Implemented | Sanitized plain text & PDF generator, SHA `9d5e73e` | Layer 1 (Unit), Layer 3 (Hardware UI) | **PASS / PARTIALLY VERIFIED** | Generation and Android ShareSheet launch verified on Vivo V2207; multi-app receiving validation (Gmail, Drive, WhatsApp) pending | Module 71, 72 |
@@ -166,7 +166,7 @@ flowchart TD
 ### Phase 9: Accessibility, Usability, Localization & Design Polish (Modules 76–82)
 - **Module 76:** Physical TalkBack Screen-Reader Audit on Vivo V2207 (Navigate all primary flows with Google TalkBack enabled; verify accessibility labels, live regions, and semantic announcements).
 - **Module 77:** Dynamic Type & 200% Font Scale Visual Verification (Test all screens at maximum Android font size and display scale; verify zero RenderFlex overflow errors).
-- **Module 78:** High-Contrast Theme Polish & Touch Target Audit (Audit all interactive widgets for minimum 48x48 dp touch boundaries and WCAG 2.1 AA 4.5:1 contrast ratios).
+- **Module 78:** High-Contrast Theme Polish, Touch Target Audit & Visual Redaction Span Tool (Audit all interactive widgets for minimum 48x48 dp touch boundaries and WCAG 2.1 AA 4.5:1 contrast ratios; evaluate visual drag-and-drop context-menu span highlight tool complementing the existing text editor).
 - **Module 79:** Urdu Localization & Bidirectional Layout Fidelity (Switch application language to Urdu; verify RTL layout mirroring, Urdu typography, and proper excerpt LTR isolation).
 - **Module 80:** Scam Education Center Interactive Guide Expansion (Expand educational topics covering modern scam vectors: impersonation, advance-fee, QR code phishing, and job offer fraud).
 - **Module 81:** Responsive Layout & Native Share Verification (Verify UI layout on tablet viewports, split-screen multi-window mode, and landscape orientation; complete hardware verification of single-image `ACTION_SEND` intent intake).
@@ -248,17 +248,18 @@ Phase 6 (Input Intake & Boundary Verification, Modules 52–58) is formally veri
 | **Barcode & QR Decoding** | Module 53 evidence dossier | 9 genuine fixtures evaluated on Vivo V2207 | **PASS / VERIFIED** | Viewfinder live camera omitted by design |
 | **Link & Scheme Inspection** | Module 56 evidence dossier | 57-fixture corpus + 8 hardware UI cases | **PASS / VERIFIED** | Structural rules active; non-structural shorteners offline limitation documented |
 | **Edge-Case Text Intake** | Module 57 evidence dossier | 18 boundary tests; single-text & multiple-intent sharing on hardware | **PASS / VERIFIED** | Single-image share intent hardware dispatch assigned to **Module 81** |
-| **PII Redaction Pipeline** | Module 58 evidence dossier | 18 boundary tests; 3 hardware journeys (A, B, C) on Vivo V2207 | **PASS / VERIFIED** | Freeform custom span editor |
+| **PII Redaction Pipeline** | Module 58 evidence dossier | 18 boundary tests; 3 hardware journeys (A, B, C) on Vivo V2207 | **PASS / VERIFIED** | Editable multiline text field fulfills freeform correction/redaction; visual drag-to-redact popup assigned to **Module 78** |
 | **Offline Air-Gap Boundary** | Modules 56, 57, 58 | Complete journeys executed with cellular & Wi-Fi severed (`svc wifi/data disable`) | **PASS / VERIFIED** | Zero data leaves device during local operations |
 
 ---
 
 ## 7. Authoritative Acceptance Sign-Off
 
-This Completion Register confirms that TrustCue's **Phase 6** is fully verified, operational on physical hardware, and signed off. The project advances to **Phase 7: Live Cloud Services & Supabase Auth Sync**.
+This Completion Register confirms that TrustCue's **Phase 6** is fully verified, operational on physical hardware, and signed off with recorded exceptions (`IMG-03`, `IMG-07`, `IMG-10` heuristic gaps assigned to Module 71; single-image share intent assigned to Module 81; persistent quota storage wiring assigned to Modules 63–64).
 
-- **Completed & Signed-Off Phase:** Phase 6 (Input Intake & Boundary Verification, Modules 52–58)
-- **Current Verified Milestone:** Module 58 (PII Redaction Pipeline Hardening and Phase 6 Closeout)
-- **Next Assigned Milestone:** Module 59 (User Authentication UI & State Hardening)
+**Phase 7: Live Cloud Services & Supabase Auth Sync** has commenced with Module 59 verified.
+
+- **Completed Milestone:** Module 59 (Supabase Production Schema and Security Verification)
+- **Next Assigned Milestone:** Module 60 (Live Account Registration & Email Confirmation Flow)
 - **Authoritative Date:** November 2, 2026
 - **Prepared for owner review by:** Muhammad Taimoor Ajmal (Lead Developer / Student)

@@ -2112,4 +2112,51 @@ eturn,
   - 18 hardware screenshots and UI hierarchy dumps in `docs/evidence/module_58/`
   - Updated `docs/COMPLETION_REGISTER.md`
   - Updated `docs/MODULE_LOG.md`
-- **Status:** Complete on `frontend`. Four branches strictly preserved; `main` untouched at `a785db8`. Phase 6 formally signed off. Ready for Phase 7 (Module 59: User Authentication UI & State Hardening).
+- **Status:** Complete on `frontend`. Four branches strictly preserved; `main` untouched at `a785db8`. Phase 6 formally signed off. Ready for Phase 7 (Module 59: Supabase Production Schema and Security Verification).
+
+## Module 59: Supabase Production Schema and Security Verification
+- **Scope & Objectives:**
+  - Workspace Artifact Organization:
+    - Scanned and organized all 45 loose generated artifacts from the workspace root into established directory conventions without data loss.
+    - Moved 9 Photo Picker and OCR dump files to `docs/evidence/module_52/`.
+    - Moved 3 Account and Auth UI dumps to `docs/evidence/module_54/`.
+    - Moved 3 synthetic test message samples to `frontend/test/fixtures/data/`.
+    - Moved Android share script to `frontend/scripts/send_share.sh` and hardened with argument handling.
+    - Moved temporary/staging XML and PNG dumps to `build/artifacts/staging/`.
+    - Preserved `integration_candidate_backup.bundle` and `Testing Data/` in root.
+  - Versioned Database Expectations Inventory (Migrations 00001–00008):
+    - Authoritative schema in `trustcue-database` verified with 13/13 static unit tests passing (`test_static_schema.py`).
+    - Full inventory compiled covering tables (`profiles`, `ai_usage_quotas`, `synced_reports`), columns, constraints, RLS policies, trigger functions (`handle_new_user`), and RPCs (`reserve_ai_quota`, `release_ai_quota`, `ensure_profile_exists`, `purge_synced_reports`, `sync_push_reports`).
+  - Read-Only Production Comparison (Supabase Cloud):
+    - Queried live PostgREST OpenAPI catalog via authenticated service-role probe against `https://yzqkmoqqvnhfmmrayfko.supabase.co/rest/v1/`.
+    - Verified 100% MATCH across all 3 tables, 31 column definitions, primary keys, defaults, and all 5 exposed RPC functions.
+    - Recorded access architecture: Direct PostgreSQL TCP pooler (port 5432) is unconfigured by architectural design; HTTPS PostgREST / GoTrue endpoints provide authoritative runtime schema validation.
+  - Security Boundary Enforcement:
+    - Executed anonymous probes with `SUPABASE_ANON_KEY` across all 3 tables and 5 RPCs; verified 100% fail-closed rejection with HTTP 401 Unauthorized.
+    - Verified default privilege revocation from `PUBLIC` and `anon`; confirmed `search_path = public, auth, pg_temp` lockdown on all `SECURITY DEFINER` functions.
+  - Quota Storage Selection & Reset Diagnosis:
+    - Traced backend wiring in `trustcue-backend`: verified that `AppState` hardcodes `InMemoryQuotaStore`.
+    - Discovered that while Supabase production has the persistent `ai_usage_quotas` table and `reserve_ai_quota` RPC ready, the deployed FastAPI backend runs an in-memory dictionary in Python RAM.
+    - Resolved 15->14->15 reset discrepancy: Render free-tier container restarts/redeploys recycle process memory. Persistence implementation assigned to Modules 63–64.
+  - Roadmap & Claim Calibration:
+    - Resolved naming discrepancy: Module 59 established as Supabase Production Schema & Security Verification; Module 60 set as Live Account Registration & Email Confirmation Flow.
+    - Documented Phase 6 recorded exceptions (rule precision gaps in Module 71, single-image share in Module 81, quota persistence in Modules 63–64).
+    - Assessed freeform custom span editor: multiline text editor fulfills requirement; visual drag-to-redact popup tool assigned to Module 78.
+- **Branch:** `frontend` (mobile docs & evidence), `database` (database docs)
+- **Checks Performed:**
+  - Python static schema test suite: 13/13 tests passed (`test_static_schema.py`).
+  - Live PostgREST OpenAPI catalog audit: 100% MATCH across tables, columns, defaults, comments, and RPCs.
+  - Anonymous security probe: 8/8 endpoints strictly returned HTTP 401 Unauthorized.
+  - Workspace artifact integrity: 0 data lost; 45 files moved to target directories; 1 manifest documented.
+- **Deliverables:**
+  - `docs/evidence/module_59/SUPABASE_PRODUCTION_SCHEMA_AND_SECURITY_EVIDENCE.md`
+  - `trustcue-database/database/docs/SUPABASE_PRODUCTION_SCHEMA_AND_SECURITY_EVIDENCE.md`
+  - `frontend/scripts/send_share.sh`
+  - `frontend/test/fixtures/data/sample_benign.txt`
+  - `frontend/test/fixtures/data/sample_test_msg.txt`
+  - `frontend/test/fixtures/data/sample_test_msg2.txt`
+  - 9 XML dump files in `docs/evidence/module_52/`
+  - 3 XML dump files in `docs/evidence/module_54/`
+  - Updated `docs/COMPLETION_REGISTER.md`
+  - Updated `docs/MODULE_LOG.md`
+- **Status:** Complete on `frontend` and `database`. Four branches strictly preserved; `main` untouched at `a785db8`. Ready for Module 60 (Live Account Registration & Email Confirmation Flow).
