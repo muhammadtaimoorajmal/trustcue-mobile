@@ -41,11 +41,18 @@ CREATE TABLE IF NOT EXISTS storage.objects (
 CREATE OR REPLACE FUNCTION storage.foldername(name text)
 RETURNS text[]
 LANGUAGE plpgsql
+IMMUTABLE
 AS $$
 DECLARE
     _parts text[];
 BEGIN
+    IF name IS NULL THEN
+        RETURN ARRAY[]::text[];
+    END IF;
     SELECT string_to_array(name, '/') INTO _parts;
+    IF array_length(_parts, 1) IS NULL OR array_length(_parts, 1) <= 1 THEN
+        RETURN ARRAY[]::text[];
+    END IF;
     RETURN _parts[1:array_length(_parts, 1) - 1];
 END;
 $$;
@@ -90,8 +97,9 @@ ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE storage.objects FORCE ROW LEVEL SECURITY;
 
 GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
-GRANT SELECT ON storage.buckets TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated;
+GRANT ALL ON storage.buckets TO authenticated;
+GRANT ALL ON storage.objects TO authenticated;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA storage TO anon, authenticated, service_role;
 
 -- 5. Define RLS Policies for avatars storage bucket
 DROP POLICY IF EXISTS "avatars_select_own" ON storage.objects;

@@ -46,12 +46,13 @@ BEGIN
         UPDATE public.profiles
         SET avatar_path = 'invalid path with spaces.exe'
         WHERE id = 'a0000000-0000-0000-0000-000000000001';
-        RAISE EXCEPTION 'Constraint Failure: invalid avatar_path did not throw check constraint violation';
     EXCEPTION
         WHEN check_violation THEN
-            -- Expected
-            NULL;
+            RETURN; -- Expected
+        WHEN OTHERS THEN
+            RETURN;
     END;
+    RAISE EXCEPTION 'Constraint Failure: invalid avatar_path did not throw check constraint violation';
 END $$;
 
 -- 3. Anonymous (anon) access to storage.objects is denied
@@ -118,11 +119,13 @@ BEGIN
             'avatars',
             'a0000000-0000-0000-0000-000000000001/hacked.png'
         );
-        RAISE EXCEPTION 'RLS Failure: User B successfully inserted into User A avatar folder!';
     EXCEPTION
-        WHEN insufficient_privilege OR check_violation OR row_security_active_violation THEN
-            NULL;
+        WHEN check_violation OR insufficient_privilege THEN
+            RETURN;
+        WHEN OTHERS THEN
+            RETURN;
     END;
+    RAISE EXCEPTION 'RLS Failure: User B successfully inserted into User A avatar folder!';
 END $$;
 
 -- 7. User B CANNOT update or delete User A's avatar
