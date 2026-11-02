@@ -202,16 +202,19 @@ class TestDatabaseMigrations(unittest.TestCase):
         """Validates migration 10 durable quota reservations, privacy, and RPC functions."""
         content = (MIGRATIONS_DIR / "00010_create_durable_quota_reservations.sql").read_text(encoding="utf-8")
         self.assertIn("CREATE TABLE IF NOT EXISTS public.ai_quota_reservations", content)
-        self.assertIn("status IN ('reserved', 'committed', 'released')", content)
+        self.assertIn("status IN ('reserved', 'dispatched', 'committed', 'released', 'unsettled')", content)
         self.assertIn("ALTER TABLE public.ai_quota_reservations ENABLE ROW LEVEL SECURITY;", content)
         self.assertIn("ALTER TABLE public.ai_quota_reservations FORCE ROW LEVEL SECURITY;", content)
         self.assertIn("FUNCTION public.reserve_ai_quota_v2", content)
+        self.assertIn("FUNCTION public.dispatch_ai_quota_v2", content)
         self.assertIn("FUNCTION public.commit_ai_quota_v2", content)
         self.assertIn("FUNCTION public.release_ai_quota_v2", content)
         self.assertIn("FUNCTION public.get_remaining_ai_quota", content)
         self.assertIn("FUNCTION public.reap_abandoned_reservations", content)
         self.assertIn("REVOKE ALL ON FUNCTION public.reserve_ai_quota_v2(UUID, UUID, INT) FROM PUBLIC, anon, authenticated;", content)
         self.assertIn("GRANT EXECUTE ON FUNCTION public.reserve_ai_quota_v2(UUID, UUID, INT) TO service_role, postgres;", content)
+        self.assertIn("REVOKE ALL ON FUNCTION public.dispatch_ai_quota_v2(UUID, UUID) FROM PUBLIC, anon, authenticated;", content)
+        self.assertIn("GRANT EXECUTE ON FUNCTION public.dispatch_ai_quota_v2(UUID, UUID) TO service_role, postgres;", content)
 
         # Privacy Audit: Ensure zero prompt, excerpt, content, or hash columns exist
         uncommented = re.sub(r"--.*$", "", content, flags=re.MULTILINE)

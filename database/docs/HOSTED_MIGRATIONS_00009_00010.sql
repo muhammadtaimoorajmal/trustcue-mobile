@@ -2,7 +2,7 @@
 -- TRUSTCUE CONSOLIDATED HOSTED MIGRATIONS 00009 & 00010
 -- Project ID: yzqkmoqqvnhfmmrayfko
 -- Target: Supabase Studio SQL Editor (https://supabase.com/dashboard/project/yzqkmoqqvnhfmmrayfko/sql/new)
--- Authorship: TrustCue Engineering Team (Module 64 & 65 Production Closure)
+-- Authorship: TrustCue Engineering Team (Module 64, 65 & 66 Hardening)
 -- Classification: Authoritative Owner Execution Script
 -- ==============================================================================
 --
@@ -101,10 +101,6 @@ BEGIN
             USING (
                 bucket_id = 'avatars' 
                 AND (storage.foldername(name))[1] = auth.uid()::text
-            )
-            WITH CHECK (
-                bucket_id = 'avatars' 
-                AND (storage.foldername(name))[1] = auth.uid()::text
             );
     END IF;
 
@@ -135,10 +131,22 @@ CREATE TABLE IF NOT EXISTS public.ai_quota_reservations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     quota_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    status TEXT NOT NULL DEFAULT 'reserved' CHECK (status IN ('reserved', 'committed', 'released')),
+    status TEXT NOT NULL DEFAULT 'reserved' CHECK (status IN ('reserved', 'dispatched', 'committed', 'released', 'unsettled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+-- Ensure status check constraint includes all 5 states if table pre-existed
+DO $$
+BEGIN
+    ALTER TABLE public.ai_quota_reservations 
+        DROP CONSTRAINT IF EXISTS ai_quota_reservations_status_check;
+    ALTER TABLE public.ai_quota_reservations 
+        ADD CONSTRAINT ai_quota_reservations_status_check 
+        CHECK (status IN ('reserved', 'dispatched', 'committed', 'released', 'unsettled'));
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_ai_quota_reservations_user_date
     ON public.ai_quota_reservations (user_id, quota_date);
@@ -212,7 +220,7 @@ BEGIN
         WHERE user_id = p_user_id AND quota_date = v_existing_date;
 
         RETURN QUERY SELECT
-            (v_existing_status IN ('reserved', 'committed')) AS allowed,
+            (v_existing_status IN ('reserved', 'dispatched', 'committed')) AS allowed,
             COALESCE(v_current_requests, 0) AS requests_used,
             GREATEST(0, p_max_daily_requests - COALESCE(v_current_requests, 0)) AS requests_remaining,
             p_reservation_id AS reservation_id;
@@ -268,7 +276,55 @@ BEGIN
 END;
 $$;
 
--- 4. Durable Commit Function
+-- 4. Durable Dispatch Function (Marks in-flight work before external provider call)
+CREATE OR REPLACE FUNCTION public.dispatch_ai_quota_v2(
+    p_user_id UUID,
+    p_reservation_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $$
+DECLARE
+    v_res_user UUID;
+    v_res_status TEXT;
+BEGIN
+    SELECT user_id, status
+    INTO v_res_user, v_res_status
+    FROM public.ai_quota_reservations
+    WHERE id = p_reservation_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    IF v_res_user <> p_user_id THEN
+        RAISE EXCEPTION 'Reservation belongs to another user' USING ERRCODE = '42501';
+    END IF;
+
+    IF v_res_status = 'dispatched' THEN
+        RETURN TRUE; -- Idempotent success
+    END IF;
+
+    IF v_res_status IN ('committed', 'released') THEN
+        RETURN FALSE; -- Cannot dispatch an already settled reservation
+    END IF;
+
+    UPDATE public.ai_quota_reservations
+    SET status = 'dispatched',
+        updated_at = timezone('utc'::text, now())
+    WHERE id = p_reservation_id;
+
+    RETURN TRUE;
+END;
+$$;
+
+COMMENT ON FUNCTION public.dispatch_ai_quota_v2(UUID, UUID) IS
+    'Marks a reserved quota slot as dispatched to an external provider, preventing age-based reaper refund.';
+
+-- 5. Durable Commit Function
 CREATE OR REPLACE FUNCTION public.commit_ai_quota_v2(
     p_user_id UUID,
     p_reservation_id UUID
@@ -313,7 +369,7 @@ BEGIN
 END;
 $$;
 
--- 5. Durable Release / Refund Function (Original Date Preserved)
+-- 6. Durable Release / Refund Function (Original Date Preserved)
 CREATE OR REPLACE FUNCTION public.release_ai_quota_v2(
     p_user_id UUID,
     p_reservation_id UUID
@@ -346,8 +402,8 @@ BEGIN
         RETURN TRUE; -- Idempotent refund
     END IF;
 
-    IF v_res_status = 'committed' THEN
-        RETURN FALSE; -- Cannot refund an already committed reservation
+    IF v_res_status IN ('committed', 'unsettled') THEN
+        RETURN FALSE; -- Cannot refund committed or uncertain/reaped work
     END IF;
 
     -- Decrement usage on the ORIGINAL reservation quota_date (safe across midnight rollover)
@@ -366,7 +422,7 @@ BEGIN
 END;
 $$;
 
--- 6. Read Remaining Quota Function
+-- 7. Read Remaining Quota Function
 CREATE OR REPLACE FUNCTION public.get_remaining_ai_quota(
     p_user_id UUID,
     p_max_daily_requests INT DEFAULT 15
@@ -388,7 +444,7 @@ BEGIN
 END;
 $$;
 
--- 7. Reap Abandoned Reservations Function
+-- 8. Conservative Abandoned Reservations Reaper Function
 CREATE OR REPLACE FUNCTION public.reap_abandoned_reservations(
     p_timeout_seconds INT DEFAULT 600
 )
@@ -401,6 +457,7 @@ DECLARE
     r RECORD;
     v_reaped INT := 0;
 BEGIN
+    -- 1. Conservative refund: ONLY refund reservations that were NEVER dispatched to provider
     FOR r IN
         SELECT id, user_id, quota_date
         FROM public.ai_quota_reservations
@@ -421,18 +478,31 @@ BEGIN
         v_reaped := v_reaped + 1;
     END LOOP;
 
+    -- 2. Dispatched but unsettled work: DO NOT REFUND quota!
+    -- Transition to 'unsettled' so quota is retained and compute is not double-refunded.
+    UPDATE public.ai_quota_reservations
+    SET status = 'unsettled',
+        updated_at = timezone('utc'::text, now())
+    WHERE status = 'dispatched'
+      AND created_at < timezone('utc'::text, now()) - (p_timeout_seconds || ' seconds')::INTERVAL;
+
     RETURN v_reaped;
 END;
 $$;
 
--- 8. Security Lockdown
+COMMENT ON FUNCTION public.reap_abandoned_reservations(INT) IS
+    'Reaps abandoned reservations; refunds only undispatched slots while marking dispatched work as unsettled without refund.';
+
+-- 9. Security Lockdown
 REVOKE ALL ON FUNCTION public.reserve_ai_quota_v2(UUID, UUID, INT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.dispatch_ai_quota_v2(UUID, UUID) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.commit_ai_quota_v2(UUID, UUID) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.release_ai_quota_v2(UUID, UUID) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.get_remaining_ai_quota(UUID, INT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.reap_abandoned_reservations(INT) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.reserve_ai_quota_v2(UUID, UUID, INT) TO service_role, postgres;
+GRANT EXECUTE ON FUNCTION public.dispatch_ai_quota_v2(UUID, UUID) TO service_role, postgres;
 GRANT EXECUTE ON FUNCTION public.commit_ai_quota_v2(UUID, UUID) TO service_role, postgres;
 GRANT EXECUTE ON FUNCTION public.release_ai_quota_v2(UUID, UUID) TO service_role, postgres;
 GRANT EXECUTE ON FUNCTION public.get_remaining_ai_quota(UUID, INT) TO service_role, postgres;
@@ -465,11 +535,12 @@ SELECT table_name, column_name
 FROM information_schema.columns 
 WHERE table_name = 'ai_quota_reservations';
 
--- 3. Confirm all 5 functions exist:
+-- 3. Confirm all 6 functions exist:
 SELECT proname, prorettype::regtype 
 FROM pg_proc 
 WHERE proname IN (
     'reserve_ai_quota_v2', 
+    'dispatch_ai_quota_v2', 
     'commit_ai_quota_v2', 
     'release_ai_quota_v2', 
     'get_remaining_ai_quota', 

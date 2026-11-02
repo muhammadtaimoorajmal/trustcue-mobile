@@ -1,14 +1,15 @@
 -- ==============================================================================
 -- Migration: 00010_create_durable_quota_reservations.sql
 -- Description: Creates the public.ai_quota_reservations table and durable reservation lifecycle functions.
--- Authorship: TrustCue Project Team (Module 64)
+-- Authorship: TrustCue Project Team (Module 64 & 66 Hardening)
 -- Invariants:
---   - Tracks explicit reservation identity, status ('reserved', 'committed', 'released'), and UTC date.
+--   - Tracks explicit reservation identity, status ('reserved', 'dispatched', 'committed', 'released', 'unsettled'), and UTC date.
 --   - Zero prompts, message text, evidence excerpts, tokens, or message hashes stored.
 --   - Atomic allowance enforcement under row-level lock.
---   - Idempotent commit and release operations.
+--   - Idempotent dispatch, commit, and release operations.
 --   - Refunds are applied against the original reservation quota_date (even across UTC midnight rollover).
---   - Committed reservations cannot be refunded.
+--   - Committed or unsettled reservations cannot be refunded by release or cleanup.
+--   - Age-based reaper ONLY refunds reservations that were never dispatched to external providers.
 --   - RLS strictly enforced: authenticated users can only view their own reservations; mutations restricted to server.
 -- ==============================================================================
 
@@ -19,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.ai_quota_reservations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     quota_date DATE NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('reserved', 'committed', 'released')),
+    status TEXT NOT NULL CHECK (status IN ('reserved', 'dispatched', 'committed', 'released', 'unsettled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
@@ -30,11 +31,14 @@ CREATE INDEX IF NOT EXISTS idx_ai_quota_reservations_user_date
 CREATE INDEX IF NOT EXISTS idx_ai_quota_reservations_status
     ON public.ai_quota_reservations (status);
 
+CREATE INDEX IF NOT EXISTS idx_ai_quota_reservations_timeout
+    ON public.ai_quota_reservations (status, created_at);
+
 COMMENT ON TABLE public.ai_quota_reservations IS 'Durable reservation lifecycle state for AI rate limiting.';
 COMMENT ON COLUMN public.ai_quota_reservations.id IS 'Explicit unique identifier for a quota reservation.';
 COMMENT ON COLUMN public.ai_quota_reservations.user_id IS 'Owner referencing auth.users(id). Cascades on deletion.';
 COMMENT ON COLUMN public.ai_quota_reservations.quota_date IS 'UTC calendar date of the reservation.';
-COMMENT ON COLUMN public.ai_quota_reservations.status IS 'Lifecycle state: reserved, committed, or released.';
+COMMENT ON COLUMN public.ai_quota_reservations.status IS 'Lifecycle state: reserved, dispatched, committed, released, or unsettled.';
 
 -- 2. Enable and Force Row Level Security
 ALTER TABLE public.ai_quota_reservations ENABLE ROW LEVEL SECURITY;
@@ -89,7 +93,7 @@ BEGIN
         WHERE user_id = p_user_id AND quota_date = v_existing_date;
 
         RETURN QUERY SELECT
-            (v_existing_status IN ('reserved', 'committed')) AS allowed,
+            (v_existing_status IN ('reserved', 'dispatched', 'committed')) AS allowed,
             COALESCE(v_current_requests, 0) AS requests_used,
             GREATEST(0, p_max_daily_requests - COALESCE(v_current_requests, 0)) AS requests_remaining,
             p_reservation_id AS reservation_id;
@@ -167,7 +171,55 @@ $$;
 COMMENT ON FUNCTION public.reserve_ai_quota_v2(UUID, UUID, INT) IS
     'Atomically reserves daily AI quota with durable reservation tracking and idempotency.';
 
--- 4. Durable Commit Function
+-- 4. Durable Dispatch Function (Marks in-flight work before external provider call)
+CREATE OR REPLACE FUNCTION public.dispatch_ai_quota_v2(
+    p_user_id UUID,
+    p_reservation_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $$
+DECLARE
+    v_res_user UUID;
+    v_res_status TEXT;
+BEGIN
+    SELECT user_id, status
+    INTO v_res_user, v_res_status
+    FROM public.ai_quota_reservations
+    WHERE id = p_reservation_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    IF v_res_user <> p_user_id THEN
+        RAISE EXCEPTION 'Reservation belongs to another user' USING ERRCODE = '42501';
+    END IF;
+
+    IF v_res_status = 'dispatched' THEN
+        RETURN TRUE; -- Idempotent success
+    END IF;
+
+    IF v_res_status IN ('committed', 'released') THEN
+        RETURN FALSE; -- Cannot dispatch an already settled reservation
+    END IF;
+
+    UPDATE public.ai_quota_reservations
+    SET status = 'dispatched',
+        updated_at = timezone('utc'::text, now())
+    WHERE id = p_reservation_id;
+
+    RETURN TRUE;
+END;
+$$;
+
+COMMENT ON FUNCTION public.dispatch_ai_quota_v2(UUID, UUID) IS
+    'Marks a reserved quota slot as dispatched to an external provider, preventing age-based reaper refund.';
+
+-- 5. Durable Commit Function
 CREATE OR REPLACE FUNCTION public.commit_ai_quota_v2(
     p_user_id UUID,
     p_reservation_id UUID
@@ -215,7 +267,7 @@ $$;
 COMMENT ON FUNCTION public.commit_ai_quota_v2(UUID, UUID) IS
     'Idempotently commits a durable quota reservation after successful AI inference.';
 
--- 5. Durable Release / Refund Function (across midnight rollover)
+-- 6. Durable Release / Refund Function (across midnight rollover)
 CREATE OR REPLACE FUNCTION public.release_ai_quota_v2(
     p_user_id UUID,
     p_reservation_id UUID
@@ -248,8 +300,8 @@ BEGIN
         RETURN TRUE; -- Idempotent refund
     END IF;
 
-    IF v_res_status = 'committed' THEN
-        RETURN FALSE; -- Cannot refund an already committed reservation
+    IF v_res_status IN ('committed', 'unsettled') THEN
+        RETURN FALSE; -- Cannot refund committed or uncertain/reaped work
     END IF;
 
     -- Decrement usage on the ORIGINAL reservation quota_date
@@ -271,7 +323,7 @@ $$;
 COMMENT ON FUNCTION public.release_ai_quota_v2(UUID, UUID) IS
     'Idempotently refunds an unused reservation back to its original quota_date.';
 
--- 6. Read Remaining Quota Function
+-- 7. Read Remaining Quota Function
 CREATE OR REPLACE FUNCTION public.get_remaining_ai_quota(
     p_user_id UUID,
     p_max_daily_requests INT DEFAULT 15
@@ -296,7 +348,7 @@ $$;
 COMMENT ON FUNCTION public.get_remaining_ai_quota(UUID, INT) IS
     'Returns remaining daily AI quota for authenticated user on the current UTC date.';
 
--- 7. Reap Abandoned Reservations Function
+-- 8. Conservative Abandoned Reservations Reaper Function
 CREATE OR REPLACE FUNCTION public.reap_abandoned_reservations(
     p_timeout_seconds INT DEFAULT 600
 )
@@ -309,6 +361,7 @@ DECLARE
     r RECORD;
     v_reaped INT := 0;
 BEGIN
+    -- 1. Conservative refund: ONLY refund reservations that were NEVER dispatched to provider
     FOR r IN
         SELECT id, user_id, quota_date
         FROM public.ai_quota_reservations
@@ -329,21 +382,31 @@ BEGIN
         v_reaped := v_reaped + 1;
     END LOOP;
 
+    -- 2. Dispatched but unsettled work: DO NOT REFUND quota!
+    -- Transition to 'unsettled' so quota is retained and compute is not double-refunded.
+    UPDATE public.ai_quota_reservations
+    SET status = 'unsettled',
+        updated_at = timezone('utc'::text, now())
+    WHERE status = 'dispatched'
+      AND created_at < timezone('utc'::text, now()) - (p_timeout_seconds || ' seconds')::INTERVAL;
+
     RETURN v_reaped;
 END;
 $$;
 
 COMMENT ON FUNCTION public.reap_abandoned_reservations(INT) IS
-    'Reaps abandoned reservations stuck in reserved status older than timeout.';
+    'Reaps abandoned reservations; refunds only undispatched slots while marking dispatched work as unsettled without refund.';
 
--- 8. Strict Permissions Lockdown
+-- 9. Strict Permissions Lockdown
 REVOKE ALL ON FUNCTION public.reserve_ai_quota_v2(UUID, UUID, INT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.dispatch_ai_quota_v2(UUID, UUID) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.commit_ai_quota_v2(UUID, UUID) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.release_ai_quota_v2(UUID, UUID) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.get_remaining_ai_quota(UUID, INT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.reap_abandoned_reservations(INT) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.reserve_ai_quota_v2(UUID, UUID, INT) TO service_role, postgres;
+GRANT EXECUTE ON FUNCTION public.dispatch_ai_quota_v2(UUID, UUID) TO service_role, postgres;
 GRANT EXECUTE ON FUNCTION public.commit_ai_quota_v2(UUID, UUID) TO service_role, postgres;
 GRANT EXECUTE ON FUNCTION public.release_ai_quota_v2(UUID, UUID) TO service_role, postgres;
 GRANT EXECUTE ON FUNCTION public.get_remaining_ai_quota(UUID, INT) TO service_role, postgres;

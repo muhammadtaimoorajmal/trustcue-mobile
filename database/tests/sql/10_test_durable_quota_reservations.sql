@@ -1,7 +1,8 @@
 -- ==============================================================================
 -- Test Suite: 10_test_durable_quota_reservations.sql
 -- Description: Regression test suite for durable quota reservations, lifecycle states,
---              idempotent commit/refund, cross-user isolation, and midnight refund.
+--              idempotent commit/refund, cross-user isolation, midnight refund, and
+--              reaper safety (undispatched refund vs dispatched unsettled transition).
 -- ==============================================================================
 
 \set ON_ERROR_STOP on
@@ -25,6 +26,16 @@ BEGIN
     BEGIN
         PERFORM * FROM public.reserve_ai_quota_v2('d0000000-0000-0000-0000-000000000001'::uuid, gen_random_uuid(), 15);
         RAISE EXCEPTION 'Security Failure: Authenticated user was able to execute reserve_ai_quota_v2!';
+    EXCEPTION
+        WHEN insufficient_privilege THEN NULL;
+    END;
+END $$;
+
+DO $$
+BEGIN
+    BEGIN
+        PERFORM public.dispatch_ai_quota_v2('d0000000-0000-0000-0000-000000000001'::uuid, gen_random_uuid());
+        RAISE EXCEPTION 'Security Failure: Authenticated user was able to execute dispatch_ai_quota_v2!';
     EXCEPTION
         WHEN insufficient_privilege THEN NULL;
     END;
@@ -95,7 +106,19 @@ BEGIN
         RAISE EXCEPTION 'Reservation 1 idempotent retry failed: %', r;
     END IF;
 
-    -- Commit Reservation 1
+    -- Dispatch Reservation 1 (reserved -> dispatched)
+    v_success := public.dispatch_ai_quota_v2(v_user, v_res_1);
+    IF NOT v_success THEN
+        RAISE EXCEPTION 'Dispatch Reservation 1 failed';
+    END IF;
+
+    -- Idempotent Dispatch Reservation 1 returns TRUE
+    v_success := public.dispatch_ai_quota_v2(v_user, v_res_1);
+    IF NOT v_success THEN
+        RAISE EXCEPTION 'Idempotent dispatch Reservation 1 failed';
+    END IF;
+
+    -- Commit Reservation 1 (dispatched -> committed)
     v_success := public.commit_ai_quota_v2(v_user, v_res_1);
     IF NOT v_success THEN
         RAISE EXCEPTION 'Commit Reservation 1 failed';
@@ -119,10 +142,16 @@ BEGIN
         RAISE EXCEPTION 'Reservation 2 failed: %', r;
     END IF;
 
-    -- Release / Refund Reservation 2
+    -- Dispatch Reservation 2
+    v_success := public.dispatch_ai_quota_v2(v_user, v_res_2);
+    IF NOT v_success THEN
+        RAISE EXCEPTION 'Dispatch Reservation 2 failed';
+    END IF;
+
+    -- Release / Refund Reservation 2 from dispatched state
     v_success := public.release_ai_quota_v2(v_user, v_res_2);
     IF NOT v_success THEN
-        RAISE EXCEPTION 'Release Reservation 2 failed';
+        RAISE EXCEPTION 'Release Reservation 2 from dispatched failed';
     END IF;
 
     -- Remaining quota should be 2 after refunding Reservation 2
@@ -161,7 +190,14 @@ BEGIN
         RAISE EXCEPTION 'Exhausted reservation unexpectedly allowed: %', r;
     END IF;
 
-    -- Cross-user rejection check: Other user cannot commit or release user 1's reservation
+    -- Cross-user rejection check: Other user cannot dispatch, commit, or release user 1's reservation
+    BEGIN
+        PERFORM public.dispatch_ai_quota_v2(v_other_user, v_res_3);
+        RAISE EXCEPTION 'Cross-user dispatch succeeded unexpectedly!';
+    EXCEPTION
+        WHEN SQLSTATE '42501' THEN NULL; -- Expected error
+    END;
+
     BEGIN
         PERFORM public.commit_ai_quota_v2(v_other_user, v_res_3);
         RAISE EXCEPTION 'Cross-user commit succeeded unexpectedly!';
@@ -206,6 +242,86 @@ BEGIN
 
     IF v_count <> 4 THEN
         RAISE EXCEPTION 'Yesterday usage count expected 4, got %', v_count;
+    END IF;
+END $$;
+
+-- 5. Reaper Safety Verification (Reserved refunded vs Dispatched unsettled)
+DO $$
+DECLARE
+    v_user UUID := 'd0000000-0000-0000-0000-000000000002'::uuid;
+    v_today DATE := (timezone('utc'::text, now()))::date;
+    v_res_abandoned_reserved UUID := 'aaaaaaaa-bbbb-cccc-dddd-111111111111'::uuid;
+    v_res_abandoned_dispatched UUID := 'aaaaaaaa-bbbb-cccc-dddd-222222222222'::uuid;
+    v_res_fresh UUID := 'aaaaaaaa-bbbb-cccc-dddd-333333333333'::uuid;
+    v_reaped_count INT;
+    v_status TEXT;
+    v_usage_count INT;
+    v_success BOOLEAN;
+BEGIN
+    -- Seed usage count = 3
+    INSERT INTO public.ai_usage_quotas (user_id, quota_date, request_count, token_count)
+    VALUES (v_user, v_today, 3, 0)
+    ON CONFLICT (user_id, quota_date) DO UPDATE SET request_count = 3;
+
+    -- 1) Abandoned reservation that was NEVER dispatched (created 20 mins ago)
+    INSERT INTO public.ai_quota_reservations (id, user_id, quota_date, status, created_at)
+    VALUES (v_res_abandoned_reserved, v_user, v_today, 'reserved', timezone('utc'::text, now()) - INTERVAL '20 minutes');
+
+    -- 2) Abandoned reservation that WAS dispatched (created 20 mins ago)
+    INSERT INTO public.ai_quota_reservations (id, user_id, quota_date, status, created_at)
+    VALUES (v_res_abandoned_dispatched, v_user, v_today, 'dispatched', timezone('utc'::text, now()) - INTERVAL '20 minutes');
+
+    -- 3) Fresh reservation (created 1 min ago)
+    INSERT INTO public.ai_quota_reservations (id, user_id, quota_date, status, created_at)
+    VALUES (v_res_fresh, v_user, v_today, 'reserved', timezone('utc'::text, now()) - INTERVAL '1 minute');
+
+    -- Run reaper with 10-minute timeout (600s)
+    v_reaped_count := public.reap_abandoned_reservations(600);
+
+    -- Only the undispatched 'reserved' row should be refunded by the loop
+    IF v_reaped_count <> 1 THEN
+        RAISE EXCEPTION 'Expected reaper to return 1 reaped reservation, got %', v_reaped_count;
+    END IF;
+
+    -- Check status of abandoned reserved: should be 'released'
+    SELECT status INTO v_status FROM public.ai_quota_reservations WHERE id = v_res_abandoned_reserved;
+    IF v_status <> 'released' THEN
+        RAISE EXCEPTION 'Expected abandoned reserved to be released, got %', v_status;
+    END IF;
+
+    -- Check status of abandoned dispatched: should be 'unsettled'
+    SELECT status INTO v_status FROM public.ai_quota_reservations WHERE id = v_res_abandoned_dispatched;
+    IF v_status <> 'unsettled' THEN
+        RAISE EXCEPTION 'Expected abandoned dispatched to be unsettled, got %', v_status;
+    END IF;
+
+    -- Check status of fresh reservation: should remain 'reserved'
+    SELECT status INTO v_status FROM public.ai_quota_reservations WHERE id = v_res_fresh;
+    IF v_status <> 'reserved' THEN
+        RAISE EXCEPTION 'Expected fresh reservation to remain reserved, got %', v_status;
+    END IF;
+
+    -- Usage count should be 2 (decremented by 1 for the reserved row, NOT decremented for dispatched)
+    SELECT request_count INTO v_usage_count FROM public.ai_usage_quotas WHERE user_id = v_user AND quota_date = v_today;
+    IF v_usage_count <> 2 THEN
+        RAISE EXCEPTION 'Expected usage count 2 after reaper, got %', v_usage_count;
+    END IF;
+
+    -- Attempting to release 'unsettled' reservation must be REJECTED (returns FALSE)
+    v_success := public.release_ai_quota_v2(v_user, v_res_abandoned_dispatched);
+    IF v_success THEN
+        RAISE EXCEPTION 'Release of unsettled reservation should fail!';
+    END IF;
+
+    -- Attempting to commit 'unsettled' reservation (e.g. late recovery) should SUCCEED
+    v_success := public.commit_ai_quota_v2(v_user, v_res_abandoned_dispatched);
+    IF NOT v_success THEN
+        RAISE EXCEPTION 'Commit of unsettled reservation should succeed!';
+    END IF;
+
+    SELECT status INTO v_status FROM public.ai_quota_reservations WHERE id = v_res_abandoned_dispatched;
+    IF v_status <> 'committed' THEN
+        RAISE EXCEPTION 'Expected committed status after unsettled commit, got %', v_status;
     END IF;
 END $$;
 
