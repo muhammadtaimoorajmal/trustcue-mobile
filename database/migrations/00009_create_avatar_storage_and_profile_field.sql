@@ -85,8 +85,9 @@ ON CONFLICT (id) DO UPDATE SET
     file_size_limit = 2097152,
     allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp'];
 
--- 4. Enable Row Level Security on storage.objects
+-- 4. Enable and Force Row Level Security on storage.objects
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE storage.objects FORCE ROW LEVEL SECURITY;
 
 GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
 GRANT SELECT ON storage.buckets TO authenticated;

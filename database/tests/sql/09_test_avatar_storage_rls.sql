@@ -120,7 +120,7 @@ BEGIN
         );
         RAISE EXCEPTION 'RLS Failure: User B successfully inserted into User A avatar folder!';
     EXCEPTION
-        WHEN row_security_active_violation OR check_violation THEN
+        WHEN insufficient_privilege OR check_violation OR row_security_active_violation THEN
             NULL;
     END;
 END $$;
