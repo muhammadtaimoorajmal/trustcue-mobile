@@ -16,7 +16,7 @@ While core analysis operates 100% on-device using deterministic heuristic rules 
 
 ## 2. Research & Stack Feasibility Analysis
 
-A thorough evaluation of cloud hosting, managed authentication, database persistence, and AI inference providers was conducted as of **October 2026** against academic project constraints (CS3643, BSCS Semester 5-1, Fall 2026, Riphah International University).
+A thorough evaluation of cloud hosting, managed authentication, database persistence, and AI inference providers was conducted as of **October 2026** against project requirements and production constraints.
 
 ### 2.1 Technology Evaluation Matrix
 

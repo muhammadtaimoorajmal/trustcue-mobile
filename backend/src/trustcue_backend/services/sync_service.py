@@ -14,7 +14,7 @@ from trustcue_backend.api.schemas.sync import (
     SyncReportsPushResponse,
 )
 from trustcue_backend.core.config import Settings
-from trustcue_backend.core.errors import SyncOptInRequiredError
+from trustcue_backend.core.errors import SyncOptInRequiredError, TrustCueError
 from trustcue_backend.core.state import AppState
 from trustcue_backend.core.telemetry import record_event
 
@@ -139,10 +139,7 @@ class SyncService:
             item.model_dump(by_alias=True) for item in valid_items
         ]
 
-        # 1. Update in-memory fallback state
-        synced_ids = self.app_state.save_synced_reports(user_id, raw_items)
-
-        # 2. Persist to PostgREST public.synced_reports if configured
+        # 1. Persist to PostgREST public.synced_reports if configured
         if self.settings.SUPABASE_URL and self.settings.SUPABASE_SERVICE_ROLE_KEY and valid_items:
             client = self._http_client or httpx.AsyncClient(timeout=10.0)
             close_client = self._http_client is None
@@ -191,25 +188,47 @@ class SyncService:
                         json=table_rows,
                     )
                     if resp.status_code not in (200, 201, 204):
-                        logger.warning(
+                        logger.error(
                             "PostgREST batch sync returned status %s for user %s: %s",
                             resp.status_code,
                             user_id,
                             resp.text,
                         )
+                        record_event("sync_push_completed", "database_error")
+                        raise TrustCueError(
+                            code="database_error",
+                            message="Failed to persist synced reports in database.",
+                            status_code=503,
+                        )
                 else:
-                    logger.warning(
+                    logger.error(
                         "PostgREST sync_push_reports RPC returned status %s for user %s: %s",
                         rpc_resp.status_code,
                         user_id,
                         rpc_resp.text,
                     )
+                    record_event("sync_push_completed", "database_error")
+                    raise TrustCueError(
+                        code="database_error",
+                        message="Failed to push synced reports via database RPC.",
+                        status_code=503,
+                    )
+            except TrustCueError:
+                raise
             except Exception as exc:
-                logger.warning("PostgREST batch sync failed for user %s: %s", user_id, str(exc))
+                logger.error("PostgREST batch sync failed for user %s: %s", user_id, str(exc))
+                record_event("sync_push_completed", "database_error")
+                raise TrustCueError(
+                    code="database_error",
+                    message="Cloud sync database connection error.",
+                    status_code=503,
+                ) from exc
             finally:
                 if close_client:
                     await client.aclose()
 
+        # Update in-memory state only upon successful database write or in unconfigured test mode
+        synced_ids = self.app_state.save_synced_reports(user_id, raw_items)
         record_event("sync_push_completed", "success", {"sync_count": len(valid_items)})
         return SyncReportsPushResponse(
             acceptedCount=len(valid_items),
@@ -292,13 +311,28 @@ class SyncService:
                             hasMore=has_more,
                             serverTimestamp=datetime.now(UTC),
                         )
+                logger.error("PostgREST pull_reports query returned status %s for user %s: %s", resp.status_code, user_id, resp.text)
+                record_event("sync_pull_completed", "database_error")
+                raise TrustCueError(
+                    code="database_error",
+                    message="Failed to retrieve synced reports from database.",
+                    status_code=503,
+                )
+            except TrustCueError:
+                raise
             except Exception as exc:
-                logger.warning("PostgREST pull_reports query failed for user %s: %s", user_id, str(exc))
+                logger.error("PostgREST pull_reports query failed for user %s: %s", user_id, str(exc))
+                record_event("sync_pull_completed", "database_error")
+                raise TrustCueError(
+                    code="database_error",
+                    message="Cloud sync database connection error during pull.",
+                    status_code=503,
+                ) from exc
             finally:
                 if close_client:
                     await client.aclose()
 
-        # Fallback to in-memory state
+        # Fallback to in-memory state only when database is unconfigured
         in_mem_records, has_more = self.app_state.list_synced_reports(
             user_id, since=since, limit=clamped_limit, cursor=cursor
         )
@@ -361,15 +395,33 @@ class SyncService:
                     )
                     if del_resp.status_code in (200, 204):
                         db_purged = in_mem_purged
+                    else:
+                        logger.error("Failed to delete synced reports: %s", del_resp.text)
+                        record_event("sync_purged", "database_error")
+                        raise TrustCueError(
+                            code="database_error",
+                            message="Failed to purge synced reports from database.",
+                            status_code=503,
+                        )
 
                 # Explicitly disable sync_enabled on profile
-                await client.patch(
+                patch_resp = await client.patch(
                     f"{base_url}/rest/v1/profiles?id=eq.{user_id}",
                     headers=self._get_auth_headers(),
                     json={"sync_enabled": False},
                 )
+                if patch_resp.status_code not in (200, 204):
+                    logger.warning("Failed to disable sync_enabled on profile during purge: %s", patch_resp.text)
+            except TrustCueError:
+                raise
             except Exception as exc:
-                logger.warning("PostgREST purge_reports failed for user %s: %s", user_id, str(exc))
+                logger.error("PostgREST purge_reports failed for user %s: %s", user_id, str(exc))
+                record_event("sync_purged", "database_error")
+                raise TrustCueError(
+                    code="database_error",
+                    message="Cloud sync database connection error during purge.",
+                    status_code=503,
+                ) from exc
             finally:
                 if close_client:
                     await client.aclose()

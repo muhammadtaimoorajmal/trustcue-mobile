@@ -3,13 +3,18 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import httpx
 import pytest
 from starlette.testclient import TestClient
 
+from trustcue_backend.api.schemas.sync import SyncedReportItem, SyncReportsPushRequest
 from trustcue_backend.core.auth import create_test_jwt
 from trustcue_backend.core.config import Settings
+from trustcue_backend.core.errors import TrustCueError
+from trustcue_backend.core.state import AppState
 from trustcue_backend.core.telemetry import metrics
 from trustcue_backend.main import create_app
+from trustcue_backend.services.sync_service import SyncService
 
 TEST_SECRET = "test-jwt-secret-key-32-chars-long!"
 
@@ -748,3 +753,178 @@ def test_sync_telemetry_events_recorded(auth_client: TestClient) -> None:
     assert "sync_pull_completed:success" in counters
     assert "sync_purged:success" in counters
 
+
+
+def test_sync_conflict_resolution_tombstone_wins_on_equal_timestamp() -> None:
+    """Deterministic conflict resolution: tombstone takes precedence on equal clientUpdatedAt."""
+    app_state = AppState()
+    user_id = str(uuid.uuid4())
+    ts = datetime(2026, 11, 3, 10, 0, 0, tzinfo=UTC)
+
+    # 1. Incoming active report
+    item_active = {
+        "clientReportId": "rep-conflict-1",
+        "snapshotId": "snap-1",
+        "syncGeneration": 1,
+        "clientUpdatedAt": ts,
+        "reportPayload": make_summary_payload(),
+        "isDeleted": False,
+    }
+    app_state.save_synced_reports(user_id, [item_active])
+    saved = app_state.synced_reports[f"{user_id}:rep-conflict-1"]
+    assert saved["isDeleted"] is False
+
+    # 2. Incoming tombstone with EXACT same clientUpdatedAt
+    item_tombstone = {
+        "clientReportId": "rep-conflict-1",
+        "snapshotId": "snap-1",
+        "syncGeneration": 1,
+        "clientUpdatedAt": ts,
+        "reportPayload": make_summary_payload(),
+        "isDeleted": True,
+        "deletedAt": ts,
+    }
+    app_state.save_synced_reports(user_id, [item_tombstone])
+    saved = app_state.synced_reports[f"{user_id}:rep-conflict-1"]
+    assert saved["isDeleted"] is True
+
+    # 3. Subsequent active report with EXACT same timestamp does NOT resurrect it
+    app_state.save_synced_reports(user_id, [item_active])
+    saved = app_state.synced_reports[f"{user_id}:rep-conflict-1"]
+    assert saved["isDeleted"] is True
+
+
+def test_sync_conflict_resolution_stale_update_rejected() -> None:
+    """Deterministic conflict resolution: stale update with older clientUpdatedAt is rejected."""
+    app_state = AppState()
+    user_id = str(uuid.uuid4())
+    t1 = datetime(2026, 11, 3, 10, 0, 0, tzinfo=UTC)
+    t2 = datetime(2026, 11, 3, 11, 0, 0, tzinfo=UTC)
+
+    # 1. Save newer report at t2
+    payload_newer = make_summary_payload(indicator_count=5)
+    item_newer = {
+        "clientReportId": "rep-stale-1",
+        "snapshotId": "snap-2",
+        "syncGeneration": 1,
+        "clientUpdatedAt": t2,
+        "reportPayload": payload_newer,
+        "isDeleted": False,
+    }
+    app_state.save_synced_reports(user_id, [item_newer])
+    saved = app_state.synced_reports[f"{user_id}:rep-stale-1"]
+    assert saved["reportPayload"]["indicatorCount"] == 5
+
+    # 2. Attempt to save older report at t1
+    payload_older = make_summary_payload(indicator_count=1)
+    item_older = {
+        "clientReportId": "rep-stale-1",
+        "snapshotId": "snap-1",
+        "syncGeneration": 1,
+        "clientUpdatedAt": t1,
+        "reportPayload": payload_older,
+        "isDeleted": False,
+    }
+    app_state.save_synced_reports(user_id, [item_older])
+    saved = app_state.synced_reports[f"{user_id}:rep-stale-1"]
+    # Unchanged: older update was rejected
+    assert saved["reportPayload"]["indicatorCount"] == 5
+    assert saved["clientUpdatedAt"] == t2
+
+
+@pytest.mark.asyncio
+async def test_sync_push_fails_closed_on_database_error() -> None:
+    """When Supabase is configured and returns error, push raises 503 and records telemetry."""
+    metrics.reset()
+    user_id = str(uuid.uuid4())
+    settings = Settings(
+        SUPABASE_URL="https://example.supabase.co",
+        SUPABASE_SERVICE_ROLE_KEY="test-key",
+        ENVIRONMENT="test",
+    )
+    app_state = AppState()
+    app_state.set_sync_enabled(user_id, True)
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, json={"message": "Internal Database Error"})
+
+    mock_client = httpx.AsyncClient(transport=httpx.MockTransport(mock_handler))
+    svc = SyncService(settings=settings, app_state=app_state, http_client=mock_client)
+
+    item = SyncedReportItem(
+        clientReportId="rep-fail-1",
+        snapshotId="snap-fail-1",
+        syncGeneration=1,
+        clientUpdatedAt=datetime.now(UTC),
+        reportPayload=make_summary_payload(),
+    )
+
+    with pytest.raises(TrustCueError) as exc_info:
+        await svc.push_reports(user_id=user_id, request=SyncReportsPushRequest(reports=[item]))
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.code == "database_error"
+    assert f"{user_id}:rep-fail-1" not in app_state.synced_reports
+
+    summary = metrics.get_summary()
+    assert summary["counters"].get("sync_push_completed:database_error") == 1
+
+
+@pytest.mark.asyncio
+async def test_sync_pull_fails_closed_on_database_error() -> None:
+    """When Supabase is configured and pull query fails, pull raises 503 and records telemetry."""
+    metrics.reset()
+    user_id = str(uuid.uuid4())
+    settings = Settings(
+        SUPABASE_URL="https://example.supabase.co",
+        SUPABASE_SERVICE_ROLE_KEY="test-key",
+        ENVIRONMENT="test",
+    )
+    app_state = AppState()
+    app_state.set_sync_enabled(user_id, True)
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(502, text="Bad Gateway")
+
+    mock_client = httpx.AsyncClient(transport=httpx.MockTransport(mock_handler))
+    svc = SyncService(settings=settings, app_state=app_state, http_client=mock_client)
+
+    with pytest.raises(TrustCueError) as exc_info:
+        await svc.pull_reports(user_id=user_id)
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.code == "database_error"
+
+    summary = metrics.get_summary()
+    assert summary["counters"].get("sync_pull_completed:database_error") == 1
+
+
+@pytest.mark.asyncio
+async def test_sync_purge_fails_closed_on_database_error() -> None:
+    """When Supabase is configured and purge fails, purge raises 503 and records telemetry."""
+    metrics.reset()
+    user_id = str(uuid.uuid4())
+    settings = Settings(
+        SUPABASE_URL="https://example.supabase.co",
+        SUPABASE_SERVICE_ROLE_KEY="test-key",
+        ENVIRONMENT="test",
+    )
+    app_state = AppState()
+    app_state.set_sync_enabled(user_id, True)
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        if "profiles" in str(request.url):
+            return httpx.Response(200, json=[{"sync_enabled": True}])
+        return httpx.Response(500, json={"message": "Failed to delete"})
+
+    mock_client = httpx.AsyncClient(transport=httpx.MockTransport(mock_handler))
+    svc = SyncService(settings=settings, app_state=app_state, http_client=mock_client)
+
+    with pytest.raises(TrustCueError) as exc_info:
+        await svc.purge_reports(user_id=user_id)
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.code == "database_error"
+
+    summary = metrics.get_summary()
+    assert summary["counters"].get("sync_purged:database_error") == 1

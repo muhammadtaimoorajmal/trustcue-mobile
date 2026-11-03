@@ -96,6 +96,8 @@ class AppState:
                 if isinstance(client_time_raw, datetime)
                 else datetime.fromisoformat(str(client_time_raw))
             )
+            if client_time.tzinfo is None:
+                client_time = client_time.replace(tzinfo=UTC)
 
             # Prevent resurrection: if report was modified before last purge, skip
             if purged_at is not None and client_time <= purged_at:
@@ -108,6 +110,27 @@ class AppState:
 
             key = f"{uid}:{client_id}"
             existing = self.synced_reports.get(key)
+            if existing:
+                existing_time_raw = existing["clientUpdatedAt"]
+                existing_time = (
+                    existing_time_raw
+                    if isinstance(existing_time_raw, datetime)
+                    else datetime.fromisoformat(str(existing_time_raw))
+                )
+                if existing_time.tzinfo is None:
+                    existing_time = existing_time.replace(tzinfo=UTC)
+                incoming_is_del = item.get("isDeleted", False)
+                existing_is_del = existing.get("isDeleted", False)
+
+                # Deterministic conflict resolution:
+                # 1. Stale incoming update rejected
+                if client_time < existing_time:
+                    continue
+                # 2. Equal timestamps: tombstone takes precedence over active
+                if client_time == existing_time:
+                    if existing_is_del and not incoming_is_del:
+                        continue
+
             revision = (existing["revision"] + 1) if existing else 1
             now = datetime.now(UTC)
             record = {
