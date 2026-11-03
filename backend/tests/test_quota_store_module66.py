@@ -273,3 +273,69 @@ async def test_output_validation_failure_commits_quota(mock_settings: Settings) 
     # Prove commit_quota was called, NOT release_quota
     mock_quota_store.commit_quota.assert_awaited_once_with(str(user.user_id), res_id)
     mock_quota_store.release_quota.assert_not_called()
+
+@pytest.mark.asyncio
+async def test_dispatch_quota_failure_gates_provider_inference(mock_settings: Settings) -> None:
+    """When dispatch_quota returns False, provider inference must be gated and NOT called."""
+    mock_provider = AsyncMock(spec=AiProvider)
+    mock_quota_store = AsyncMock(spec=InMemoryQuotaStore)
+    mock_quota_store.dispatch_quota.return_value = False
+
+    service = ProtectedAiService(
+        settings=mock_settings,
+        provider=mock_provider,
+        quota_store=mock_quota_store,
+    )
+
+    user = _make_user()
+    request_payload = _make_request()
+    res_id = str(uuid.uuid4())
+
+    with pytest.raises(TrustCueError) as exc_info:
+        await service.execute_analysis(
+            payload=request_payload,
+            current_user=user,
+            request_id="req_12345678",
+            reservation_id=res_id,
+        )
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.code == "quota_dispatch_rejected"
+    # Ensure provider was never invoked
+    mock_provider.analyze.assert_not_called()
+    mock_quota_store.release_quota.assert_not_called()
+    mock_quota_store.commit_quota.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_dispatch_quota_exception_stops_provider_without_blind_refund(mock_settings: Settings) -> None:
+    """When dispatch_quota raises/times out, inference must not run and no blind refund occurs."""
+    mock_provider = AsyncMock(spec=AiProvider)
+    mock_quota_store = AsyncMock(spec=InMemoryQuotaStore)
+    mock_quota_store.dispatch_quota.side_effect = httpx.ConnectTimeout("Dispatch RPC timed out")
+
+    service = ProtectedAiService(
+        settings=mock_settings,
+        provider=mock_provider,
+        quota_store=mock_quota_store,
+    )
+
+    user = _make_user()
+    request_payload = _make_request()
+    res_id = str(uuid.uuid4())
+
+    with pytest.raises(TrustCueError) as exc_info:
+        await service.execute_analysis(
+            payload=request_payload,
+            current_user=user,
+            request_id="req_12345678",
+            reservation_id=res_id,
+        )
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.code == "quota_dispatch_uncertain"
+    # Ensure provider was never invoked and quota was NOT blindly refunded
+    mock_provider.analyze.assert_not_called()
+    mock_quota_store.release_quota.assert_not_called()
+    mock_quota_store.commit_quota.assert_not_called()
+

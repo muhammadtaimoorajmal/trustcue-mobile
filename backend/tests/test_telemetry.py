@@ -140,3 +140,64 @@ def test_synthetic_secrets_and_user_text_never_leak_in_telemetry(caplog: pytest.
         assert synthetic_password not in all_logs
         assert synthetic_user_text not in all_logs
         assert synthetic_jwt not in all_logs
+
+def test_unknown_event_mapped_to_bounded_category() -> None:
+    """Enforces that unknown metric event names map strictly to unknown_event."""
+    metrics.reset()
+    metrics.record_counter("malicious_unbounded_metric_name_xyz", "success")
+    metrics.record_counter("quota_reserved", "unrecognized_wild_outcome")
+
+    summary = metrics.get_summary()
+    assert "unknown_event:success" in summary["counters"]
+    assert "malicious_unbounded_metric_name_xyz:success" not in summary["counters"]
+    assert "quota_reserved:internal_error" in summary["counters"]
+    assert "quota_reserved:unrecognized_wild_outcome" not in summary["counters"]
+
+
+def test_metadata_values_bounded_and_sanitized(caplog: pytest.LogCaptureFixture) -> None:
+    """Validates that metadata values in record_stage_duration and record_event are bounded."""
+    metrics.reset()
+    with caplog.at_level(logging.INFO):
+        # 1. Invalid metadata values passed to record_stage_duration
+        record_stage_duration(
+            stage="quota_dispatch",
+            duration_ms=15.0,
+            outcome="success",
+            extra_log_fields={
+                "quota_mode": "invalid_mode_inject",
+                "provider": "untrusted_arbitrary_provider",
+                "status_code": "not_an_int",
+            },
+        )
+
+        # 2. Invalid metadata values passed to record_event
+        record_event(
+            event_type="unknown_metric_foo",
+            outcome="client_error",
+            extra_log_fields={
+                "reaped_count": -5,
+                "sync_count": "ten",
+                "quota_mode": "v2",
+            },
+        )
+
+        logs = [rec.getMessage() for rec in caplog.records]
+        stage_logs = [line for line in logs if "Stage metric:" in line]
+        event_logs = [line for line in logs if "Operational event:" in line]
+
+        assert len(stage_logs) >= 1
+        assert len(event_logs) >= 1
+
+        # Check stage log metadata
+        stage_entry = stage_logs[-1]
+        assert '"quota_mode": "unknown"' in stage_entry
+        assert '"provider": "unknown"' in stage_entry
+        assert "not_an_int" not in stage_entry
+
+        # Check event log metadata
+        event_entry = event_logs[-1]
+        assert '"event": "unknown_event"' in event_entry
+        assert '"quota_mode": "v2"' in event_entry
+        assert "-5" not in event_entry
+        assert "ten" not in event_entry
+

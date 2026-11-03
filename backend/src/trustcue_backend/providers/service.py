@@ -9,6 +9,7 @@ from trustcue_backend.api.schemas.analysis import (
 )
 from trustcue_backend.core.auth import AuthenticatedUser
 from trustcue_backend.core.config import Settings
+from trustcue_backend.core.errors import TrustCueError
 from trustcue_backend.core.quota import QuotaStore
 from trustcue_backend.core.telemetry import record_stage_duration
 from trustcue_backend.providers.base import AiProvider
@@ -110,7 +111,24 @@ class ProtectedAiService:
                     duration_ms=disp_ms,
                     outcome="database_error",
                 )
-                logger.warning("Failed to dispatch quota reservation %s: %s", reservation_id, disp_err)
+                logger.error("Failed to dispatch quota reservation %s: %s", reservation_id, disp_err)
+                raise TrustCueError(
+                    code="quota_dispatch_uncertain",
+                    message="Quota reservation dispatch status is uncertain. Please retry.",
+                    status_code=503,
+                ) from disp_err
+
+            if not disp_ok:
+                logger.warning(
+                    "Quota reservation %s dispatch rejected for user %s",
+                    reservation_id,
+                    user_id,
+                )
+                raise TrustCueError(
+                    code="quota_dispatch_rejected",
+                    message="Quota reservation could not be dispatched. Please retry.",
+                    status_code=503,
+                )
 
         # 3. Execute upstream provider inference
         t_infer = time.perf_counter()

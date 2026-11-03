@@ -72,6 +72,57 @@ VALID_STAGES: set[str] = {
     "quota_settle",
 }
 
+VALID_METRICS: set[str] = {
+    "quota_reserved",
+    "quota_dispatched",
+    "quota_committed",
+    "quota_released",
+    "quota_exhausted",
+    "rate_limited",
+    "concurrency_exceeded",
+    "provider_inference_completed",
+    "provider_inference_failed",
+    "grounding_completed",
+    "grounding_failed",
+    "reaper_executed",
+    "sync_push_completed",
+    "sync_pull_completed",
+    "sync_opt_in_changed",
+    "sync_purged",
+    "request_started",
+    "request_completed",
+    "unknown_event",
+}
+
+VALID_QUOTA_MODES: set[str] = {"v1", "v2", "unknown"}
+VALID_PROVIDERS: set[str] = {"groq-cloud", "google-gemini", "mock-provider", "unknown"}
+
+
+def _sanitize_extra_fields(
+    extra_log_fields: dict[str, Any] | None,
+    allowed_keys: set[str],
+) -> dict[str, Any]:
+    """Validate and boundedly sanitize metadata values as well as keys."""
+    sanitized: dict[str, Any] = {}
+    if not extra_log_fields:
+        return sanitized
+
+    for k, v in extra_log_fields.items():
+        if k not in allowed_keys:
+            continue
+        if k == "quota_mode":
+            sanitized[k] = v if str(v) in VALID_QUOTA_MODES else "unknown"
+        elif k == "provider":
+            sanitized[k] = v if str(v) in VALID_PROVIDERS else "unknown"
+        elif k == "status_code":
+            if isinstance(v, int) and 100 <= v <= 599:
+                sanitized[k] = v
+        elif k in {"reaped_count", "sync_count"}:
+            if isinstance(v, int) and v >= 0:
+                sanitized[k] = v
+
+    return sanitized
+
 
 def validate_or_generate_correlation_id(incoming: str | None) -> str:
     """
@@ -111,8 +162,9 @@ class MetricsCollector:
 
     def record_counter(self, metric: str, outcome: str, count: int = 1) -> None:
         """Increment a bounded metric counter."""
+        safe_metric = metric if metric in VALID_METRICS else "unknown_event"
         safe_outcome = outcome if outcome in VALID_OUTCOMES else "internal_error"
-        key = (metric, safe_outcome)
+        key = (safe_metric, safe_outcome)
         with self._lock:
             self._counters[key] = self._counters.get(key, 0) + count
 
@@ -188,10 +240,10 @@ def record_stage_duration(
         "correlation_id": get_current_correlation_id(),
     }
     if extra_log_fields:
-        for k, v in extra_log_fields.items():
-            # Allowlist safe operational metadata
-            if k in {"quota_mode", "provider", "status_code"}:
-                event_payload[k] = v
+        sanitized = _sanitize_extra_fields(
+            extra_log_fields, allowed_keys={"quota_mode", "provider", "status_code"}
+        )
+        event_payload.update(sanitized)
 
     logger.info("Stage metric: %s", json.dumps(event_payload))
 
@@ -204,17 +256,21 @@ def record_event(
     """
     Record an operational event count and emit a structured privacy-safe log entry.
     """
-    metrics.record_counter(event_type, outcome)
+    safe_event_type = event_type if event_type in VALID_METRICS else "unknown_event"
+    safe_outcome = outcome if outcome in VALID_OUTCOMES else "internal_error"
+    metrics.record_counter(safe_event_type, safe_outcome)
 
     event_payload: dict[str, Any] = {
-        "event": event_type,
-        "outcome": outcome,
+        "event": safe_event_type,
+        "outcome": safe_outcome,
         "correlation_id": get_current_correlation_id(),
     }
     if extra_log_fields:
-        for k, v in extra_log_fields.items():
-            if k in {"quota_mode", "provider", "status_code", "reaped_count"}:
-                event_payload[k] = v
+        sanitized = _sanitize_extra_fields(
+            extra_log_fields,
+            allowed_keys={"quota_mode", "provider", "status_code", "reaped_count", "sync_count"},
+        )
+        event_payload.update(sanitized)
 
     logger.info("Operational event: %s", json.dumps(event_payload))
 

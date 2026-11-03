@@ -16,6 +16,7 @@ from trustcue_backend.api.schemas.sync import (
 from trustcue_backend.core.config import Settings
 from trustcue_backend.core.errors import SyncOptInRequiredError
 from trustcue_backend.core.state import AppState
+from trustcue_backend.core.telemetry import record_event
 
 logger = logging.getLogger("trustcue.sync")
 
@@ -101,6 +102,7 @@ class SyncService:
         if not sync_enabled:
             # Opt-out blocks new uploads but does not prevent owner deletion (tombstones)
             if not all(item.is_deleted for item in request.reports):
+                record_event("sync_opt_in_changed", "consent_rejected")
                 raise SyncOptInRequiredError()
 
         user_gen = self.app_state.get_sync_generation(user_id)
@@ -208,6 +210,7 @@ class SyncService:
                 if close_client:
                     await client.aclose()
 
+        record_event("sync_push_completed", "success", {"sync_count": len(valid_items)})
         return SyncReportsPushResponse(
             acceptedCount=len(valid_items),
             syncedReportIds=synced_ids,
@@ -227,6 +230,7 @@ class SyncService:
         Requires sync_enabled opt-in on user profile.
         """
         if not await self.is_sync_enabled(user_id):
+            record_event("sync_opt_in_changed", "consent_rejected")
             raise SyncOptInRequiredError()
 
         clamped_limit = min(max(limit, 1), 100)
@@ -281,6 +285,7 @@ class SyncService:
                             if (has_more and records)
                             else None
                         )
+                        record_event("sync_pull_completed", "success", {"sync_count": len(records)})
                         return SyncReportsPullResponse(
                             reports=records,
                             nextCursor=next_cursor,
@@ -320,6 +325,7 @@ class SyncService:
             if (has_more and records)
             else None
         )
+        record_event("sync_pull_completed", "success", {"sync_count": len(records)})
         return SyncReportsPullResponse(
             reports=records,
             nextCursor=next_cursor,
@@ -369,6 +375,7 @@ class SyncService:
                     await client.aclose()
 
         effective_count = max(in_mem_purged, db_purged)
+        record_event("sync_purged", "success", {"sync_count": effective_count})
         return SyncPurgeResponse(
             purgedCount=effective_count,
             message="Cloud synced reports successfully purged.",

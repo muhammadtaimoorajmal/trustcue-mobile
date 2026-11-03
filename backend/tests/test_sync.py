@@ -8,6 +8,7 @@ from starlette.testclient import TestClient
 
 from trustcue_backend.core.auth import create_test_jwt
 from trustcue_backend.core.config import Settings
+from trustcue_backend.core.telemetry import metrics
 from trustcue_backend.main import create_app
 
 TEST_SECRET = "test-jwt-secret-key-32-chars-long!"
@@ -592,4 +593,158 @@ def test_sync_push_skips_stale_reports_preceding_purge(auth_client: TestClient) 
     assert pull.status_code == 200
     assert len(pull.json()["reports"]) == 1
     assert pull.json()["reports"][0]["clientReportId"] == "rep-valid-gen"
+
+def test_sync_account_isolation_prevents_cross_user_leakage(auth_client: TestClient) -> None:
+    """Ensures reports, cursors, and purges are strictly isolated per authenticated user."""
+    user_a = str(uuid.uuid4())
+    user_b = str(uuid.uuid4())
+    headers_a = get_auth_headers(user_a, "user_a@example.com")
+    headers_b = get_auth_headers(user_b, "user_b@example.com")
+
+    # 1. Enable sync for both users
+    auth_client.patch("/api/v1/account/profile", headers=headers_a, json={"syncEnabled": True})
+    auth_client.patch("/api/v1/account/profile", headers=headers_b, json={"syncEnabled": True})
+
+    # 2. User A pushes reports
+    now = datetime.now(UTC)
+    push_a = auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers_a,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-user-a-1",
+                    "snapshotId": "snap-a-1",
+                    "syncGeneration": 1,
+                    "clientUpdatedAt": now.isoformat(),
+                    "reportPayload": make_summary_payload(),
+                },
+                {
+                    "clientReportId": "rep-user-a-2",
+                    "snapshotId": "snap-a-2",
+                    "syncGeneration": 1,
+                    "clientUpdatedAt": (now + timedelta(seconds=1)).isoformat(),
+                    "reportPayload": make_summary_payload(),
+                },
+            ]
+        },
+    )
+    assert push_a.status_code == 200
+    assert push_a.json()["acceptedCount"] == 2
+
+    # 3. User B pulls reports -> receives 0 (isolated from User A)
+    pull_b = auth_client.get("/api/v1/sync/reports", headers=headers_b)
+    assert pull_b.status_code == 200
+    assert len(pull_b.json()["reports"]) == 0
+
+    # 4. User B purges reports -> purgedCount is 0, does not affect User A
+    purge_b = auth_client.delete("/api/v1/sync/reports", headers=headers_b)
+    assert purge_b.status_code == 200
+    assert purge_b.json()["purgedCount"] == 0
+
+    # 5. User A pulls reports -> still has both reports
+    pull_a = auth_client.get("/api/v1/sync/reports", headers=headers_a)
+    assert pull_a.status_code == 200
+    assert len(pull_a.json()["reports"]) == 2
+    ids_a = {r["clientReportId"] for r in pull_a.json()["reports"]}
+    assert ids_a == {"rep-user-a-1", "rep-user-a-2"}
+
+
+def test_sync_strictly_rejects_extra_unapproved_fields(auth_client: TestClient) -> None:
+    """Rejects unapproved extra fields (user_notes, credentials, prompts) via allowlist."""
+    user_id = str(uuid.uuid4())
+    headers = get_auth_headers(user_id)
+    auth_client.patch("/api/v1/account/profile", headers=headers, json={"syncEnabled": True})
+
+    now = datetime.now(UTC)
+
+    # 1. Attempt payload with unapproved extra field in reportPayload
+    bad_payload_extra = make_summary_payload()
+    bad_payload_extra["user_notes"] = "Suspicious phishing attempt from unknown sender"
+
+    resp_extra = auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-unapproved-field",
+                    "snapshotId": "snap-unapproved",
+                    "syncGeneration": 1,
+                    "clientUpdatedAt": now.isoformat(),
+                    "reportPayload": bad_payload_extra,
+                }
+            ]
+        },
+    )
+    assert resp_extra.status_code in (400, 422)
+
+    # 2. Attempt payload with forbidden sensitive key (evidence, password)
+    bad_payload_sensitive = make_summary_payload()
+    bad_payload_sensitive["evidence"] = "Exact text containing bank details"
+
+    resp_sensitive = auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-sensitive-key",
+                    "snapshotId": "snap-sensitive",
+                    "syncGeneration": 1,
+                    "clientUpdatedAt": now.isoformat(),
+                    "reportPayload": bad_payload_sensitive,
+                }
+            ]
+        },
+    )
+    assert resp_sensitive.status_code in (400, 422)
+
+
+def test_sync_telemetry_events_recorded(auth_client: TestClient) -> None:
+    """Validates that sync push, pull, purge, and opt-in rejection emit bounded telemetry."""
+    metrics.reset()
+    user_id = str(uuid.uuid4())
+    headers = get_auth_headers(user_id)
+
+    # 1. Unopted pull -> emits sync_opt_in_changed:consent_rejected
+    pull_unopted = auth_client.get("/api/v1/sync/reports", headers=headers)
+    assert pull_unopted.status_code == 403
+
+    # 2. Opt-in
+    auth_client.patch("/api/v1/account/profile", headers=headers, json={"syncEnabled": True})
+
+    # 3. Push reports -> emits sync_push_completed:success
+    now = datetime.now(UTC)
+    push_resp = auth_client.post(
+        "/api/v1/sync/reports",
+        headers=headers,
+        json={
+            "reports": [
+                {
+                    "clientReportId": "rep-telem-1",
+                    "snapshotId": "snap-telem-1",
+                    "syncGeneration": 1,
+                    "clientUpdatedAt": now.isoformat(),
+                    "reportPayload": make_summary_payload(),
+                }
+            ]
+        },
+    )
+    assert push_resp.status_code == 200
+
+    # 4. Pull reports -> emits sync_pull_completed:success
+    pull_resp = auth_client.get("/api/v1/sync/reports", headers=headers)
+    assert pull_resp.status_code == 200
+
+    # 5. Purge reports -> emits sync_purged:success
+    purge_resp = auth_client.delete("/api/v1/sync/reports", headers=headers)
+    assert purge_resp.status_code == 200
+
+    summary = metrics.get_summary()
+    counters = summary["counters"]
+    assert "sync_opt_in_changed:consent_rejected" in counters
+    assert "sync_push_completed:success" in counters
+    assert "sync_pull_completed:success" in counters
+    assert "sync_purged:success" in counters
 
