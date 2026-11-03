@@ -273,5 +273,5 @@ Phase 6 is formally completed and closed. TrustCue's input intake, parsing, extr
 - **Current Verified Milestone:** Module 58 (PII Redaction Pipeline Hardening and Phase 6 Closeout)
 - **Next Assigned Milestone:** Module 59 (User Authentication UI & State Hardening)
 - **Authoritative Date:** November 2, 2026
-- **Lead Developer:** Muhammad Taimoor Ajmal (SAP ID: 63461)
+- **Lead Developer:** Muhammad Taimoor Ajmal
 

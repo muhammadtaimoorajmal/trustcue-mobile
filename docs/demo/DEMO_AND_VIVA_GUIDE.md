@@ -1,10 +1,10 @@
 # TrustCue Master Classroom Demonstration & Viva Preparation Guide
 
-**Course:** CS3643 — Mobile Application Development  
-**Academic Program:** BSCS Semester 5-1, Fall 2026  
-**Institution:** Faculty of Computing & Applied Sciences, Riphah International University  
+**Course:** TrustCue Mobile Application Development  
+**Academic Program:** Production Release 2026  
+**Institution:** TrustCue Engineering  
 **Student Name:** Muhammad Taimoor Ajmal  
-**SAP ID:** 63461  
+**SAP ID:**   
 **Course Instructor:** Mr. Muhammad Shariq Hasnain  
 **Presentation Date:** Wednesday, 21 October 2026  
 **Document ID:** `DOC-DEMO-VIVA-MASTER-20261021`  
@@ -31,7 +31,7 @@
 ## 1. Academic Metadata & Presentation Strategy
 
 ### 1.1 Course & Assessment Context
-* **Course:** CS3643 Mobile Application Development is a core computing course evaluating software engineering principles, native mobile capabilities, reactive state management, asynchronous data flows, and secure architecture on Android.
+* **Course:** TrustCue Mobile Application Development is a core computing course evaluating software engineering principles, native mobile capabilities, reactive state management, asynchronous data flows, and secure architecture on Android.
 * **Instructor Evaluation Goals:** Mr. Muhammad Shariq Hasnain evaluates whether the student:
   1. Understands the mobile application from first principles (lifecycle, UI tree, state, plugins).
   2. Can demonstrate the working application live on hardware with confidence.
@@ -711,9 +711,9 @@ WHERE tablename = 'synced_reports';
 
 ---
 
-**Guide Prepared For:** Muhammad Taimoor Ajmal (SAP ID: 63461)  
-**Academic Target:** CS3643 Mobile Application Development Progress Viva  
-**Faculty:** Faculty of Computing & Applied Sciences, Riphah International University  
+**Guide Prepared For:** Muhammad Taimoor Ajmal  
+**Academic Target:** TrustCue Mobile Application Development Progress Viva  
+**Faculty:** TrustCue Engineering  
 **Date of Document:** October 20, 2026  
 **Status:** READY FOR DEFENSE  
 

@@ -158,14 +158,30 @@ class ReportSyncService {
         }
       }
 
-      // 3. Pull remote updates
-      final pullRes = await syncApiClient.pullReports(since: _lastSyncTime);
+      // 3. Pull remote updates with bounded pagination
       int pulledCount = 0;
       int tombstonesApplied = 0;
+      final cursorSince = _lastSyncTime;
+      String? nextCursor;
+      bool hasMore = true;
+      int pageLimit = 10;
+      DateTime? latestServerTimestamp;
 
-      if (pullRes.isSuccess) {
+      while (hasMore && pageLimit > 0) {
+        pageLimit--;
+        final pullRes = await syncApiClient.pullReports(
+          since: cursorSince,
+          cursor: nextCursor,
+        );
+        if (pullRes.isFailure) {
+          if (itemsToPush.isEmpty && pulledCount == 0 && tombstonesApplied == 0) {
+            return Result.failure(pullRes.failureOrNull!);
+          }
+          break;
+        }
+
         final pullResult = pullRes.valueOrNull!;
-        pulledCount = pullResult.reports.length;
+        latestServerTimestamp = pullResult.serverTimestamp;
 
         for (final remoteRecord in pullResult.reports) {
           if (remoteRecord.isDeleted) {
@@ -174,12 +190,23 @@ class ReportSyncService {
               remoteRecord.clientReportId,
             );
             tombstonesApplied++;
+          } else {
+            await repository.applyRemoteReport(
+              accountId,
+              remoteRecord,
+            );
+            pulledCount++;
           }
         }
-        _lastSyncTime = pullResult.serverTimestamp;
-      } else if (itemsToPush.isEmpty) {
-        // If neither push nor pull succeeded, bubble up failure
-        return Result.failure(pullRes.failureOrNull!);
+
+        hasMore = pullResult.hasMore;
+        nextCursor = pullResult.nextCursor;
+        if (!hasMore || nextCursor == null) break;
+      }
+
+      // Advance pull cursor only after local merge is committed
+      if (latestServerTimestamp != null) {
+        _lastSyncTime = latestServerTimestamp;
       }
 
       return Result.success(

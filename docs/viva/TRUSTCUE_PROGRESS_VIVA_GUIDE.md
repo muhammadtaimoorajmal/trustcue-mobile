@@ -1,9 +1,9 @@
 # TrustCue Project Progress Viva Preparation Guide
-**Mobile Application Development (CS3643) — BSCS Semester 5-1, Fall 2026**
-**Riphah International University**
+**Mobile Application Development (TrustCue) — Production Release 2026**
+**TrustCue Project**
 
 - **Student Name:** Muhammad Taimoor Ajmal
-- **SAP ID:** 63461
+- **SAP ID:** 
 - **Course Instructor:** Mr. Muhammad Shariq Hasnain
 - **Project Name:** TrustCue — Scam-Indicator Awareness & Risk Explanation Assistant
 - **Documentation Date:** October 16, 2026
@@ -38,7 +38,7 @@
 ## 1. Project Snapshot & Implementation Status
 
 ### 1.1 Academic Purpose of this Document
-This document is prepared specifically for the **CS3643 Mobile Application Development Progress Viva**. It teaches the architecture, engineering principles, design tradeoffs, and code implementations of TrustCue from first principles. It explicitly details what has been built, how the components work, what has been tested, and what remains scheduled for future modules.
+This document is prepared specifically for the **TrustCue Mobile Application Development Progress Viva**. It teaches the architecture, engineering principles, design tradeoffs, and code implementations of TrustCue from first principles. It explicitly details what has been built, how the components work, what has been tested, and what remains scheduled for future modules.
 
 ### 1.2 Actual Repository Checkpoints
 TrustCue is developed across three isolated Git branches corresponding to distinct architecture tiers:

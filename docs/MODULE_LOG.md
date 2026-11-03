@@ -568,7 +568,7 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 
 ### 2026-10-15 â€” Module 27: Backend/AI Architecture, Service Feasibility, Privacy Decisions, and API Contracts
 - **Scope & Objectives:**
-  - Evaluated technology stack feasibility for server-assisted AI scam-indicator analysis under zero financial expenditure and Pakistan developer operating constraints (CS3643, BSCS Semester 5-1, Fall 2026, Riphah International University).
+  - Evaluated technology stack feasibility for server-assisted AI scam-indicator analysis under zero financial expenditure and Pakistan developer operating constraints (project requirements and production constraints).
   - Selected Primary Stack: Node.js (TypeScript) + Fastify running on Render Free Web Service, with managed authentication and PostgreSQL provided by Supabase Free Tier.
   - Formulated Dual AI Privacy Strategy: Groq Cloud API (`llama-3.3-70b-versatile`) selected as primary inference engine due to contractual zero-retention and no model training on customer inference data; Google AI Studio Gemini API (`gemini-1.5-flash`) designated as secondary provider under a strict synthetic-data-only policy for unpaid free tier.
   - Specified untrusted input isolation: user text is strictly bounded in `<untrusted_message_content>` XML tags with explicit anti-prompt-injection system instructions.
@@ -1751,7 +1751,7 @@ This log tracks the progress of TrustCue's implementation across approximately 1
 
 ### Module 50: Final Academic Audit, Quality Gate Reconciliation, and Handover Dossier
 - **Scope & Objectives:**
-  - Execute a comprehensive, exhaustive academic audit of all 50 roadmap modules for CS3643 (Mobile Application Development) at Riphah International University.
+  - Execute a comprehensive, exhaustive academic audit of all 50 roadmap modules for TrustCue (Mobile Application Development) at TrustCue Project.
   - Construct an authoritative Granular Acceptance Register documenting the scope, criteria, implementation locations, test evidence, status, and corrective actions for every module from 01 to 50.
   - Reconcile empirical inconsistencies: programmatic Play Store character counts, live TLS 1.3 socket verification, KeyStore vs. SQLite storage security distinction, functional external account deletion form, reviewer test account auto-confirmation instructions, apksigner v2 scheme proof, in-place update persistence on Android 14, and verified OpenSSL PBKDF2 AES-256 keystore backup.
   - Enforce the Owner's Branch Rule: strictly retain exactly four branches (`main`, `frontend`, `backend`, `database`); reconcile and safely remove temporary integration candidate branch with verified offline Git bundle backup (`integration_candidate_backup.bundle`).

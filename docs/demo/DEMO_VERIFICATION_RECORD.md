@@ -1,8 +1,8 @@
 # TrustCue Demonstration & Rehearsal Verification Record
 
-**Course:** CS3643 — Mobile Application Development (BSCS Semester 5-1, Fall 2026)  
-**Institution:** Faculty of Computing & Applied Sciences, Riphah International University  
-**Student:** Muhammad Taimoor Ajmal (SAP ID: 63461)  
+**Course:** TrustCue Mobile Application  
+**Institution:** TrustCue Engineering  
+**Student:** Muhammad Taimoor Ajmal  
 **Instructor:** Mr. Muhammad Shariq Hasnain  
 **Presentation Target Date:** Wednesday, 21 October 2026  
 **Document ID:** `DOC-DEMO-VERIFICATION-RECORD-20261021`  
@@ -150,7 +150,7 @@ To guarantee presentation focus and preserve engineering stability before the vi
 ---
 
 **Audited & Verified By:** Antigravity Pairing Assistant  
-**Lead Developer / Student:** Muhammad Taimoor Ajmal (SAP ID: 63461)  
+**Lead Developer / Student:** Muhammad Taimoor Ajmal  
 **Verification Date:** October 20, 2026  
 **Presentation Status:** READY FOR CLASSROOM DEMONSTRATION & VIVA DEFENSE  
 

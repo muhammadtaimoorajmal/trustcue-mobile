@@ -1,7 +1,7 @@
 ================================================================================
 TRUSTCUE CLASSROOM DEMONSTRATION: COPY-PASTE INPUT FIXTURES
-Course: CS3643 - Mobile Application Development (BSCS 5-1, Fall 2026)
-Presenter: Muhammad Taimoor Ajmal (SAP ID: 63461)
+Course: TrustCue Mobile Application
+Presenter: Muhammad Taimoor Ajmal
 Instructor: Mr. Muhammad Shariq Hasnain
 Target Device: Vivo V2207 (Android 14 API 34) running Release APK
 ================================================================================

@@ -1,6 +1,9 @@
 import 'package:trustcue_mobile/core/errors/analysis_failure.dart';
 import 'package:trustcue_mobile/core/types/result.dart';
+import 'package:trustcue_mobile/features/analysis/domain/models/analysis_report.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
+import 'package:trustcue_mobile/features/input/domain/models/text_snapshot.dart';
+import 'package:trustcue_mobile/features/reports/domain/models/cloud_sync_models.dart';
 import 'package:trustcue_mobile/features/reports/domain/contracts/local_report_repository.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report_summary.dart';
@@ -328,6 +331,52 @@ class FakeReportRepository implements LocalReportRepository {
     }
     pendingTombstoneIds.remove(reportId);
     syncedReportIds.remove(reportId);
+    return const Result.success(null);
+  }
+
+  @override
+  Future<Result<void>> applyRemoteReport(
+    String accountId,
+    CloudReportRecord remoteRecord,
+  ) async {
+    final reportId = remoteRecord.clientReportId;
+    final existing = storage[reportId];
+    if (existing != null && existing.snapshot.text.trim().isNotEmpty) {
+      syncedReportIds.add(reportId);
+      return const Result.success(null);
+    }
+
+    final emptySnapshot = TextSnapshot(
+      id: remoteRecord.snapshotId,
+      text: '',
+      source: InputSource.messageText,
+      createdAt: remoteRecord.clientUpdatedAt,
+    );
+
+    final localReport = AnalysisReport(
+      id: 'rep_local_',
+      schemaVersion: 1,
+      snapshot: emptySnapshot,
+      analyzedAt: remoteRecord.clientUpdatedAt,
+      findings: const [],
+      limitations: const [
+        'Cloud backup summary: original message text is preserved only on the originating device.',
+      ],
+      suggestedActions: const [],
+    );
+
+    final restoredReport = SavedReport(
+      id: reportId,
+      schemaVersion: remoteRecord.schemaVersion,
+      snapshot: emptySnapshot,
+      accountId: accountId,
+      analyzedAt: remoteRecord.clientUpdatedAt,
+      savedAt: remoteRecord.clientUpdatedAt,
+      localReport: localReport,
+    );
+
+    storage[reportId] = restoredReport;
+    syncedReportIds.add(reportId);
     return const Result.success(null);
   }
 

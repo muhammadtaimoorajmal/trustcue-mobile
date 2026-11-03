@@ -1,7 +1,6 @@
 # TrustCue
 
-TrustCue is a Mobile Application Development project for CS3643, BSCS Semester 5-1, Fall 2026, at Riphah International University.
-The application is designed to help people worldwide understand potential scam indicators in suspicious digital communication.
+TrustCue is a privacy-first mobile cybersecurity application designed to help people worldwide understand and identify potential scam indicators in suspicious digital communication.
 
 ## Project Status
 The application foundation is implemented across 49 comprehensive modules:

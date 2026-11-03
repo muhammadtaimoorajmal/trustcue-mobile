@@ -68,7 +68,7 @@ Daily Quota: 15
 
 ## 3. GoTrue Password Recovery Lifecycle Verification
 
-Conducted live against Supabase GoTrue Auth API using verified account `maliktaimoor655+m60@gmail.com`:
+Conducted live against Supabase GoTrue Auth API using verified account `test-user+m60@example.com`:
 1. **Wrong Password Rejection (Anti-Enumeration & Security Defense):**
    - Attempted token exchange with incorrect password `WrongPassword999!`.
    - Result: HTTP `400 Bad Request` with `{"error": "invalid_grant", "error_description": "Invalid login credentials"}`.

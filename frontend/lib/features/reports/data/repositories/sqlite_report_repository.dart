@@ -5,7 +5,9 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 import 'package:trustcue_mobile/core/errors/analysis_failure.dart';
 import 'package:trustcue_mobile/core/types/result.dart';
+import 'package:trustcue_mobile/features/analysis/domain/models/analysis_report.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/local_assessment.dart';
+import 'package:trustcue_mobile/features/reports/domain/models/cloud_sync_models.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/input/domain/models/text_snapshot.dart';
 import 'package:trustcue_mobile/features/reports/data/database/database_constants.dart';
@@ -1149,6 +1151,183 @@ class SqliteReportRepository implements LocalReportRepository {
     );
     if (delResult.isFailure) return Result.failure(delResult.failureOrNull!);
     return const Result.success(null);
+  }
+
+  @override
+  Future<Result<void>> applyRemoteReport(
+    String accountId,
+    CloudReportRecord remoteRecord,
+  ) async {
+    final cleanAccountId = accountId.trim();
+    if (cleanAccountId.isEmpty) {
+      return Result.failure(
+        const AnalysisFailure.storage(
+          'Cannot apply remote report: invalid account ID.',
+        ),
+      );
+    }
+
+    final dbResult = await _getOpenDatabase();
+    if (dbResult.isFailure) return Result.failure(dbResult.failureOrNull!);
+    final db = dbResult.valueOrNull!;
+
+    try {
+      await db.transaction((txn) async {
+        final reportId = remoteRecord.clientReportId;
+
+        // 1. Check if report already exists locally
+        final existingReports = await txn.query(
+          DatabaseConstants.tableReports,
+          columns: [
+            DatabaseConstants.colReportId,
+            DatabaseConstants.colReportSnapshotId,
+            DatabaseConstants.colReportAccountId,
+          ],
+          where: '${DatabaseConstants.colReportId} = ?',
+          whereArgs: [reportId],
+        );
+
+        if (existingReports.isNotEmpty) {
+          final existingRow = existingReports.first;
+          final existingSnapshotId =
+              existingRow[DatabaseConstants.colReportSnapshotId] as String;
+
+          final existingSnapshots = await txn.query(
+            DatabaseConstants.tableSnapshots,
+            columns: [DatabaseConstants.colSnapshotText],
+            where: '${DatabaseConstants.colSnapshotId} = ?',
+            whereArgs: [existingSnapshotId],
+          );
+
+          final existingText = existingSnapshots.isNotEmpty
+              ? (existingSnapshots.first[DatabaseConstants.colSnapshotText]
+                      as String?) ??
+                  ''
+              : '';
+
+          // If local report already has rich text, NEVER overwrite local content!
+          if (existingText.trim().isNotEmpty) {
+            // Only update sync metadata to mark as synced
+            await txn.insert(DatabaseConstants.tableSyncMetadata, {
+              DatabaseConstants.colSyncReportId: reportId,
+              DatabaseConstants.colSyncAccountId: cleanAccountId,
+              DatabaseConstants.colSyncStatus: 'synced',
+              DatabaseConstants.colSyncClientUpdatedAt: remoteRecord
+                  .clientUpdatedAt
+                  .toUtc()
+                  .toIso8601String(),
+              DatabaseConstants.colSyncLastSyncedAt: remoteRecord.updatedAt
+                  .toUtc()
+                  .toIso8601String(),
+            }, conflictAlgorithm: ConflictAlgorithm.replace);
+            return;
+          }
+        }
+
+        // 2. Report does not exist locally or was an empty cloud stub.
+        // Reconstruct metadata-only record and empty snapshot safely.
+        final payload = remoteRecord.reportPayload;
+        final rawSource = payload['source'] as String? ?? 'messageText';
+        final source = InputSource.values.firstWhere(
+          (s) => s.name == rawSource,
+          orElse: () => InputSource.messageText,
+        );
+        final rawOutcome = payload['outcomeState'] as String? ??
+            AssessmentOutcomeState.noIndicatorsMatched.name;
+        final outcome = AssessmentOutcomeState.values.firstWhere(
+          (o) => o.name == rawOutcome,
+          orElse: () => AssessmentOutcomeState.noIndicatorsMatched,
+        );
+        final hasAi = payload['hasAiAnalysis'] as bool? ?? false;
+        final indicatorCount = (payload['indicatorCount'] as num?)?.toInt() ?? 0;
+
+        const emptyText = '';
+        const emptySha256 =
+            'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+        // Insert snapshot if not exists
+        await txn.insert(DatabaseConstants.tableSnapshots, {
+          DatabaseConstants.colSnapshotId: remoteRecord.snapshotId,
+          DatabaseConstants.colSnapshotText: emptyText,
+          DatabaseConstants.colSnapshotInputSource: source.name,
+          DatabaseConstants.colSnapshotCreatedAt: remoteRecord.clientUpdatedAt
+              .toUtc()
+              .toIso8601String(),
+          DatabaseConstants.colSnapshotSha256: emptySha256,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+
+        // Build minimal valid AnalysisReport payload so getReportById can decode it
+        final snapshotObj = TextSnapshot(
+          id: remoteRecord.snapshotId,
+          text: emptyText,
+          source: source,
+          createdAt: remoteRecord.clientUpdatedAt.toUtc(),
+        );
+
+        final localReport = AnalysisReport(
+          id: 'rep_local_$reportId',
+          schemaVersion: 1,
+          snapshot: snapshotObj,
+          analyzedAt: remoteRecord.clientUpdatedAt.toUtc(),
+          findings: const [],
+          limitations: const [
+            'Cloud backup summary: original message text is preserved only on the originating device.',
+          ],
+          suggestedActions: const [],
+        );
+
+        final restoredSavedReport = SavedReport(
+          id: reportId,
+          schemaVersion: remoteRecord.schemaVersion,
+          snapshot: snapshotObj,
+          accountId: cleanAccountId,
+          analyzedAt: remoteRecord.clientUpdatedAt.toUtc(),
+          savedAt: remoteRecord.clientUpdatedAt.toUtc(),
+          localReport: localReport,
+        );
+
+        final payloadJson = codec.encodeJson(restoredSavedReport);
+
+        await txn.insert(DatabaseConstants.tableReports, {
+          DatabaseConstants.colReportId: reportId,
+          DatabaseConstants.colReportSchemaVersion: remoteRecord.schemaVersion,
+          DatabaseConstants.colReportSnapshotId: remoteRecord.snapshotId,
+          DatabaseConstants.colReportAccountId: cleanAccountId,
+          DatabaseConstants.colReportAnalyzedAt: remoteRecord.clientUpdatedAt
+              .toUtc()
+              .toIso8601String(),
+          DatabaseConstants.colReportSavedAt: remoteRecord.clientUpdatedAt
+              .toUtc()
+              .toIso8601String(),
+          DatabaseConstants.colReportHasAiAnalysis: hasAi ? 1 : 0,
+          DatabaseConstants.colReportAiProvider: hasAi ? 'Cloud AI' : null,
+          DatabaseConstants.colReportAiModel: null,
+          DatabaseConstants.colReportFindingsCount: indicatorCount,
+          DatabaseConstants.colReportOutcomeState: outcome.name,
+          DatabaseConstants.colReportPreviewText: '[Cloud Backup Summary]',
+          DatabaseConstants.colReportPayload: payloadJson,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+        // Mark as synced
+        await txn.insert(DatabaseConstants.tableSyncMetadata, {
+          DatabaseConstants.colSyncReportId: reportId,
+          DatabaseConstants.colSyncAccountId: cleanAccountId,
+          DatabaseConstants.colSyncStatus: 'synced',
+          DatabaseConstants.colSyncClientUpdatedAt: remoteRecord.clientUpdatedAt
+              .toUtc()
+              .toIso8601String(),
+          DatabaseConstants.colSyncLastSyncedAt: remoteRecord.updatedAt
+              .toUtc()
+              .toIso8601String(),
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
+
+      return const Result.success(null);
+    } catch (e) {
+      return Result.failure(
+        AnalysisFailure.storage('Error applying remote report: $e'),
+      );
+    }
   }
 
   @override

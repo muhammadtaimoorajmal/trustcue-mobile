@@ -2,10 +2,10 @@
 
 **Milestone:** MODULE 66: Privacy-Safe Cloud Analysis Observability, Latency Metrics & Telemetry, with Targeted Acceptance and Documentation Repairs  
 **Date:** November 2, 2026  
-**Lead Developer:** Muhammad Taimoor Ajmal (SAP ID: 63461)  
-**Academic Program:** BSCS Semester 5-1, Fall 2026  
-**Course:** CS3643 — Mobile Application Development  
-**Institution:** Faculty of Computing & Applied Sciences, Riphah International University  
+**Lead Developer:** Muhammad Taimoor Ajmal  
+**Academic Program:** Production Release 2026  
+**Course:** TrustCue Mobile Application Development  
+**Institution:** TrustCue Engineering  
 **Document ID:** `DOC-M66-EVIDENCE-DOSSIER`  
 **Classification:** Definitive Verification, Observability & Acceptance Evidence  
 

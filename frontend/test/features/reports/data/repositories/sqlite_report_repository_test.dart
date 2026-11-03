@@ -14,6 +14,7 @@ import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/input/domain/models/text_snapshot.dart';
 import 'package:trustcue_mobile/features/reports/data/database/database_constants.dart';
 import 'package:trustcue_mobile/features/reports/data/repositories/sqlite_report_repository.dart';
+import 'package:trustcue_mobile/features/reports/domain/models/cloud_sync_models.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report.dart';
 
 void main() {
@@ -1006,6 +1007,128 @@ void main() {
             'acc-b',
           )).valueOrNull!;
           expect(pendingB.length, equals(1));
+        },
+      );
+
+      test(
+        'applyRemoteReport restores metadata-only report with empty snapshot text on fresh client',
+        () async {
+          const testAccount = 'usr-client-b';
+          final remoteRecord = CloudReportRecord(
+            id: 'cloud-id-1',
+            clientReportId: 'rep-from-client-a',
+            snapshotId: 'snap-from-client-a',
+            schemaVersion: 1,
+            revision: 1,
+            syncGeneration: 1,
+            reportPayload: const {
+              'formatVersion': 1,
+              'outcomeState': 'indicatorsDetected',
+              'hasAiAnalysis': true,
+              'indicatorCount': 3,
+              'categories': ['urgency', 'payment_anomaly'],
+              'source': 'messageText',
+            },
+            isDeleted: false,
+            clientUpdatedAt: DateTime.utc(2026, 11, 3, 10, 0),
+            createdAt: DateTime.utc(2026, 11, 3, 10, 0),
+            updatedAt: DateTime.utc(2026, 11, 3, 10, 0),
+          );
+
+          final res = await repository.applyRemoteReport(testAccount, remoteRecord);
+          expect(res.isSuccess, isTrue);
+
+          final summariesRes = await repository.getReportSummaries(accountId: testAccount);
+          expect(summariesRes.isSuccess, isTrue);
+          final summaries = summariesRes.valueOrNull!;
+          expect(summaries.length, equals(1));
+          final summary = summaries.first;
+          expect(summary.id, equals('rep-from-client-a'));
+          expect(summary.findingsCount, equals(3));
+          expect(summary.hasAiAnalysis, isTrue);
+          expect(summary.previewText, equals('[Cloud Backup Summary]'));
+
+          final fullRes = await repository.getReportById('rep-from-client-a', accountId: testAccount);
+          expect(fullRes.isSuccess, isTrue);
+          final full = fullRes.valueOrNull!;
+          expect(full.snapshot.text, isEmpty);
+        },
+      );
+
+      test(
+        'applyRemoteReport NEVER overwrites richer local report text or findings',
+        () async {
+          const testAccount = 'usr-client-a';
+          const originalText = 'Urgent: wire funds immediately to avoid arrest!';
+          final localRep = createSavedReport(
+            id: 'rep-local-rich',
+            snapshot: createSnapshot(id: 'snap-rich', text: originalText),
+            accountId: testAccount,
+          );
+          await repository.saveReport(localRep);
+
+          final remoteRecord = CloudReportRecord(
+            id: 'cloud-id-rich',
+            clientReportId: 'rep-local-rich',
+            snapshotId: 'snap-rich',
+            schemaVersion: 1,
+            revision: 2,
+            syncGeneration: 1,
+            reportPayload: const {
+              'formatVersion': 1,
+              'outcomeState': 'indicatorsDetected',
+              'hasAiAnalysis': false,
+              'indicatorCount': 1,
+              'categories': ['urgency'],
+              'source': 'messageText',
+            },
+            isDeleted: false,
+            clientUpdatedAt: DateTime.utc(2026, 11, 3, 12, 0),
+            createdAt: DateTime.utc(2026, 11, 3, 10, 0),
+            updatedAt: DateTime.utc(2026, 11, 3, 12, 0),
+          );
+
+          final res = await repository.applyRemoteReport(testAccount, remoteRecord);
+          expect(res.isSuccess, isTrue);
+
+          final retrieved = (await repository.getReportById('rep-local-rich', accountId: testAccount)).valueOrNull!;
+          expect(retrieved.snapshot.text, equals(originalText));
+          expect(retrieved.previewText, contains('Urgent: wire'));
+        },
+      );
+
+      test(
+        'applyRemoteReport is idempotent across repeated sync cycles and prevents duplicates',
+        () async {
+          const testAccount = 'usr-client-b-idem';
+          final remoteRecord = CloudReportRecord(
+            id: 'cloud-id-idempotent',
+            clientReportId: 'rep-idempotent',
+            snapshotId: 'snap-idempotent',
+            schemaVersion: 1,
+            revision: 1,
+            syncGeneration: 1,
+            reportPayload: const {
+              'formatVersion': 1,
+              'outcomeState': 'noIndicatorsMatched',
+              'hasAiAnalysis': false,
+              'indicatorCount': 0,
+              'categories': [],
+              'source': 'messageText',
+            },
+            isDeleted: false,
+            clientUpdatedAt: DateTime.utc(2026, 11, 3, 10, 0),
+            createdAt: DateTime.utc(2026, 11, 3, 10, 0),
+            updatedAt: DateTime.utc(2026, 11, 3, 10, 0),
+          );
+
+          await repository.applyRemoteReport(testAccount, remoteRecord);
+          await repository.applyRemoteReport(testAccount, remoteRecord);
+          await repository.applyRemoteReport(testAccount, remoteRecord);
+
+          final summaries = (await repository.getReportSummaries(accountId: testAccount)).valueOrNull!;
+          expect(summaries.length, equals(1));
+          expect(summaries.first.id, equals('rep-idempotent'));
         },
       );
     });

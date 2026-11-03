@@ -1,8 +1,8 @@
 # TrustCue Module 50: Final Academic Audit, Acceptance Register, and Handover Dossier
 
-**Course:** CS3643 - Mobile Application Development  
-**Academic Program:** BSCS Semester 5-1, Fall 2026  
-**Institution:** Faculty of Computing & Applied Sciences, Riphah International University  
+**Course:** TrustCue Mobile Application Development  
+**Academic Program:** Production Release 2026  
+**Institution:** TrustCue Engineering  
 **Project:** TrustCue - Privacy-First Digital Scam Indicator Analysis Platform  
 **Document Classification:** Authoritative Verification Register & Examination Dossier  
 **Release Target:** v0.1.0 (Version Code 1)  
@@ -596,7 +596,7 @@ Module 50 is **IN PROGRESS**:
   * Password mismatch: Triggered `"Passwords do not match."` banner.
   * Empty email/password on Sign In: Triggered `"Please enter both email and password."` banner.
 * **Real Cloud Authentication & Profile Load:**
-  * Authenticated user: `maliktaimoor655@gmail.com`
+  * Authenticated user: `test-user@example.com`
   * Account status: `(✓) Email verified`
   * User ID: `35770fb0-9635-48ca-b91c-a06a85df7272`
   * Display Name: `Muhammad Taimoor Ajmal`

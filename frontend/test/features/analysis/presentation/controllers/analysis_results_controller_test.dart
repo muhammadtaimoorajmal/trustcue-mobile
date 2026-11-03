@@ -10,6 +10,7 @@ import 'package:trustcue_mobile/features/analysis/domain/contracts/analysis_exec
 import 'package:trustcue_mobile/features/analysis/domain/contracts/analysis_service.dart';
 import 'package:trustcue_mobile/features/analysis/domain/contracts/assessment_synthesizer.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/ai_analysis_report.dart';
+import 'package:trustcue_mobile/features/reports/domain/models/cloud_sync_models.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_finding.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/analysis_report.dart';
 import 'package:trustcue_mobile/features/analysis/domain/models/assessment_action.dart';
@@ -866,6 +867,12 @@ class _FakeLocalReportRepository implements LocalReportRepository {
   Future<Result<void>> applyRemoteTombstone(
     String accountId,
     String reportId,
+  ) async => Result.success(null);
+
+  @override
+  Future<Result<void>> applyRemoteReport(
+    String accountId,
+    CloudReportRecord remoteRecord,
   ) async => Result.success(null);
 
   @override

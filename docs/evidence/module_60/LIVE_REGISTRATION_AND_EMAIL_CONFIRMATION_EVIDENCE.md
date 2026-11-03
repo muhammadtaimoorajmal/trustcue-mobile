@@ -5,7 +5,7 @@
 **Hardware Testbed:** Physical Vivo V2207 Android Phone (`10AC9R1ABF0013A`, Android 14 API 34)  
 **Release APK Hash:** `01343BD9EC9EABB00D0070703848EE85E7C6808C45C9F5E336F7444735559508` (107.04 MB)  
 **Supabase Production URL:** `https://yzqkmoqqvnhfmmrayfko.supabase.co`  
-**Test Account Identity:** `maliktaimoor655+m60@gmail.com` (`0e5b7e04-7d62-46c4-857b-1fa69b1cbadc`)  
+**Test Account Identity:** `test-user+m60@example.com` (`0e5b7e04-7d62-46c4-857b-1fa69b1cbadc`)  
 **Git Checkpoints:**  
 - `frontend`: `83f5d76` (`trustcue-mobile`)  
 - `database`: `68757bf` (`trustcue-database`)  
@@ -89,12 +89,12 @@ The client-side validator and UI state machine were tested against invalid input
 5. **Double-Tap Submission Prevention:** `RegisterController.isSubmitting` sets a synchronized submission lock that immediately disables the button and suppresses concurrent tap dispatches.
 
 ### 3.3 Genuine Registration Submission & Confirmation Flow
-1. Entered authorized test address: `maliktaimoor655+m60@gmail.com` with secure password.  
+1. Entered authorized test address: `test-user+m60@example.com` with secure password.  
    *Evidence:* `07_create_account_filled.png`, `07_create_account_filled.xml`.
 2. Tapped **"Create account"**.
 3. Response dispatched cleanly to GoTrue `/auth/v1/signup`. GoTrue created the user and issued a verification email to the recipient inbox.
 4. Mobile UI immediately transitioned to `VerifyEmailScreen` displaying:
-   - Target recipient: `maliktaimoor655+m60@gmail.com`
+   - Target recipient: `test-user+m60@example.com`
    - Guided steps: Open email inbox -> tap link -> return to sign in.
    - Action buttons: "Resend confirmation email", "Return to sign in", "Change email address".  
    *Evidence:* `08_verify_email_screen.png`, `08_verify_email_screen.xml`.
@@ -113,7 +113,7 @@ Database records were verified immediately following registration and confirmati
   "id": "0e5b7e04-7d62-46c4-857b-1fa69b1cbadc",
   "aud": "authenticated",
   "role": "authenticated",
-  "email": "maliktaimoor655+m60@gmail.com",
+  "email": "test-user+m60@example.com",
   "email_confirmed_at": "2026-11-02T11:26:31.340162Z",
   "confirmation_sent_at": "2026-11-02T11:25:46.22797Z",
   "created_at": "2026-11-02T11:25:46.186937Z"
@@ -144,7 +144,7 @@ Querying `public.profiles?id=eq.0e5b7e04-7d62-46c4-857b-1fa69b1cbadc` confirmed 
 
 Following email confirmation, the full session lifecycle was tested on the device:
 
-1. **Sign In:** Navigated to `LoginScreen`, entered `maliktaimoor655+m60@gmail.com` and password, and authenticated successfully.  
+1. **Sign In:** Navigated to `LoginScreen`, entered `test-user+m60@example.com` and password, and authenticated successfully.  
    *Evidence:* `10_login_screen_filled.png`, `11_account_authenticated_new_user.png`.
 2. **Account Screen Verification:** UI displayed:
    - User UUID: `0e5b7e04-7d62-46c4-857b-1fa69b1cbadc`

@@ -563,7 +563,7 @@ This register centralizes and tracks all required manual tasks, operational depe
 | **MAN-10** | Google Play / Testing | **Closed Testing Track Execution (14 Days / 12–20 Testers)**<br>Play Console Closed Testing | Invite 12–20 opt-in testers, maintain continuous 14-day closed testing period, gather feedback, and request production access per Google Play 2026 personal developer requirements. | Staged & Planned (Module 49; Pending OWN-09) |
 
 ## Academic Assessment
-This project is part of CS3643, BSCS Semester 5-1, Fall 2026. The academic assessment stages are separate from the implementation modules:
+This project is part of TrustCue, Production Release 2026. The academic assessment stages are separate from the implementation modules:
 - 20 quiz marks
 - 15 assignment marks
 - 45 midterm project marks

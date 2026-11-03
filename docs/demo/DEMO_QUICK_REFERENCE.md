@@ -1,7 +1,7 @@
 # TrustCue Demonstration Quick Reference (Classroom Cheat Sheet)
 
-**Student:** Muhammad Taimoor Ajmal (SAP ID: 63461)  
-**Course:** CS3643 — Mobile Application Development (BSCS 5-1, Fall 2026)  
+**Student:** Muhammad Taimoor Ajmal  
+**Course:** TrustCue Mobile Application  
 **Instructor:** Mr. Muhammad Shariq Hasnain  
 **Presentation Date:** Wednesday, 21 October 2026  
 **Use Case:** Keep this single document visible on your laptop screen during your demonstration and viva.

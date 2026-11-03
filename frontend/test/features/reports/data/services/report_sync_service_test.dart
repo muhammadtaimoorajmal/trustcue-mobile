@@ -424,5 +424,179 @@ void main() {
       );
       expect(remainingTombstones.valueOrNull, isEmpty);
     });
+
+    test('pulls active report summaries on secondary client and applies them', () async {
+      final mockHttp = MockClient((request) async {
+        if (request.method == 'GET' && request.url.path == '/api/v1/sync/reports') {
+          return http.Response(
+            jsonEncode({
+              'status': 'success',
+              'reports': [
+                {
+                  'id': 'syn-1',
+                  'clientReportId': 'rep-pulled-1',
+                  'snapshotId': 'snap-pulled-1',
+                  'schemaVersion': 1,
+                  'revision': 1,
+                  'syncGeneration': 1,
+                  'reportPayload': {
+                    'formatVersion': 1,
+                    'outcomeState': 'indicatorsDetected',
+                    'hasAiAnalysis': false,
+                    'indicatorCount': 2,
+                    'categories': ['urgency'],
+                    'source': 'messageText',
+                  },
+                  'isDeleted': false,
+                  'clientUpdatedAt': '2026-11-03T10:00:00Z',
+                  'createdAt': '2026-11-03T10:00:00Z',
+                  'updatedAt': '2026-11-03T10:00:00Z',
+                }
+              ],
+              'hasMore': false,
+              'serverTimestamp': '2026-11-03T10:00:00Z',
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return http.Response('Not found', 404);
+      });
+
+      final syncClient = SyncApiClient(
+        baseUrl: 'http://localhost:8000',
+        httpClient: mockHttp,
+        tokenProvider: () async => 'token-123',
+      );
+      final accountClient = AccountApiClient(
+        baseUrl: 'http://localhost:8000',
+        httpClient: mockHttp,
+        tokenProvider: () async => 'token-123',
+      );
+
+      final service = ReportSyncService(
+        repository: repository,
+        syncApiClient: syncClient,
+        accountApiClient: accountClient,
+      );
+
+      final syncResult = await service.synchronize(
+        accountId: 'usr-client-b',
+        syncEnabled: true,
+      );
+
+      expect(syncResult.isSuccess, isTrue);
+      expect(syncResult.valueOrNull?.pulledCount, equals(1));
+
+      final restored = (await repository.getReportById('rep-pulled-1', accountId: 'usr-client-b')).valueOrNull;
+      expect(restored, isNotNull);
+      expect(restored!.id, equals('rep-pulled-1'));
+      expect(restored.snapshot.text, isEmpty);
+    });
+
+    test('paginates pull when hasMore is true across multiple pages', () async {
+      int getCount = 0;
+      final mockHttp = MockClient((request) async {
+        if (request.method == 'GET' && request.url.path == '/api/v1/sync/reports') {
+          getCount++;
+          if (getCount == 1) {
+            return http.Response(
+              jsonEncode({
+                'status': 'success',
+                'reports': [
+                  {
+                    'id': 'syn-p1',
+                    'clientReportId': 'rep-page-1',
+                    'snapshotId': 'snap-page-1',
+                    'schemaVersion': 1,
+                    'revision': 1,
+                    'syncGeneration': 1,
+                    'reportPayload': {
+                      'formatVersion': 1,
+                      'outcomeState': 'noIndicatorsMatched',
+                      'hasAiAnalysis': false,
+                      'indicatorCount': 0,
+                      'categories': [],
+                      'source': 'messageText',
+                    },
+                    'isDeleted': false,
+                    'clientUpdatedAt': '2026-11-03T10:00:00Z',
+                    'createdAt': '2026-11-03T10:00:00Z',
+                    'updatedAt': '2026-11-03T10:00:00Z',
+                  }
+                ],
+                'nextCursor': 'cursor-page-2',
+                'hasMore': true,
+                'serverTimestamp': '2026-11-03T10:00:00Z',
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          } else {
+            return http.Response(
+              jsonEncode({
+                'status': 'success',
+                'reports': [
+                  {
+                    'id': 'syn-p2',
+                    'clientReportId': 'rep-page-2',
+                    'snapshotId': 'snap-page-2',
+                    'schemaVersion': 1,
+                    'revision': 1,
+                    'syncGeneration': 1,
+                    'reportPayload': {
+                      'formatVersion': 1,
+                      'outcomeState': 'noIndicatorsMatched',
+                      'hasAiAnalysis': false,
+                      'indicatorCount': 0,
+                      'categories': [],
+                      'source': 'messageText',
+                    },
+                    'isDeleted': false,
+                    'clientUpdatedAt': '2026-11-03T10:05:00Z',
+                    'createdAt': '2026-11-03T10:05:00Z',
+                    'updatedAt': '2026-11-03T10:05:00Z',
+                  }
+                ],
+                'nextCursor': null,
+                'hasMore': false,
+                'serverTimestamp': '2026-11-03T10:05:00Z',
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+        }
+        return http.Response('Not found', 404);
+      });
+
+      final syncClient = SyncApiClient(
+        baseUrl: 'http://localhost:8000',
+        httpClient: mockHttp,
+        tokenProvider: () async => 'token-123',
+      );
+      final accountClient = AccountApiClient(
+        baseUrl: 'http://localhost:8000',
+        httpClient: mockHttp,
+        tokenProvider: () async => 'token-123',
+      );
+
+      final service = ReportSyncService(
+        repository: repository,
+        syncApiClient: syncClient,
+        accountApiClient: accountClient,
+      );
+
+      final syncResult = await service.synchronize(
+        accountId: 'usr-paginate',
+        syncEnabled: true,
+      );
+
+      expect(syncResult.isSuccess, isTrue);
+      expect(getCount, equals(2));
+      expect(syncResult.valueOrNull?.pulledCount, equals(2));
+      expect((await repository.getReportById('rep-page-1', accountId: 'usr-paginate')).valueOrNull, isNotNull);
+      expect((await repository.getReportById('rep-page-2', accountId: 'usr-paginate')).valueOrNull, isNotNull);
+    });
   });
 }

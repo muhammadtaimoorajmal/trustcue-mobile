@@ -13,6 +13,7 @@ import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
 import 'package:trustcue_mobile/features/input/domain/models/reviewed_text_result.dart';
 import 'package:trustcue_mobile/features/input/domain/models/text_snapshot.dart';
 import 'package:trustcue_mobile/features/reports/domain/contracts/local_report_repository.dart';
+import 'package:trustcue_mobile/features/reports/domain/models/cloud_sync_models.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report_summary.dart';
 
@@ -134,6 +135,12 @@ class FakeLocalReportRepository implements LocalReportRepository {
     storage.remove(reportId);
     return const Result.success(null);
   }
+
+  @override
+  Future<Result<void>> applyRemoteReport(
+    String accountId,
+    CloudReportRecord remoteRecord,
+  ) async => const Result.success(null);
 
   @override
   Future<Result<void>> clearSyncMetadata(String accountId) async =>

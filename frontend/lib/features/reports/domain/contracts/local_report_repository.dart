@@ -1,5 +1,6 @@
 import 'package:trustcue_mobile/core/types/result.dart';
 import 'package:trustcue_mobile/features/input/domain/models/input_source.dart';
+import 'package:trustcue_mobile/features/reports/domain/models/cloud_sync_models.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report.dart';
 import 'package:trustcue_mobile/features/reports/domain/models/saved_report_summary.dart';
 
@@ -139,6 +140,20 @@ abstract class LocalReportRepository {
   /// Applies a remote cloud tombstone to local storage, deleting the local report
   /// if owned by [accountId].
   Future<Result<void>> applyRemoteTombstone(String accountId, String reportId);
+
+  /// Applies a remote cloud report record to local storage.
+  ///
+  /// Invariants & Guarantees:
+  /// - Scoped strictly to [accountId].
+  /// - If a local report already exists with non-empty reviewed text, the rich local
+  ///   report and its findings are strictly preserved (never overwritten by cloud summary).
+  /// - If the report does not exist locally (e.g. restoring on a secondary device),
+  ///   a restored metadata-only summary is persisted with empty snapshot text.
+  /// - Sets sync status to 'synced' with the remote timestamp.
+  Future<Result<void>> applyRemoteReport(
+    String accountId,
+    CloudReportRecord remoteRecord,
+  );
 
   /// Clears sync metadata tracking for the specified account.
   Future<Result<void>> clearSyncMetadata(String accountId);

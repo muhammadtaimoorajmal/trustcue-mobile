@@ -2,7 +2,7 @@
 
 **Device:** Vivo V2207 (`10AC9R1ABF0013A`) - Android 14 / Funtouch OS  
 **Timestamp:** November 2, 2026 19:30 PKT  
-**Test Account:** `maliktaimoor655+m60@gmail.com` (`0e5b7e04-7d62-46c4-857b-1fa69b1cbadc`)  
+**Test Account:** `test-user+m60@example.com` (`0e5b7e04-7d62-46c4-857b-1fa69b1cbadc`)  
 **Package:** `io.github.muhammadtaimoorajmal.trustcue`  
 **Build Artifact:** `app-release.apk` (107.27 MB, SHA-256: `21DC2993B97BD8A1B64A064DABDFF6DC6D69E7FBB5E7738453F9D7EE16D41CA3`)
 

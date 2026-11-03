@@ -244,7 +244,7 @@ To prevent divergent or conflicting project roadmaps across branches:
 - **Primary Branch:** `frontend` / `backend` / `database` / `integration` -> `main` (gated)
 - **Deliverable:** Comprehensive final academic audit report (`docs/FINAL_AUDIT_AND_ACCEPTANCE_REGISTER_MODULE_50.md`), 12-question viva defense preparation dossier, unified reviewable candidate monorepo (`integration/candidate-v0.1.0` in `trustcue-integration`), multi-environment test verification (1,015 passing tests), physical device and live hosted probe verifications, release artifact manifest, and Owner-Only Action Register (OWN-00 to OWN-10).
 - **Dependencies:** Modules 1–49.
-- **Acceptance Criteria:** All 50 modules audited and reconciled against code and empirical evidence; multi-worktree test suites pass 100% (860 Flutter, 142 backend, 13 database); review candidate monorepo cleanly staged without regressions; academic requirements for CS3643 fulfilled; `main` branch merge and Play Store submission held pending human evaluation.
+- **Acceptance Criteria:** All 50 modules audited and reconciled against code and empirical evidence; multi-worktree test suites pass 100% (860 Flutter, 142 backend, 13 database); review candidate monorepo cleanly staged without regressions; academic requirements for TrustCue fulfilled; `main` branch merge and Play Store submission held pending human evaluation.
 - **Necessary Human Actions:** Final academic project presentation and Play Store submission (OWN-00 to OWN-10).
 
 ---

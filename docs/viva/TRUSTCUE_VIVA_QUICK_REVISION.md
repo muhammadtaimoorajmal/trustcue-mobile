@@ -1,8 +1,8 @@
 # TrustCue Viva Quick Revision Guide (Last-Minute Review)
-**Mobile Application Development (CS3643) — BSCS Semester 5-1, Fall 2026**
-**Riphah International University**
+**Mobile Application Development (TrustCue) — Production Release 2026**
+**TrustCue Project**
 
-- **Student:** Muhammad Taimoor Ajmal (SAP ID: 63461)
+- **Student:** Muhammad Taimoor Ajmal
 - **Instructor:** Mr. Muhammad Shariq Hasnain
 - **Project:** TrustCue — Scam-Indicator Awareness & Risk Explanation Assistant
 - **Purpose:** 10-Minute High-Yield Cheat Sheet to review immediately before your viva.
