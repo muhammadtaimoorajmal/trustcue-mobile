@@ -44,14 +44,19 @@ void main() {
 
           if (cloudReports.containsKey(id)) {
             final existing = cloudReports[id]!;
-            final existingTime = DateTime.parse(existing['clientUpdatedAt'] as String);
+            final existingTime = DateTime.parse(
+              existing['clientUpdatedAt'] as String,
+            );
             final existingIsDel = existing['isDeleted'] as bool? ?? false;
 
             // Conflict resolution:
             // 1. Stale update rejected
             if (itemTime.isBefore(existingTime)) continue;
             // 2. Equal timestamp: tombstone wins
-            if (itemTime.isAtSameMomentAs(existingTime) && existingIsDel && !isDel) continue;
+            if (itemTime.isAtSameMomentAs(existingTime) &&
+                existingIsDel &&
+                !isDel)
+              continue;
           }
 
           cloudReports[id] = {
@@ -74,7 +79,9 @@ void main() {
           jsonEncode({
             'status': 'success',
             'acceptedCount': incoming.length,
-            'syncedReportIds': incoming.map((e) => e['clientReportId']).toList(),
+            'syncedReportIds': incoming
+                .map((e) => e['clientReportId'])
+                .toList(),
             'serverTimestamp': DateTime.now().toUtc().toIso8601String(),
           }),
           200,
@@ -128,7 +135,9 @@ void main() {
 
     const excerpt = 'URGENT:';
     final hasExcerpt = text.startsWith(excerpt);
-    final match = hasExcerpt ? excerpt : text.substring(0, text.length > 5 ? 5 : text.length);
+    final match = hasExcerpt
+        ? excerpt
+        : text.substring(0, text.length > 5 ? 5 : text.length);
 
     final finding = AnalysisFinding(
       id: 'find-$id-1',
@@ -192,130 +201,223 @@ void main() {
   });
 
   group('Two-Client Convergence & Deletion Matrix Suite', () {
-    test(
-      'Client A pushes rich report -> Client B pulls metadata summary -> Client A retains rich text without overwrite',
-      () async {
-        const testUser = 'usr-two-client';
-        const richText = 'URGENT: Transfer \$1000 now to avoid account suspension!';
+    test('Client A pushes rich report -> Client B pulls metadata summary -> Client A retains rich text without overwrite', () async {
+      const testUser = 'usr-two-client';
+      const richText =
+          'URGENT: Transfer \$1000 now to avoid account suspension!';
 
-        // 1. Client A creates a rich report locally
-        final reportA = createSampleReport(
-          id: 'rep-sync-1',
-          accountId: testUser,
-          text: richText,
-        );
-        await clientARepo.saveReport(reportA);
+      // 1. Client A creates a rich report locally
+      final reportA = createSampleReport(
+        id: 'rep-sync-1',
+        accountId: testUser,
+        text: richText,
+      );
+      await clientARepo.saveReport(reportA);
 
-        final mockServer = buildMockServer();
-        final syncClientA = SyncApiClient(httpClient: mockServer, tokenProvider: () async => 'jwt-token');
-        final accountClientA = AccountApiClient(httpClient: mockServer, tokenProvider: () async => 'jwt-token');
-        final serviceA = ReportSyncService(
-          repository: clientARepo,
-          syncApiClient: syncClientA,
-          accountApiClient: accountClientA,
-        );
+      final mockServer = buildMockServer();
+      final syncClientA = SyncApiClient(
+        httpClient: mockServer,
+        tokenProvider: () async => 'jwt-token',
+      );
+      final accountClientA = AccountApiClient(
+        httpClient: mockServer,
+        tokenProvider: () async => 'jwt-token',
+      );
+      final serviceA = ReportSyncService(
+        repository: clientARepo,
+        syncApiClient: syncClientA,
+        accountApiClient: accountClientA,
+      );
 
-        // 2. Client A synchronizes (pushes to cloud)
-        final pushResultA = await serviceA.synchronize(accountId: testUser, syncEnabled: true);
-        expect(pushResultA.isSuccess, isTrue);
-        expect(pushResultA.valueOrNull?.pushedCount, equals(1));
+      // 2. Client A synchronizes (pushes to cloud)
+      final pushResultA = await serviceA.synchronize(
+        accountId: testUser,
+        syncEnabled: true,
+      );
+      expect(pushResultA.isSuccess, isTrue);
+      expect(pushResultA.valueOrNull?.pushedCount, equals(1));
 
-        // Verify cloud payload contains 0 raw message text (strict privacy allowlist)
-        expect(cloudReports.containsKey('rep-sync-1'), isTrue);
-        final cloudItem = cloudReports['rep-sync-1']!;
-        final cloudPayload = cloudItem['reportPayload'] as Map<String, dynamic>;
-        expect(cloudPayload.containsKey('text'), isFalse);
-        expect(cloudPayload.containsKey('raw_text'), isFalse);
-        expect(cloudPayload.containsKey('evidence'), isFalse);
-        expect(cloudPayload['outcomeState'], equals('indicatorsDetected'));
-        expect(cloudPayload['indicatorCount'], equals(1));
+      // Verify cloud payload contains 0 raw message text (strict privacy allowlist)
+      expect(cloudReports.containsKey('rep-sync-1'), isTrue);
+      final cloudItem = cloudReports['rep-sync-1']!;
+      final cloudPayload = cloudItem['reportPayload'] as Map<String, dynamic>;
+      expect(cloudPayload.containsKey('text'), isFalse);
+      expect(cloudPayload.containsKey('raw_text'), isFalse);
+      expect(cloudPayload.containsKey('evidence'), isFalse);
+      expect(cloudPayload['outcomeState'], equals('indicatorsDetected'));
+      expect(cloudPayload['indicatorCount'], equals(1));
 
-        // 3. Client B (isolated secondary device) synchronizes (pulls from cloud)
-        final syncClientB = SyncApiClient(httpClient: mockServer, tokenProvider: () async => 'jwt-token');
-        final accountClientB = AccountApiClient(httpClient: mockServer, tokenProvider: () async => 'jwt-token');
-        final serviceB = ReportSyncService(
-          repository: clientBRepo,
-          syncApiClient: syncClientB,
-          accountApiClient: accountClientB,
-        );
+      // 3. Client B (isolated secondary device) synchronizes (pulls from cloud)
+      final syncClientB = SyncApiClient(
+        httpClient: mockServer,
+        tokenProvider: () async => 'jwt-token',
+      );
+      final accountClientB = AccountApiClient(
+        httpClient: mockServer,
+        tokenProvider: () async => 'jwt-token',
+      );
+      final serviceB = ReportSyncService(
+        repository: clientBRepo,
+        syncApiClient: syncClientB,
+        accountApiClient: accountClientB,
+      );
 
-        final pullResultB = await serviceB.synchronize(accountId: testUser, syncEnabled: true);
-        expect(pullResultB.isSuccess, isTrue);
-        expect(pullResultB.valueOrNull?.pulledCount, equals(1));
+      final pullResultB = await serviceB.synchronize(
+        accountId: testUser,
+        syncEnabled: true,
+      );
+      expect(pullResultB.isSuccess, isTrue);
+      expect(pullResultB.valueOrNull?.pulledCount, equals(1));
 
-        // 4. Verify Client B restored metadata-only summary with EMPTY snapshot text
-        final clientBReport = (await clientBRepo.getReportById('rep-sync-1', accountId: testUser)).valueOrNull!;
-        expect(clientBReport.id, equals('rep-sync-1'));
-        expect(clientBReport.snapshot.text, isEmpty); // Strict privacy guarantee!
-        expect(clientBReport.totalFindingsCount, equals(0)); // Findings quotes not stored in cloud
+      // 4. Verify Client B restored metadata-only summary with EMPTY snapshot text
+      final clientBReport = (await clientBRepo.getReportById(
+        'rep-sync-1',
+        accountId: testUser,
+      )).valueOrNull!;
+      expect(clientBReport.id, equals('rep-sync-1'));
+      expect(clientBReport.snapshot.text, isEmpty); // Strict privacy guarantee!
+      expect(
+        clientBReport.totalFindingsCount,
+        equals(0),
+      ); // Findings quotes not stored in cloud
 
-        final clientBSummaries = (await clientBRepo.getReportSummaries(accountId: testUser)).valueOrNull!;
-        expect(clientBSummaries.length, equals(1));
-        expect(clientBSummaries.first.findingsCount, equals(1));
-        expect(clientBSummaries.first.previewText, equals('[Cloud Backup Summary]'));
+      final clientBSummaries = (await clientBRepo.getReportSummaries(
+        accountId: testUser,
+      )).valueOrNull!;
+      expect(clientBSummaries.length, equals(1));
+      expect(clientBSummaries.first.findingsCount, equals(1));
+      expect(
+        clientBSummaries.first.previewText,
+        equals('[Cloud Backup Summary]'),
+      );
 
-        // 5. Client A synchronizes AGAIN: Client A local rich text MUST NOT BE OVERWRITTEN!
-        final secondSyncA = await serviceA.synchronize(accountId: testUser, syncEnabled: true);
-        expect(secondSyncA.isSuccess, isTrue);
+      // 5. Client A synchronizes AGAIN: Client A local rich text MUST NOT BE OVERWRITTEN!
+      final secondSyncA = await serviceA.synchronize(
+        accountId: testUser,
+        syncEnabled: true,
+      );
+      expect(secondSyncA.isSuccess, isTrue);
 
-        final clientAReportAfter = (await clientARepo.getReportById('rep-sync-1', accountId: testUser)).valueOrNull!;
-        expect(clientAReportAfter.snapshot.text, equals(richText)); // 100% PRESERVED!
-        expect(clientAReportAfter.previewText, contains('URGENT: Transfer'));
-      },
-    );
+      final clientAReportAfter = (await clientARepo.getReportById(
+        'rep-sync-1',
+        accountId: testUser,
+      )).valueOrNull!;
+      expect(
+        clientAReportAfter.snapshot.text,
+        equals(richText),
+      ); // 100% PRESERVED!
+      expect(clientAReportAfter.previewText, contains('URGENT: Transfer'));
+    });
 
     test('Deletion Matrix: Local-only delete on Client A preserves cloud backup and Client B record', () async {
       const testUser = 'usr-deletion-matrix';
-      final rep = createSampleReport(id: 'rep-matrix-1', accountId: testUser, text: 'URGENT: Sample phishing message');
+      final rep = createSampleReport(
+        id: 'rep-matrix-1',
+        accountId: testUser,
+        text: 'URGENT: Sample phishing message',
+      );
       await clientARepo.saveReport(rep);
 
       final mockServer = buildMockServer();
       final serviceA = ReportSyncService(
         repository: clientARepo,
-        syncApiClient: SyncApiClient(httpClient: mockServer, tokenProvider: () async => 'jwt-token'),
-        accountApiClient: AccountApiClient(httpClient: mockServer, tokenProvider: () async => 'jwt-token'),
+        syncApiClient: SyncApiClient(
+          httpClient: mockServer,
+          tokenProvider: () async => 'jwt-token',
+        ),
+        accountApiClient: AccountApiClient(
+          httpClient: mockServer,
+          tokenProvider: () async => 'jwt-token',
+        ),
       );
       final serviceB = ReportSyncService(
         repository: clientBRepo,
-        syncApiClient: SyncApiClient(httpClient: mockServer, tokenProvider: () async => 'jwt-token'),
-        accountApiClient: AccountApiClient(httpClient: mockServer, tokenProvider: () async => 'jwt-token'),
+        syncApiClient: SyncApiClient(
+          httpClient: mockServer,
+          tokenProvider: () async => 'jwt-token',
+        ),
+        accountApiClient: AccountApiClient(
+          httpClient: mockServer,
+          tokenProvider: () async => 'jwt-token',
+        ),
       );
 
       // Client A pushes, Client B pulls
       await serviceA.synchronize(accountId: testUser, syncEnabled: true);
       await serviceB.synchronize(accountId: testUser, syncEnabled: true);
 
-      expect((await clientBRepo.getReportById('rep-matrix-1', accountId: testUser)).valueOrNull, isNotNull);
+      expect(
+        (await clientBRepo.getReportById(
+          'rep-matrix-1',
+          accountId: testUser,
+        )).valueOrNull,
+        isNotNull,
+      );
 
       // Client A performs LOCAL-ONLY delete (tombstoneForCloud = false)
-      await clientARepo.deleteReport('rep-matrix-1', accountId: testUser, tombstoneForCloud: false);
-      expect((await clientARepo.getReportById('rep-matrix-1', accountId: testUser)).valueOrNull, isNull);
+      await clientARepo.deleteReport(
+        'rep-matrix-1',
+        accountId: testUser,
+        tombstoneForCloud: false,
+      );
+      expect(
+        (await clientARepo.getReportById(
+          'rep-matrix-1',
+          accountId: testUser,
+        )).valueOrNull,
+        isNull,
+      );
 
       // Client A synchronizes -> zero tombstones pushed
-      final syncAfterLocalDel = await serviceA.synchronize(accountId: testUser, syncEnabled: true);
+      final syncAfterLocalDel = await serviceA.synchronize(
+        accountId: testUser,
+        syncEnabled: true,
+      );
       expect(syncAfterLocalDel.valueOrNull?.tombstonesApplied, equals(0));
       expect(cloudReports['rep-matrix-1']!['isDeleted'], isFalse);
 
       // Client B synchronizes -> report remains intact on Client B
       await serviceB.synchronize(accountId: testUser, syncEnabled: true);
-      expect((await clientBRepo.getReportById('rep-matrix-1', accountId: testUser)).valueOrNull, isNotNull);
+      expect(
+        (await clientBRepo.getReportById(
+          'rep-matrix-1',
+          accountId: testUser,
+        )).valueOrNull,
+        isNotNull,
+      );
     });
 
     test('Deletion Matrix: Device & Cloud delete on Client B propagates tombstone to Client A', () async {
       const testUser = 'usr-tomb-matrix';
-      final rep = createSampleReport(id: 'rep-tomb-2', accountId: testUser, text: 'URGENT: Another scam attempt');
+      final rep = createSampleReport(
+        id: 'rep-tomb-2',
+        accountId: testUser,
+        text: 'URGENT: Another scam attempt',
+      );
       await clientARepo.saveReport(rep);
 
       final mockServer = buildMockServer();
       final serviceA = ReportSyncService(
         repository: clientARepo,
-        syncApiClient: SyncApiClient(httpClient: mockServer, tokenProvider: () async => 'jwt-token'),
-        accountApiClient: AccountApiClient(httpClient: mockServer, tokenProvider: () async => 'jwt-token'),
+        syncApiClient: SyncApiClient(
+          httpClient: mockServer,
+          tokenProvider: () async => 'jwt-token',
+        ),
+        accountApiClient: AccountApiClient(
+          httpClient: mockServer,
+          tokenProvider: () async => 'jwt-token',
+        ),
       );
       final serviceB = ReportSyncService(
         repository: clientBRepo,
-        syncApiClient: SyncApiClient(httpClient: mockServer, tokenProvider: () async => 'jwt-token'),
-        accountApiClient: AccountApiClient(httpClient: mockServer, tokenProvider: () async => 'jwt-token'),
+        syncApiClient: SyncApiClient(
+          httpClient: mockServer,
+          tokenProvider: () async => 'jwt-token',
+        ),
+        accountApiClient: AccountApiClient(
+          httpClient: mockServer,
+          tokenProvider: () async => 'jwt-token',
+        ),
       );
 
       // Client A pushes, Client B pulls
@@ -323,18 +425,40 @@ void main() {
       await serviceB.synchronize(accountId: testUser, syncEnabled: true);
 
       // Client B deletes with Device & Cloud (tombstoneForCloud = true)
-      await clientBRepo.deleteReport('rep-tomb-2', accountId: testUser, tombstoneForCloud: true);
-      expect((await clientBRepo.getReportById('rep-tomb-2', accountId: testUser)).valueOrNull, isNull);
+      await clientBRepo.deleteReport(
+        'rep-tomb-2',
+        accountId: testUser,
+        tombstoneForCloud: true,
+      );
+      expect(
+        (await clientBRepo.getReportById(
+          'rep-tomb-2',
+          accountId: testUser,
+        )).valueOrNull,
+        isNull,
+      );
 
       // Client B syncs -> pushes tombstone to cloud
-      final bPush = await serviceB.synchronize(accountId: testUser, syncEnabled: true);
+      final bPush = await serviceB.synchronize(
+        accountId: testUser,
+        syncEnabled: true,
+      );
       expect(bPush.valueOrNull?.pushedCount, equals(1));
       expect(cloudReports['rep-tomb-2']!['isDeleted'], isTrue);
 
       // Client A syncs -> pulls tombstone and deletes local report
-      final aPull = await serviceA.synchronize(accountId: testUser, syncEnabled: true);
+      final aPull = await serviceA.synchronize(
+        accountId: testUser,
+        syncEnabled: true,
+      );
       expect(aPull.valueOrNull?.tombstonesApplied, equals(1));
-      expect((await clientARepo.getReportById('rep-tomb-2', accountId: testUser)).valueOrNull, isNull);
+      expect(
+        (await clientARepo.getReportById(
+          'rep-tomb-2',
+          accountId: testUser,
+        )).valueOrNull,
+        isNull,
+      );
     });
   });
 }

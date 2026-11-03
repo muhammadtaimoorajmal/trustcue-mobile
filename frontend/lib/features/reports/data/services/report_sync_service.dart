@@ -174,7 +174,9 @@ class ReportSyncService {
           cursor: nextCursor,
         );
         if (pullRes.isFailure) {
-          if (itemsToPush.isEmpty && pulledCount == 0 && tombstonesApplied == 0) {
+          if (itemsToPush.isEmpty &&
+              pulledCount == 0 &&
+              tombstonesApplied == 0) {
             return Result.failure(pullRes.failureOrNull!);
           }
           break;
@@ -191,10 +193,7 @@ class ReportSyncService {
             );
             tombstonesApplied++;
           } else {
-            await repository.applyRemoteReport(
-              accountId,
-              remoteRecord,
-            );
+            await repository.applyRemoteReport(accountId, remoteRecord);
             pulledCount++;
           }
         }

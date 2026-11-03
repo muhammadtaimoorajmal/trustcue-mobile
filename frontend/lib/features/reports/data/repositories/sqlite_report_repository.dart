@@ -1201,8 +1201,8 @@ class SqliteReportRepository implements LocalReportRepository {
 
           final existingText = existingSnapshots.isNotEmpty
               ? (existingSnapshots.first[DatabaseConstants.colSnapshotText]
-                      as String?) ??
-                  ''
+                        as String?) ??
+                    ''
               : '';
 
           // If local report already has rich text, NEVER overwrite local content!
@@ -1232,14 +1232,16 @@ class SqliteReportRepository implements LocalReportRepository {
           (s) => s.name == rawSource,
           orElse: () => InputSource.messageText,
         );
-        final rawOutcome = payload['outcomeState'] as String? ??
+        final rawOutcome =
+            payload['outcomeState'] as String? ??
             AssessmentOutcomeState.noIndicatorsMatched.name;
         final outcome = AssessmentOutcomeState.values.firstWhere(
           (o) => o.name == rawOutcome,
           orElse: () => AssessmentOutcomeState.noIndicatorsMatched,
         );
         final hasAi = payload['hasAiAnalysis'] as bool? ?? false;
-        final indicatorCount = (payload['indicatorCount'] as num?)?.toInt() ?? 0;
+        final indicatorCount =
+            (payload['indicatorCount'] as num?)?.toInt() ?? 0;
 
         const emptyText = '';
         const emptySha256 =
