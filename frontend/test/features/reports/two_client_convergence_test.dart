@@ -51,12 +51,15 @@ void main() {
 
             // Conflict resolution:
             // 1. Stale update rejected
-            if (itemTime.isBefore(existingTime)) continue;
+            if (itemTime.isBefore(existingTime)) {
+              continue;
+            }
             // 2. Equal timestamp: tombstone wins
             if (itemTime.isAtSameMomentAs(existingTime) &&
                 existingIsDel &&
-                !isDel)
+                !isDel) {
               continue;
+            }
           }
 
           cloudReports[id] = {
