@@ -8,12 +8,12 @@
 
 ## 1. Verified Repository Baselines
 
-| Worktree / Branch | Baseline SHA | Clean Status | CI Run Status |
-| :--- | :--- | :--- | :--- |
-| `trustcue-backend` (`backend`) | `a4a79fc` | Clean before edits | Run 41575460306 SUCCESS |
-| `trustcue-database` (`database`) | `50b02fb` | Clean before edits | Run 41539459520 SUCCESS |
-| `trustcue-mobile` (`frontend`) | Tested Code `18d69ba`, Doc `670a9ae` | Clean before edits | Run 41575306630 SUCCESS |
-| `main` | `a785db8` | Untouched, pristine | Reserved for final integration |
+| Worktree / Branch | Baseline SHA | Clean Status | Pre-Module CI Run | Module 68 SHA | Module 68 CI Run |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `trustcue-backend` (`backend`) | `a4a79fc` | Clean before edits | Run 41575460306 SUCCESS | `9c33899` | Run 41579169181 SUCCESS |
+| `trustcue-database` (`database`) | `50b02fb` | Clean before edits | Run 41539459520 SUCCESS | `3a92244` | Run 41579184686 SUCCESS |
+| `trustcue-mobile` (`frontend`) | Tested Code `18d69ba`, Doc `670a9ae` | Clean before edits | Run 41575306630 SUCCESS | `cf38081` | Run 41579908031 SUCCESS |
+| `main` | `a785db8` | Untouched, pristine | Reserved for final integration | `a785db8` | Untouched, pristine |
 
 ---
 
@@ -89,6 +89,7 @@ Verification executed using isolated SQLite storage instances for Client A and C
 ### Backend (`trustcue-backend`)
 - **Ruff:** All checks passed clean.
 - **Pytest:** 189 passed, 0 failed (including new conflict resolution, tombstone precedence, and 503 fail-closed database error tests).
+- **GitHub Actions CI:** Run [41579169181](https://github.com/muhammadtaimoorajmal/trustcue-mobile/actions/runs/41579169181) **SUCCESS**.
 
 ### Frontend (`trustcue-mobile`)
 - **Flutter Analyze:** No issues found (0 errors, 0 warnings, 0 hints).
@@ -97,6 +98,11 @@ Verification executed using isolated SQLite storage instances for Client A and C
   - `report_sync_service_test.dart`: 8 passed, 0 failed.
   - `two_client_convergence_test.dart`: 3 passed, 0 failed.
   - All 100 reports tests in `test/features/reports/`: 100 passed, 0 failed.
+- **GitHub Actions CI:** Run [41579908031](https://github.com/muhammadtaimoorajmal/trustcue-mobile/actions/runs/41579908031) **SUCCESS** (Format, Analyze, Automated Test Suite, and Debug APK build all passed).
+
+### Database (`trustcue-database`)
+- **Static Schema & SQL Audit:** Clean; developer identifiers sanitized.
+- **GitHub Actions CI:** Run [41579184686](https://github.com/muhammadtaimoorajmal/trustcue-mobile/actions/runs/41579184686) **SUCCESS**.
 
 ---
 
